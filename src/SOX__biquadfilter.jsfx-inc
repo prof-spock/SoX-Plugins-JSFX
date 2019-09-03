@@ -1,0 +1,140 @@
+desc: SOX BiQuad Filter
+//general routines for biquad filters
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+//requires Base_fixedarray.jsfx-inc
+//requires SOX__samplequeue.jsfx-inc
+//requires SOX__iirfilter.jsfx-inc
+
+//--------------------
+// INITIALIZATION
+//--------------------
+@init
+    //========================================
+
+    SOXBandwidthKind_frequency   = 0;
+    SOXBandwidthKind_octaves     = 1;
+    SOXBandwidthKind_quality     = 2;
+    SOXBandwidthKind_butterworth = 3;
+    SOXBandwidthKind_slope       = 4;
+
+    //--------------------
+
+    SOXBiquadFilter_length = 3;
+
+    //--------------------
+
+    function SOXBiquadFilter_make ()
+        /** Makes a new filter */
+    (
+        SOXIIRFilter_make(SOXBiquadFilter_length)
+    );
+
+    //--------------------
+    //--------------------
+
+    function SOXBiquadFilter_alphaForBandwidth (bandwidth, bandwidthKind,
+                                                frequency, dBGain)
+        /** returns the alpha for given <bandwidth> measured
+            as <bandwidthKind> with <frequency> and <dBgain> */
+        local (a alpha w0)
+    (
+        w0 = twoPi * frequency / srate;
+
+        bandwidthKind == SOXBandwidthKind_quality ? (
+            alpha = sin(w0) / (2 * bandwidth);
+        );
+
+        bandwidthKind == SOXBandwidthKind_octaves ? (
+            alpha = sin(w0) * sinh(ln(2)/2 * bandWidth * w0 / sin(w0));
+        );
+
+        bandwidthKind == SOXBandwidthKind_butterworth ? (
+            alpha = sin(w0) / (2 * sqrt(0.5));
+        );
+
+        bandwidthKind == SOXBandwidthKind_frequency ? (
+            alpha = sin(w0) / (2 * frequency / bandWidth);
+        );
+
+        bandwidthKind == SOXBandwidthKind_slope ? (
+            a = 10^(dBFilterGain/40);
+            alpha = (sin(w0) / 2
+                     * sqrt((a + 1/a) * (1/bandWidth - 1) + 2));
+        );
+
+        alpha
+    );
+
+    //--------------------
+
+    function SOXBiquadFilter_init (self, b0, b1, b2, a0, a1, a2)
+        /** Sets <self> coefficients to given parameters and
+            normalizes it */
+    (
+        SOXIIRFilter_init3(self, b0, b1, b2, a0, a1, a2);
+    );
+
+    //--------------------
+
+    function SOXBiquadFilter_applyToChannel (self, inputQueue, outputQueue)
+        /** Applies biquad <self> to <inputQueue> and <outputQueue>;
+            assumes that first entry in input queue is current sample
+            and writes result sample into top of output queue */
+    (
+        SOXIIRFilter_apply(self, inputQueue, outputQueue);
+    );
+
+    //--------------------
+
+   function SOXBiquadFilter_apply (self, inputSampleList, outputSampleList)
+        /** Applies filter <self> to input and output queues for all
+            channels; assumes that samples are in <inputSampleList>
+            and returns them in <outputSampleList> */
+        local (channel i inputQueue inputSample outputQueue outputSample
+               queueList)
+    (
+        queueList = SOXBiquadFilter_queueList;
+
+        // shift, add input samples, filter and write them out
+        channel = 1;
+        i = 1;
+
+        while (channel <= SOX_channelCount) (
+            inputQueue  = FixedArray_getAt(queueList, i);
+            outputQueue = FixedArray_getAt(queueList, i + 1);
+            inputSample = FixedArray_getAt(inputSampleList, channel);
+            SOXSampleQueue_shiftRight(inputQueue, inputSample);
+            SOXSampleQueue_shiftRight(outputQueue, 0);
+            SOXBiquadFilter_applyToChannel(self, inputQueue, outputQueue);
+            outputSample = SOXSampleQueue_first(outputQueue);
+            FixedArray_setAt(outputSampleList, channel, outputSample);
+            i += 2;
+            channel += 1;
+        );
+    );
+
+    //--------------------
+
+    function SOXBiquadFilter_print (self)
+        /** Prints <self> to debug output */
+    (
+        SOXIIRFilter_print(self);
+    );
+
+    //========================================
+
+    filter = SOXBiquadFilter_make();
+    SOXBiquadFilter_queueList =
+        SOXSampleQueueList_make(SOXBiquadFilter_length, true);
+
+//--------------------
+// SAMPLE
+//--------------------
+
+@sample
+    SOX_setInputSampleList(spl0, spl1);
+    SOXBiquadFilter_apply(filter,
+                          SOX_inputSampleList, SOX_outputSampleList);
+    SOX_writeOutputSampleList();

@@ -1,0 +1,640 @@
+desc:SOX MCompand Utilities
+// provides utility functions for mcompand effect of SOX
+tags: multiband compressor
+author: Dr. Thomas Tensi, 2019
+
+@init
+    //============================================================
+
+    // tells whether filter bands are written to channels
+    // 3..(bandCount+1)*2
+    SOXMCompand_bandsAreWritten = false;
+
+    //======================
+    // Linkwitz-Riley Filter
+    //======================
+
+    SOXLR4Filter_order = 5;
+
+    //--------------------
+
+    function SOXLR4Filter_make ()
+        /** Constructs a 4th order Linkwitz-Riley filter as an IIR
+            filter */
+    (
+        SOXIIRFilter_make(SOXLR4Filter_order)
+    );
+
+    //--------------------
+
+    function SOXLR4Filter_init (self, coefficientListA, coefficientListB)
+        /** Sets up Linkwitz-Riley filter <self> by using plain
+            coefficients from <coefficientListA> and
+            <coefficientListB> */
+        local (cList i j)
+    (
+        j = 1;
+        i = 1;
+
+        while (j <= 2) (
+            j == 1 ? (
+                cList = coefficientListA;
+            ) : (
+                cList = coefficientListB;
+            );
+
+            FixedArray_setAt(self, i + 0, sqr(cList[0]));
+            FixedArray_setAt(self, i + 1, 2 * cList[0] * cList[1]);
+            FixedArray_setAt(self, i + 2,
+                             2 * cList[0] * cList[2] + sqr(cList[1]));
+            FixedArray_setAt(self, i + 3, 2 * cList[1] * cList[2]);
+            FixedArray_setAt(self, i + 4, sqr(cList[2]));
+            i += SOXLR4Filter_order;
+            j += 1;
+        );
+    );
+
+    //--------------------
+
+    function SOXLR4Filter_apply (self, inputQueue, outputQueue)
+        /** Applies LR4 filter <self> to <inputQueue> and
+            <outputQueue>; assumes that first entry in input queue is
+            current sample and writes result sample into top of output
+            queue */
+    (
+        SOXIIRFilter_apply(self, inputQueue, outputQueue);
+    );
+
+    //--------------------
+
+    function SOXLR4Filter_print (self)
+        /** Prints the parameters of a Linkwitz-Riley filter <self> */
+    (
+        SOXIIRFilter_print(self);
+    );
+
+    //==============================================
+    // Crossover Filter (Linkwitz - Riley 4th order)
+    //==============================================
+
+    SOXLRCrossoverFilter_SIZE = 2;
+    SOXLRCrossoverFilter_lowpass  = 1;
+    SOXLRCrossoverFilter_highpass = 2;
+
+    SOXLRCrossoverFilter_coefficientCount = 9;
+    SOXLRCrossoverFilter_coefficientList =
+        FixedArray_make(SOXLRCrossoverFilter_coefficientCount);
+
+    //--------------------
+
+    function SOXLRCrossoverFilter_make ()
+        /** Makes a Linkwitz-Riley 4th order crossover filter */
+        local (lrFilter result)
+    (
+        result = FixedArray_make(SOXLRCrossoverFilter_SIZE);
+        lrFilter = SOXLR4Filter_make();
+        FixedArray_setAt(result, SOXLRCrossoverFilter_lowpass, lrFilter);
+        lrFilter = SOXLR4Filter_make();
+        FixedArray_setAt(result, SOXLRCrossoverFilter_highpass, lrFilter);
+        result
+    );
+
+    //--------------------
+
+    function SOXLRCrossoverFilter_init (self, frequency, sampleRate)
+        /** Initializes a Linkwitz-Riley 4th order crossover filter at
+            <frequency> consisting of a lowpass, highpass and allpass
+            into <self> using <sampleRate> */
+        local (alpha coefficientList filterQuality i
+               lrFilter reference w0 value)
+    (
+        w0 = twoPi * frequency / sampleRate;
+        filterQuality = sqrt(0.5);
+        alpha = sin(w0) / (2 * filterQuality);
+        coefficientList = SOXLRCrossoverFilter_coefficientList;
+
+        // biquad lowpass filter numerator
+        FixedArray_setAt(coefficientList, 1, (1 - cos(w0)) / 2);
+        FixedArray_setAt(coefficientList, 2,  1 - cos(w0));
+        FixedArray_setAt(coefficientList, 3,
+                         FixedArray_getAt(coefficientList, 1));
+        
+        // biquad highpass filter numerator
+        FixedArray_setAt(coefficientList, 4, (1 + cos(w0)) / 2);
+        FixedArray_setAt(coefficientList, 5, -1 - cos(w0));
+        FixedArray_setAt(coefficientList, 6,
+                         FixedArray_getAt(coefficientList, 4));
+
+        // biquad LP/HP filter denominator
+        FixedArray_setAt(coefficientList, 7, 1 + alpha);
+        FixedArray_setAt(coefficientList, 8, -2 * cos(w0));
+        FixedArray_setAt(coefficientList, 9, 1 - alpha);
+
+        // normalize coefficients
+        reference = FixedArray_getAt(coefficientList, 7);
+        i = 1;
+
+        while (i <= SOXLRCrossoverFilter_coefficientCount) (
+            value = FixedArray_getAt(coefficientList, i);
+            FixedArray_setAt(coefficientList, i, value / reference);
+            i += 1;
+        );
+
+        lrFilter = FixedArray_getAt(self, SOXLRCrossoverFilter_lowpass);
+        SOXLR4Filter_init(lrFilter,
+                          FixedArray_address(coefficientList, 1),
+                          FixedArray_address(coefficientList, 7));
+        lrFilter = FixedArray_getAt(self, SOXLRCrossoverFilter_highpass);
+        SOXLR4Filter_init(lrFilter,
+                          FixedArray_address(coefficientList, 4),
+                          FixedArray_address(coefficientList, 7));
+    );
+
+    //--------------------
+    //--------------------
+
+    function SOXLR4CrossoverFilter_apply (self, inputQueue,
+                                          outputQueueLow,
+                                          outputQueueHigh)
+        /** Applies LR4 crossover filter <self> to <inputQueue> and
+            <outputQueueLow> and <outputQueueHigh>; assumes that first
+            entry in input queue is current sample and writes results
+            sample into top of output queues */
+        local (lrFilter)
+    (
+        lrFilter = FixedArray_getAt(self, SOXLRCrossoverFilter_lowpass);
+        SOXLR4Filter_apply(lrFilter, inputQueue, outputQueueLow);
+        lrFilter = FixedArray_getAt(self, SOXLRCrossoverFilter_highpass);
+        SOXLR4Filter_apply(lrFilter, inputQueue, outputQueueHigh);
+    );
+
+    //--------------------
+
+    function SOXLRCrossoverFilter_setToIdentity (self)
+        /** Sets crossover filter <self> to identity lowpass
+            and rejecting highpass */
+        local (lrFilter)
+    (
+        lrFilter = FixedArray_getAt(self, SOXLRCrossoverFilter_lowpass);
+        SOXIIRFilter_setSpecial(lrFilter,  1);
+        lrFilter = FixedArray_getAt(self, SOXLRCrossoverFilter_highpass);
+        SOXIIRFilter_setSpecial(lrFilter, 0);
+    );
+
+    //--------------------
+
+    function SOXLRCrossoverFilter_print (self)
+        /** Prints the parameters of a Linkwitz-Riley crossover
+            filter <self> */
+        local (lrFilter)
+    (
+        Debug_printLine("- Lowpass -", Debug_headingColor1);
+        lrFilter = FixedArray_getAt(self, SOXLRCrossoverFilter_lowpass);
+        SOXIIRFilter_print(lrFilter);
+        Debug_printLine("- Highpass -", Debug_headingColor1);
+        lrFilter = FixedArray_getAt(self, SOXLRCrossoverFilter_highpass);
+        SOXIIRFilter_print(lrFilter);
+    );
+
+    //==========================
+    // SOXMCompanderSampleBuffer
+    //
+    // contains the queues for input, low and high output samples for
+    // each channel and each crossover band; note that the first input
+    // queue contain the input samples, the following bands use the
+    // high output of the previous crossover band
+    //
+    // crossover calculation is done on an input queue resulting in
+    // low output and high output (for the next band), companding is
+    // done on the input queue only
+    //
+    // altogether there are (channelCount * (2 * bandCount + 1))
+    // queues and each band covers a window of three entries
+    // overlapping in one entry
+    //
+
+    // additionally for debugging there is one total output queue for
+    // each channel, hence we have (channelCount * (2 * bandCount +
+    // 2)) queues
+
+    //========================
+
+    SOXMCompanderStream_count = 3;
+    SOXMCompanderStream_input      = 1;
+    SOXMCompanderStream_lowOutput  = 2;
+    SOXMCompanderStream_highOutput = 3;
+
+    //--------------------
+    //--------------------
+
+    function SOXMCompanderSampleBuffer_make (bandCount)
+        /** Makes a new sample buffer */
+        local (i result streamKind totalCount)
+    (
+        totalCount = (SOX_channelCount
+                      * ((SOXMCompanderStream_count - 1) * bandCount + 2));
+        result = FixedArray_make(totalCount);
+        i = 1;
+
+        while (i <= totalCount) (
+            FixedArray_setAt(result, i,
+                             SOXSampleQueue_make(SOXLR4Filter_order));
+            i += 1;
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function SOXMCompanderSampleBuffer_shift (self)
+        /** Shifts data in <self> by one time unit */
+        local (i length queue)
+    (
+        length = FixedArray_length(self);
+        i = 1;
+
+        while (i <= length) (
+            queue = FixedArray_getAt(self, i);
+            SOXSampleQueue_shiftRight(queue, 0);
+            i += 1;
+        );
+    );
+
+    //--------------------
+
+    function SOXMCompanderSampleBuffer_outputQueue (self, channel)
+        /** Returns output queue for <self> and <channel> */
+        local (offset)
+    (
+        offset = FixedArray_length(self) - SOX_channelCount;
+        FixedArray_getAt(self, channel + offset)
+    );
+
+    //==========================
+    // SOXMCompanderBandBuffer
+    //
+    // this per band buffer points into the global
+    // SOXMCompanderSampleBuffer; the high output buffer of one band
+    // forms the input buffer of the following band
+
+    function SOXMCompanderBandBuffer_make (sampleBuffer, bandIndex)
+        local (channel index sampleQueue self stream targetIndex)
+    (
+        self = FixedArray_make(SOX_channelCount
+                               * SOXMCompanderStream_count);
+        stream = 1;
+        index = 1;
+        targetIndex = (SOX_channelCount *
+                       (SOXMCompanderStream_count - 1) * (bandIndex - 1) + 1);
+
+        while (stream <= SOXMCompanderStream_count) (
+            channel = 1;
+
+            while (channel <= SOX_channelCount) (
+                sampleQueue = FixedArray_getAt(sampleBuffer, targetIndex);
+                FixedArray_setAt(self, index, sampleQueue);
+                channel += 1;
+                index += 1;
+                targetIndex += 1;
+            );
+       
+            stream += 1;
+        );
+
+        self
+    );
+
+    //--------------------
+
+    SOXMCompander_SIZE = 2;
+    SOXMCompander_companderList = 1;
+    SOXMCompander_sampleBuffer  = 2;
+
+    //=========================================
+    // SOXMCompanderBand
+    // a single band in the multiband compander
+    //=========================================
+
+    function SOXMCompanderBand_getQueue (self, channel, stream)
+        /** Returns stream queue for band compander <self> for
+            <channel> and <stream> */
+    (
+        offset = SOX_channelCount * (stream - 1) + channel;
+
+        isCheckedMode ? (
+            buffer = FixedArray_getAt(self, SOXCompander_buffer);
+            result = FixedArray_getAt(buffer, offset);
+        ) : (
+            buffer = self[SOXCompander_buffer];
+            result = buffer[offset];
+        );
+    );
+
+    //--------------------
+    //--------------------
+
+    function SOXMCompanderBand_init (mCompander, bandIndex,
+                                     attack, release,
+                                     dBThreshold, ratio,
+                                     dBGain, dBKnee, topFrequency)
+        /** Sets up band of multiband compander <mCompander> with
+            <bandIndex> using standard compander parameters;
+            <topFrequency> defines the crossover frequency for this
+            band */
+        local (bandCount compander companderList crossoverFilter
+               isLastBand lrFilter time transferFunction)
+    (
+        companderList =
+            FixedArray_getAt(mCompander, SOXMCompander_companderList);
+        bandCount = FixedArray_length(companderList);
+
+        1 <= bandIndex && bandIndex <= bandCount ? (
+            compander = FixedArray_getAt(companderList, bandIndex);
+            time = SOXCompander_adaptEnvelopeTime(attack, srate);
+            FixedArray_setAt(compander, SOXCompander_attackTime, time);
+            time = SOXCompander_adaptEnvelopeTime(release, srate);
+            FixedArray_setAt(compander, SOXCompander_releaseTime, time);
+            FixedArray_setAt(compander, SOXCompander_volume, 1);
+            FixedArray_setAt(compander, SOXCompander_topFrequency,
+                             topFrequency);
+
+            transferFunction =
+                FixedArray_getAt(compander, SOXCompander_transferFunction);
+            SOXTransferFunction_adapt(transferFunction,
+                                      dBKnee, dBThreshold,
+                                      ratio, dBGain);
+
+            crossoverFilter = FixedArray_getAt(compander,
+                                               SOXCompander_filter);
+            isLastBand = (bandIndex == bandCount);
+
+            !isLastBand ? (
+                SOXLRCrossoverFilter_init(crossoverFilter,
+                                          topFrequency, srate);
+            ) : (
+                SOXLRCrossoverFilter_setToIdentity(crossoverFilter);
+            );
+
+            SOXTransferFunction_print(transferFunction);
+            SOXLRCrossoverFilter_print(crossoverFilter);
+        );
+    );
+
+    //--------------------
+
+    function SOXMCompanderBand_apply (self, inputSampleList, outputSampleList)
+        /** Applies band compander <self> and updates
+            <outputSampleList> */
+        local (amplificationFactor buffer channel currentVolume
+               inputSample offset outputQueueLow outputSample
+               transferFunction)
+    (
+        buffer = FixedArray_getAt(self, SOXCompander_buffer);
+	    channel = 1;
+
+	    while (channel <= SOX_channelCount) (
+            stream = SOXMCompanderStream_lowOutput;
+	        outputQueueLow =
+                SOXMCompanderBand_getQueue(self, channel, stream);
+            inputSample = SOXSampleQueue_first(outputQueueLow);
+	        FixedArray_setAt(inputSampleList, channel, inputSample);
+	        channel += 1;
+	    );
+
+        maximumSample =
+            SOXCompander_maximumAbsoluteSample(inputSampleList);
+        SOXCompander_integrateVolume(self, maximumSample);
+	    currentVolume = FixedArray_getAt(self, SOXCompander_volume);
+        transferFunction = FixedArray_getAt(self,
+                                            SOXCompander_transferFunction);
+	    amplificationFactor = SOXTransferFunction_apply(transferFunction,
+							                            currentVolume);
+
+	    channel = 1;
+
+	    while (channel <= SOX_channelCount) (
+            outputSample = FixedArray_getAt(inputSampleList, channel);
+            outputSample *= amplificationFactor;
+            outputSample += FixedArray_getAt(outputSampleList, channel);
+	        FixedArray_setAt(outputSampleList, channel, outputSample);
+	        channel += 1;
+	    );
+    );
+
+    //--------------------
+
+    function SOXMCompanderBand_calculateCrossover (self)
+        /** Processes samples from input for band compander <self>;
+            updates associated sample buffers for low and high output
+            of this band */
+        local (channel crossoverFilter inputQueue
+               outputQueueHigh outputQueueLow stream)
+    (
+        crossoverFilter = FixedArray_getAt(self, SOXCompander_filter);
+        channel = 1;
+
+        while (channel <= SOX_channelCount) (
+            stream = SOXMCompanderStream_input;
+            inputQueue =
+                SOXMCompanderBand_getQueue(self, channel, stream);
+            stream = SOXMCompanderStream_lowOutput;
+            outputQueueLow =
+                SOXMCompanderBand_getQueue(self, channel, stream);
+            stream = SOXMCompanderStream_highOutput;
+	        outputQueueHigh =
+                SOXMCompanderBand_getQueue(self, channel, stream);
+            SOXLR4CrossoverFilter_apply(crossoverFilter, inputQueue,
+                                        outputQueueLow, outputQueueHigh);
+            channel += 1;
+        )
+    );
+
+    //--------------------
+ 
+    function SOXMCompanderBand_writeFilterData (self, bandIndex,
+                                                outputSampleList)
+        /** Writes crossover filter output for band <self> with index
+            <bandIndex> to appropriate position in
+            <outputSampleList> */
+        local (channel offset outputQueueLow sample stream)
+    (
+        channel = 1;
+
+        while (channel <= SOX_channelCount) (
+            stream = SOXMCompanderStream_lowOutput;
+            outputQueueLow =
+                SOXMCompanderBand_getQueue(self, channel, stream);
+            sample = SOXSampleQueue_first(outputQueueLow);
+            offset = channel + bandIndex * SOX_channelCount;
+            FixedArray_setAt(outputSampleList, offset, sample);
+            channel += 1;
+        )
+    );
+
+    //====================
+    // SOXMCompander
+    // the complete mcompander with several compander bands
+    //====================
+
+    SOXMCompander_maxTopFrequency = srate / 2.1;
+    SOXMCompander_outputSampleList = null;
+
+    //--------------------
+
+    function SOXMCompander_make (bandCount)
+        /** Sets up MCompander with <bandCount> bands */
+        local (bandIndex buffer compander companderList isLast
+               sampleBuffer self)
+    (
+        SOXMCompander_outputSampleList =
+            FixedArray_make((bandCount + 1) * SOX_channelCount);
+
+        self = FixedArray_make(SOXMCompander_SIZE);
+        companderList = FixedArray_make(bandCount);
+        sampleBuffer  = SOXMCompanderSampleBuffer_make(bandCount);
+
+        FixedArray_setAt(self, SOXMCompander_companderList,
+                         companderList);
+        FixedArray_setAt(self, SOXMCompander_sampleBuffer,
+                         sampleBuffer);
+ 
+        bandIndex = 1;
+
+        while (bandIndex <= bandCount) (
+            compander = SOXCompander_make();
+            FixedArray_setAt(companderList, bandIndex, compander);
+            FixedArray_setAt(compander, SOXCompander_filter,
+                             SOXLRCrossoverFilter_make());
+            buffer = SOXMCompanderBandBuffer_make(sampleBuffer,
+                                                  bandIndex);
+            FixedArray_setAt(compander, SOXCompander_buffer, buffer);
+            bandIndex += 1;
+        );
+        
+        self
+    );
+
+    //--------------------
+
+    function SOXMCompander_apply (self, inputSampleList, outputSampleList)
+        /** Processes samples from <inputSampleList> by <self> and
+            returns output in <outputSampleList>; updates internal
+            buffers for low and high output of each band and sums up
+            to output */
+        local (bandIndex bandCount channel compander companderList
+               i inputQueue inputSample outputQueue outputSample
+               sampleBuffer totalChannelCount)
+    (
+        companderList = FixedArray_getAt(self,
+                                         SOXMCompander_companderList);
+        sampleBuffer  = FixedArray_getAt(self,
+                                         SOXMCompander_sampleBuffer);
+        bandCount = FixedArray_length(companderList);
+
+	    FixedArray_clear(outputSampleList);
+        totalChannelCount = SOX_channelCount;
+        totalChannelCount *= SOXMCompand_bandsAreWritten ? bandCount + 1 : 1;
+
+        SOXMCompanderSampleBuffer_shift(sampleBuffer);
+        channel = 1;
+
+        while (channel <= SOX_channelCount) (
+            // setup sample buffer for processing
+            inputQueue = FixedArray_getAt(sampleBuffer, channel);
+            inputSample = FixedArray_getAt(inputSampleList, channel);
+            SOXSampleQueue_setFirst(inputQueue, inputSample);
+            channel += 1;
+        );
+
+        // calculate crossover filtering from input queues into
+        // low and high outputs
+	    bandIndex = 1;
+
+        while (bandIndex <= bandCount) (
+            compander = FixedArray_getAt(companderList, bandIndex);
+            SOXMCompanderBand_calculateCrossover(compander);
+
+            SOXMCompand_bandsAreWritten ? (
+                SOXMCompanderBand_writeFilterData(compander, bandIndex,
+                                                  outputSampleList);
+            );
+
+            bandIndex += 1;
+        );
+
+	    // do compression across all bands
+	    bandIndex = 1;
+
+	    while (bandIndex <= bandCount) (
+            compander = FixedArray_getAt(companderList, bandIndex);
+	        SOXMCompanderBand_apply(compander,
+                                    inputSampleList, outputSampleList);
+	        bandIndex += 1;
+	    );
+
+	    // write all output channel samples
+        channel = 1;
+
+        while (channel <= SOX_channelCount) (
+            outputSample = FixedArray_getAt(outputSampleList, channel);
+            outputQueue =
+                SOXMCompanderSampleBuffer_outputQueue(sampleBuffer,
+                                                      channel);
+            SOXSampleQueue_setFirst(outputQueue, outputSample);
+            channel += 1;
+        );
+    );
+
+    //--------------------
+    //--------------------
+
+    function SOXMCompander_adjustSliders (s0, s1, delta)
+        /** Adjusts crossover frequency sliders with indices <si> for
+            being monotonously increasing; ensures that they have at
+            least a difference of <delta> */
+        local (referenceValue sliderValue)
+    (
+        referenceValue = slider(s0) + delta;
+        sliderValue    = slider(s1);
+
+        sliderValue < referenceValue ? (
+            slider(s1) = referenceValue;
+            sliderchange(s1);
+        );
+    );
+
+    //--------------------
+
+    function SOXMCompander_adjustSliders (s0, s1, s2, delta)
+        /** Adjusts crossover frequency sliders with indices <si> for
+            being monotonously increasing; ensures that they have at
+            least a difference of <delta> */
+    (
+        SOXMCompander_adjustSliders(s0, s1, delta);
+        SOXMCompander_adjustSliders(s1, s2, delta);
+    );
+
+    //--------------------
+
+    function SOXMCompander_adjustSliders (s0, s1, s2, s3, delta)
+        /** Adjusts crossover frequency sliders with indices <si> for
+            being monotonously increasing; ensures that they have at
+            least a difference of <delta> */
+    (
+        SOXMCompander_adjustSliders(s0, s1, delta);
+        SOXMCompander_adjustSliders(s1, s2, delta);
+        SOXMCompander_adjustSliders(s2, s3, delta);
+    );
+
+    //============================================================
+
+//--------------------
+// SAMPLE
+//--------------------
+
+@sample
+    SOX_setInputSampleList(spl0, spl1);
+    SOXMCompander_apply(mCompander, SOX_inputSampleList,
+                        SOXMCompander_outputSampleList);
+    SOX_writeSampleList(SOXMCompander_outputSampleList);

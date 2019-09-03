@@ -1,0 +1,151 @@
+desc: generic memory routines
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+
+@init
+    //========================================
+
+    null = -1;
+
+    // structure type definition: Memory_ListElement
+    Memory_ListElement_SIZE = 3;
+    Memory_ListElement_next     = 0;
+    Memory_ListElement_previous = 1;
+    Memory_ListElement_length   = 2;
+
+    //========================================
+
+    function Memory_initialize ()
+        /** Initializes free block list */
+        local (block firstBlock secondBlock)
+    (
+        firstBlock = 1;
+        secondBlock = firstBlock + Memory_ListElement_SIZE;
+
+        block = firstBlock;
+        block[Memory_ListElement_next]     = secondBlock;
+        block[Memory_ListElement_previous] = null;
+        block[Memory_ListElement_length]   = 0;
+
+        block = secondBlock;
+        block[Memory_ListElement_next]     = null;
+        block[Memory_ListElement_previous] = firstBlock;
+        block[Memory_ListElement_length]   = __memtop();
+
+        Memory_freePtr = firstBlock;
+    );
+
+    //--------------------
+    //--------------------
+
+    function ADDR (object, offset)
+        /** returns the address of field within <object> with offset
+            address <offset> */
+    (
+        object + offset
+    );
+
+    //--------------------
+
+    function ARRAYADDR (list, i, size)
+        /** Returns the address of array element within <list> with
+            index <i> and element size <size> */
+    (
+        list + i * size
+    );
+
+    //--------------------
+    //--------------------
+
+    function Memory_allocateRaw (length)
+        /** Allocates <length> cells in local heap memory */
+        local(blockLength elementPtr freeBlockPtr nextFreeBlock previousPtr)
+    (
+        length = max(length, 0);
+
+        // search for free block: first fit
+        elementPtr  = Memory_freePtr;
+
+        while (
+            elementPtr  = elementPtr[Memory_ListElement_next];
+            blockLength = elementPtr[Memory_ListElement_length];
+            blockLength < length + 1
+        );
+
+        // assume search has not failed: make new free block
+        freeBlockPtr = elementPtr + length + 1;
+        previousPtr  = elementPtr[Memory_ListElement_previous];
+        previousPtr[Memory_ListElement_next] = freeBlockPtr;
+        freeBlockPtr[Memory_ListElement_next] =
+            elementPtr[Memory_ListElement_next];
+        freeBlockPtr[Memory_ListElement_previous] = previousPtr;
+        freeBlockPtr[Memory_ListElement_length] = blockLength - length - 1;
+
+        // store length in block and return <ptr>
+        elementPtr[0] = length;
+        elementPtr += 1;
+        elementPtr
+    );
+
+    //-----
+
+    function Memory_allocate (length)
+        /** Allocates <length> cells in local heap memory and set to
+	        zero */
+        local(result)
+    (
+        result = Memory_allocateRaw(length);
+        memset(result, 0, length);
+        result
+    );
+
+    //-----
+
+    function Memory_allocateArray (count, elementSize)
+        /** Allocates <count> array cells in local heap memory and set
+            to zero */
+        local(result totalCount)
+    (
+        totalCount = count * elementSize;
+        result = Memory_allocate(totalCount);
+        result
+    );
+
+    //-----
+
+    function Memory_set (self, count, value)
+        /** Sets <count> cells at <self> to <value> */
+    (
+        memset(self, value, count);
+    );
+
+    //-----
+
+    function Memory_free (self)
+        /** Frees cells in local heap memory at <self> */
+        local(length other)
+    (
+        self -= 1;
+        length = self[0] + 1;
+        other = Memory_freePtr[Memory_ListElement_next];
+
+        self + length != other ? (
+            // just relink this block
+            self[Memory_ListElement_next]      = other;
+            other[Memory_ListElement_previous] = self;
+        ) : (
+            // merge this and the immediately following block
+            length += other[Memory_ListElement_length];
+            self[Memory_ListElement_next] = other[Memory_ListElement_next];
+            Memory_set(other, Memory_ListElement_SIZE, 0);
+        );
+
+        self[Memory_ListElement_previous] = Memory_freePtr;
+        self[Memory_ListElement_length]   = length;
+        Memory_freePtr[Memory_ListElement_next] = self;
+    );
+
+    //========================================
+
+    Memory_initialize();

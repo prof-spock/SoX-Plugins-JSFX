@@ -1,0 +1,229 @@
+desc: SOX Phaser
+tags: utility gain
+author: Dr. Thomas Tensi, 2019
+
+//--------------------
+// IMPORTS
+//--------------------
+
+import Base.jsfx-inc
+import Base_memory.jsfx-inc
+import Base_integerset.jsfx-inc
+import Base_fixedarray.jsfx-inc
+import Base_string.jsfx-inc
+import Base_display.jsfx-inc
+import Base_debug.jsfx-inc
+
+import SOX__base.jsfx-inc
+import SOX__samplequeue.jsfx-inc
+import SOX__waveform.jsfx-inc
+
+//--------------------
+// SLIDERS
+//--------------------
+slider1:inGain=0.4<0,1,0.001>In Gain
+slider2:outGain=0.74<0,1000,0.001>Out Gain
+slider3:delayInMilliseconds=3.0<0,5,0.001>Delay [ms]
+slider4:decay=0.4<0,0.99,0.001>Decay
+slider5:frequency=0.5<0.1,2.0,0.001>Modulation [Hz]
+slider6:waveFormKind=1<0,1,1{Sine,Triangle}>Waveform
+slider7:timeOffset=0<-100000,100000,0.0001>Time Offset
+
+//--------------------
+// INITIALIZATION
+//--------------------
+@init
+    //============================================================
+
+    SOXPhaser_defaultPhase = degreesToRadians(90);
+
+    //--------------------
+
+    SOXPhaser_SIZE = 12;
+    SOXPhaser_inGain            =  1;
+    SOXPhaser_outGain           =  2;
+    SOXPhaser_delay             =  3;
+    SOXPhaser_decay             =  4;
+    SOXPhaser_delayBufferList   =  5;
+    SOXPhaser_delayBufferLength =  6;
+    SOXPhaser_delayBufferIndex  =  7;
+    SOXPhaser_waveFormKind      =  8;
+    SOXPhaser_waveFormPhase     =  9;
+    SOXPhaser_waveFormBuffer    = 10;
+    SOXPhaser_waveFormLength    = 11;
+    SOXPhaser_waveFormIndex     = 12;
+
+    SOXPhaser_maximumDelay = 0.005;
+    SOXPhaser_minimumFrequency = 0.1;
+
+    //--------------------
+
+    function SOXPhaser_make ()
+        /** Constructs a new phaser */
+        local (delayBufferLength delayBufferList self waveFormBuffer
+               waveFormBufferLength)
+    (
+        self = FixedArray_make(SOXPhaser_SIZE);
+
+        delayBufferLength = ceil(SOXPhaser_maximumDelay * srate);
+        delayBufferList =
+            SOXSampleQueueList_make(delayBufferLength, false);
+        FixedArray_setAt(self,
+                         SOXPhaser_delayBufferList, delayBufferList);
+
+        waveFormBufferLength = ceil(srate / SOXPhaser_minimumFrequency);
+        waveFormBuffer       = FixedArray_make(waveFormBufferLength);
+        FixedArray_setAt(self, SOXPhaser_waveFormBuffer, waveFormBuffer);
+
+        self
+    );
+
+    //--------------------
+
+    function SOXPhaser_init (self, inGain, outGain, delay, decay,
+                             frequency, waveFormKind, phase)
+        /** Sets parameters of phaser effect <self> to <inGain>,
+            <outGain>, <delay>, <decay>, <frequency> and
+            <waveFormKind>; adjusts parameters if necessary */
+        local (delayBufferList delayBufferLength waveFormBuffer
+               waveFormLength)
+    (
+        // adjust parameter ranges
+        inGain    = forceToRange(inGain,  0,     1);
+        outGain   = forceToRange(outGain, 0,  1000);
+        decay     = forceToRange(decay,   0,  0.99);
+        delay     = forceToRange(delay, 0, SOXPhaser_maximumDelay);
+        frequency = forceToRange(frequency,
+                                 SOXPhaser_minimumFrequency, 2.0);
+
+        // calculate technical parameters
+        delayBufferLength = round(delay * srate);
+        waveFormLength    = round(srate / frequency);
+        
+        FixedArray_setAt(self, SOXPhaser_inGain,            inGain);
+        FixedArray_setAt(self, SOXPhaser_outGain,           outGain);
+        FixedArray_setAt(self, SOXPhaser_delay,             delay);
+        FixedArray_setAt(self, SOXPhaser_decay,             decay);
+        FixedArray_setAt(self,
+                         SOXPhaser_delayBufferLength, delayBufferLength);
+        FixedArray_setAt(self, SOXPhaser_delayBufferIndex,  1);
+        FixedArray_setAt(self, SOXPhaser_waveFormKind,      waveFormKind);
+        FixedArray_setAt(self, SOXPhaser_waveFormPhase,     phase);
+        FixedArray_setAt(self,
+                         SOXPhaser_waveFormLength, waveFormLength);
+        FixedArray_setAt(self, SOXPhaser_waveFormIndex,     1);
+
+        delayBufferList =
+            FixedArray_getAt(self, SOXPhaser_delayBufferList);
+        SOXSampleQueueList_clear(delayBufferList);
+
+        waveFormBuffer = FixedArray_getAt(self, SOXPhaser_waveFormBuffer);
+        SOXWaveForm_fillBuffer(waveFormBuffer, waveFormLength,
+                               waveFormKind, 1, delayBufferLength,
+                               phase, true);
+    );
+
+    //--------------------
+
+    function SOXPhaser_apply (self, inputSampleList, outputSampleList)
+        /** Applies phaser <self> to input samples in
+            <inputSampleList> and writes output samples into
+            <outputSampleList> */
+        local (channel delayBuffer delayBufferIndex delayBufferLength
+               delayBufferList inGain modulatedIndex nextDelayBufferIndex
+               outGain sample waveFormBuffer waveFormIndex waveFormLength)
+    (
+        inGain  = FixedArray_getAt(self, SOXPhaser_inGain);
+        outGain = FixedArray_getAt(self, SOXPhaser_outGain);
+        decay   = FixedArray_getAt(self, SOXPhaser_decay);
+        delayBufferList =
+            FixedArray_getAt(self, SOXPhaser_delayBufferList);
+        delayBufferLength = FixedArray_getAt(self,
+                                             SOXPhaser_delayBufferLength);
+        delayBufferIndex  = FixedArray_getAt(self,
+                                             SOXPhaser_delayBufferIndex);
+        waveFormBuffer = FixedArray_getAt(self, SOXPhaser_waveFormBuffer);
+        waveFormLength = FixedArray_getAt(self, SOXPhaser_waveFormLength);
+        waveFormIndex  = FixedArray_getAt(self, SOXPhaser_waveFormIndex);
+
+        modulatedIndex =
+            ((delayBufferIndex - 1
+              + FixedArray_getAt(waveFormBuffer, waveFormIndex))
+             % delayBufferLength) + 1;
+        nextDelayBufferIndex = delayBufferIndex % delayBufferLength + 1;
+
+        channel = 1;
+
+        while (channel <= SOX_channelCount) (
+            delayBuffer = FixedArray_getAt(delayBufferList, channel);
+            sample = FixedArray_getAt(inputSampleList, channel);
+            sample = (sample * inGain
+                      + (SOXSampleQueue_getAt(delayBuffer, modulatedIndex)
+                         * decay));
+            SOXSampleQueue_setAt(delayBuffer,
+                                 nextDelayBufferIndex, sample);
+            sample *= outGain;
+            FixedArray_setAt(outputSampleList, channel, sample);
+            channel += 1;
+        );
+
+        waveFormIndex = waveFormIndex % waveFormLength + 1;
+        FixedArray_setAt(self, SOXPhaser_waveFormIndex, waveFormIndex);
+        FixedArray_setAt(self, SOXPhaser_delayBufferIndex,
+                         nextDelayBufferIndex);
+    );
+
+    //============================================================
+
+    function SOXPhaser_Graphics_handleKey (key)
+    (
+        Graphics_currentMode == Graphics_Mode_effect ? (
+            Graphics_clear(Graphics_Color_black);
+        );
+    );
+
+    //============================================================
+
+    phaser = SOXPhaser_make();
+
+//--------------------
+// SLIDER CHANGE
+//--------------------
+@slider
+    previousPlayPosition = maximumInteger;
+    effectiveWaveFormKind = iif(waveFormKind == 0, SOXWaveFormKind_sine,
+                                SOXWaveFormKind_triangle);
+    effectivePhase = SOXPhaser_defaultPhase;
+
+    SOXPhaser_init(phaser, inGain, outGain, delayInMilliseconds / 1000,
+                   decay, frequency, effectiveWaveFormKind,
+                   effectivePhase);
+
+//--------------------
+// SAMPLE
+//--------------------
+
+@sample
+    play_position < previousPlayPosition ? (
+        deltaPhase = SOXWaveForm_adjustPhaseByTime(frequency,
+                                                   timeOffset,
+                                                   play_position);
+        effectivePhase = SOXPhaser_defaultPhase + deltaPhase;
+        SOXPhaser_init(phaser, inGain, outGain,
+                       delayInMilliseconds / 1000,
+                       decay, frequency, effectiveWaveFormKind,
+                       effectivePhase);
+    );
+
+    previousPlayPosition = play_position;
+    SOX_setInputSampleList(spl0, spl1);
+    SOXPhaser_apply(phaser, SOX_inputSampleList, SOX_outputSampleList);
+    SOX_writeOutputSampleList();
+
+//--------------------
+// GRAPHICS
+//--------------------
+@gfx
+    key = gfx_getchar();
+    key = Graphics_MTSMatrix_handleKey(key);
+    SOXPhaser_Graphics_handleKey(key);

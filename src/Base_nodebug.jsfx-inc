@@ -1,0 +1,40 @@
+desc: Display utilities for disabled debugging
+author: Dr. Thomas Tensi, 2019
+
+@init
+    //========================================
+    // Debugging routines, all empty
+    //========================================
+
+    function Debug_clear ()
+        /** Resets debugging output */
+    (
+        pass;
+    );
+
+    //--------------------
+
+    function Debug_printLine (st)
+        /** Prints <st> in debug matrix and advances cursor;
+            overprints last cell if necessary */
+    (
+        pass;
+    );
+
+    //--------------------
+
+    function Debug_printLine (color, st)
+        /** Prints <st> in debug matrix in <color> and advances
+            cursor; overprints last cell if necessary */
+    (
+        pass;
+    );
+
+    //--------------------
+
+    function Debug_printValue (name, value)
+        /** Prints <name> and <value> in debug matrix and
+            advances cursor; overprints last cell if necessary */
+    (
+        pass;
+    );

@@ -1,0 +1,157 @@
+desc:JSFX integerset functions
+// provides utility functions for bitset handling
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+//requires Base_memory.jsfx-inc
+
+@init
+    //============================================================
+
+    // parameters for doing a shift and masking based storage of
+    // bitset data
+    IntegerSet_bitsPerWord = 31;
+
+    //--------------------
+    // LOCAL ROUTINES
+    //--------------------
+
+    function IntegerSet_contains (set, value)
+        /** Checks whether <set> contains <value> */
+        local (position offset)
+    (
+	    position = floor(value / IntegerSet_bitsPerWord) + 1;
+	    offset   = value % IntegerSet_bitsPerWord;
+	    (set[position] & (1 << offset)) > 0
+    );
+
+    //--------------------
+
+    function IntegerSet_wordCount (maximumValue)
+        /** Returns the count of words necessary for storing a bitset
+   	        from 0 to <maximumValue> */
+    (
+        ceil((maximumValue + 1) / IntegerSet_bitsPerWord)
+    );
+
+    //--------------------
+
+    function IntegerSet_fill (set, value)
+        /** Sets all word values in <set> to <value> */
+        local (wordCount)
+    (
+        wordCount = IntegerSet_wordCount(set[0]);
+        Memory_set(ADDR(set, 1), wordCount, value);
+    );
+
+    //--------------------
+    // EXPORTED ROUTINES
+    //--------------------
+
+    function IntegerSet_make (maximumValue)
+        /** Makes an integer set from 0 to <maximumValue> as a bitset */
+        local (self)
+    (
+        self = Memory_allocate(1 + IntegerSet_wordCount(maximumValue));
+	    self[0] = maximumValue;
+        self
+    );
+
+    //--------------------
+
+    function IntegerSet_clear (set)
+        /** Clears all values from <set> */
+    (
+        IntegerSet_fill(set, 0);
+    );
+
+    //--------------------
+
+    function IntegerSet_contains (set, value)
+        /** Checks whether <set> contains <value> */
+        local (result)
+    (
+        0 <= value && value <= set[0] ? (
+	        result = IntegerSet_contains(set, value);
+	    ) : (
+	        result = false;
+	    );
+
+	    result
+    );
+
+    //--------------------
+
+    function IntegerSet_exclude (set, value)
+        /** Removes <value> from <set> if in range */
+        local (position offset)
+    (
+        0 <= value && value <= set[0] ? (
+	        position = floor(value / IntegerSet_bitsPerWord) + 1;
+	        offset   = value % IntegerSet_bitsPerWord;
+	        set[position] ~= (1 << offset);
+        )
+    );
+
+    //--------------------
+
+    function IntegerSet_fill (set)
+        /** Fills all values in <set> */
+        local (fillValue)
+    (
+        fillValue = 2 ^ IntegerSet_bitsPerWord - 1;
+        IntegerSet_fill(set, fillValue);
+    );
+
+    //--------------------
+
+    function IntegerSet_include (set, value)
+        /** Adds <value> to <set> if in range */
+        local (position offset)
+    (
+        0 <= value && value <= set[0] ? (
+	    position = floor(value / IntegerSet_bitsPerWord) + 1;
+	    offset   = value % IntegerSet_bitsPerWord;
+	    set[position] |= (1 << offset);
+        )
+    );
+
+    //--------------------
+
+    function IntegerSet_lookup (set)
+        /** Returns first value in <set>; -1 otherwise */
+        local (i isFound maximumValue result value wordCount)
+    (
+        isFound = false;
+        wordCount = IntegerSet_wordCount(set[0]);
+	    value = 0;
+        i = 1;
+
+	    while (i <= wordCount && !isFound) (
+	        isFound = (set[i] > 0);
+
+	        !isFound ? (
+		        i += 1;
+		        value += IntegerSet_bitsPerWord;
+	        )
+	    );
+
+        result = -1;
+	    maximumValue = set[0];
+
+	    isFound ? (
+            isFound = false;
+
+	        while (value <= maximumValue && !isFound) (
+		        isFound = IntegerSet_contains(set, value);
+
+		        isFound ? (
+		            result = value;
+		        ) : (
+		            value += 1;
+		        )
+	        )
+        );
+
+	    result
+    );

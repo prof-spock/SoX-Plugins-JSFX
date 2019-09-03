@@ -1,0 +1,213 @@
+desc:SOX IIR Filter Utilities
+// provides utility functions for infinite impulse response filters
+tags: filter
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+//requires Base_fixedarray.jsfx-inc
+//requires Base_string.jsfx-inc
+//requires SOX__base.jsfx-inc
+//requires SOX__samplequeue.jsfx-inc
+
+@init
+    //============================================================
+
+    //--------------------
+    // LOCAL ROUTINES
+    //--------------------
+
+    function SOXIIRFilter_applyCHECKED (self, inputQueue, outputQueue)
+        /** Applies IIR filter <self> to <inputQueue> and
+            <outputQueue>; assumes that first entry in input queue is
+            current sample and writes result sample into top of output
+            queue (with bounds checking) */
+        local (filterOrder i j outputValue)
+    (
+        filterOrder = FixedArray_length(self) / 2;
+        outputValue = (FixedArray_getAt(self, 1)
+                       * SOXSampleQueue_first(inputQueue));
+        i = 2;
+        j = i + filterOrder;
+
+        while (i <= filterOrder) (
+            outputValue += ((FixedArray_getAt(self, i)
+                             * SOXSampleQueue_getAt(inputQueue, i))
+                            - (FixedArray_getAt(self, j)
+                               * SOXSampleQueue_getAt(outputQueue, i)));
+            i += 1;
+            j += 1;
+        );
+
+        SOXSampleQueue_setFirst(outputQueue, outputValue);
+    );
+
+    //--------------------
+
+    function SOXIIRFilter_applyFAST (self, inputQueue, outputQueue)
+        /** Applies IIR filter <self> to <inputQueue> and
+            <outputQueue>; assumes that first entry in input queue is
+            current sample and writes result sample into top of output
+            queue (without bounds checking, assumes synchronous
+            queues!) */
+        local (filterOrder firstIndex i j k outputValue)
+    (
+        filterOrder = self[0] / 2;
+        firstIndex  = inputQueue[2];
+        outputValue = self[1] * inputQueue[firstIndex];
+        i = 2;
+        j = i + filterOrder;
+        k = firstIndex;
+
+        while (i <= filterOrder) (
+            k = mod(k - 2, filterOrder) + 3;
+            outputValue += (self[i] * inputQueue[k]
+                            - self[j] * outputQueue[k]);
+            i += 1;
+            j += 1;
+        );
+
+        outputQueue[firstIndex] = outputValue;
+    );
+
+    //--------------------
+
+    function SOXIIRFilter_normalize (self)
+        /** Normalizes coefficients of <self> */
+        local (filterOrder i length oldValue referenceValue)
+    (
+        length = FixedArray_length(self);
+        filterOrder = length / 2;
+        referenceValue = FixedArray_getAt(self, filterOrder + 1);
+
+        i = 1;
+
+        while (i <= length) (
+            oldValue = FixedArray_getAt(self, i);
+            FixedArray_setAt(self, i, oldValue / referenceValue);
+            i += 1;
+        );
+    );
+
+    //--------------------
+    // EXPORTED ROUTINES
+    //--------------------
+
+    function SOXIIRFilter_make (order)
+        /** Makes an IIR filter with <order> coefficients for each
+            input and output; assumes identical feedback and
+            feedforward order */
+        local (self)
+    (
+        self = FixedArray_make(2 * order);
+        self
+    );
+
+    //--------------------
+
+    function SOXIIRFilter_apply (self, inputQueue, outputQueue)
+        /** Applies IIR filter <self> to <inputQueue> and
+            <outputQueue>; assumes that first entry in input queue is
+            current sample and writes result sample into top of output
+            queue */
+    (
+        isCheckedMode ? (
+            SOXIIRFilter_applyCHECKED(self, inputQueue, outputQueue);
+        ) : (
+            SOXIIRFilter_applyFAST(self, inputQueue, outputQueue);
+        );
+    );
+
+    //--------------------
+
+    function SOXIIRFilter_setSpecial (self, b0)
+        /** Sets IIR filter <self> to all zero except for the <b0>
+            value; b0 = 1 is an identity filter, b0 = 0 a null filter */
+        local (i length)
+    (
+        length = FixedArray_length(self);
+        FixedArray_setAt(self, 1, b0);
+        i = 2;
+        
+        while (i <= length) (
+            FixedArray_setAt(self, i, 0);
+            i += 1;
+        );
+    );
+
+    //--------------------
+
+    function SOXIIRFilter_init3 (self, b0, b1, b2, a0, a1, a2)
+        /** Sets the parameters of a SOX iir filter <self>
+            of length 3 */
+        local (filterOrder i j k st template)
+    (
+        filterOrder = FixedArray_length(self) / 2;
+
+        filterOrder == 3 ? (
+            FixedArray_setAt(self, 1, b0);
+            FixedArray_setAt(self, 2, b1);
+            FixedArray_setAt(self, 3, b2);
+            FixedArray_setAt(self, 4, a0);
+            FixedArray_setAt(self, 5, a1);
+            FixedArray_setAt(self, 6, a2);
+            SOXIIRFilter_normalize(self);
+        );
+    );
+
+    //--------------------
+
+    function SOXIIRFilter_init5 (self, b0, b1, b2, b3, b4,
+                                       a0, a1, a2, a3, a4)
+        /** Sets the parameters of a SOX iir filter <self>
+            of length 5 */
+        local (filterOrder i j k st template)
+    (
+        filterOrder = FixedArray_length(self) / 2;
+
+        filterOrder == 5 ? (
+            FixedArray_setAt(self,  1, b0);
+            FixedArray_setAt(self,  2, b1);
+            FixedArray_setAt(self,  3, b2);
+            FixedArray_setAt(self,  4, b3);
+            FixedArray_setAt(self,  5, b4);
+            FixedArray_setAt(self,  6, a0);
+            FixedArray_setAt(self,  7, a1);
+            FixedArray_setAt(self,  8, a2);
+            FixedArray_setAt(self,  9, a3);
+            FixedArray_setAt(self, 10, a4);
+            SOXIIRFilter_normalize(self);
+        );
+    );
+
+    //--------------------
+
+    function SOXIIRFilter_print (self)
+        /** Prints the parameters of a SOX iir filter <self> */
+        local (filterOrder i j k st template)
+    (
+        template = String_make();
+        st       = String_make();
+        filterOrder = FixedArray_length(self) / 2;
+        i = 1;
+        j = 1;
+
+        while (j <= 2) (
+            String_copy(template, (j == 1 ? "b%d" : "a%d"));
+            k = 0;
+
+            while (k < filterOrder) (
+                String_format(st, template, k);
+                Debug_printValue(st, FixedArray_getAt(self, i));
+                i += 1;
+                k += 1;
+            );
+
+            j += 1;
+        );
+
+        String_destroy(st);
+        String_destroy(template);
+    );
+
+    //========================================
+

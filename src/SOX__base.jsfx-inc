@@ -1,0 +1,58 @@
+desc: SOX utility routines
+//SOX utility routines
+author: Dr. Thomas Tensi, 2019
+
+//requires Base_fixedarray.jsfx-inc
+
+@init
+    //========================================
+
+    SOX_channelCount = 2; //num_ch;
+
+    //--------------------
+
+    function SOX_dBToLinear (dBValue)
+        /** returns linear factor for <dBValue> */
+    (
+        10.0 ^ (dBValue * 0.05);
+    );
+
+    //--------------------
+
+    SOX_inputSampleList  = FixedArray_make(SOX_channelCount);
+    SOX_outputSampleList = FixedArray_make(SOX_channelCount);
+
+    //--------------------
+
+    function SOX_setInputSampleList (s0, s1)
+    (
+        FixedArray_setAt(SOX_inputSampleList, 1, s0);
+        FixedArray_setAt(SOX_inputSampleList, 2, s1);
+    );
+
+    //--------------------
+
+    function SOX_writeSampleList (sampleList)
+        /** Writes all entries of <sampleList> to output channels */
+        local (channel channelCount)
+    (
+	    // write all channel samples
+        channelCount = FixedArray_length(sampleList);
+        channel = 1;
+
+        while (channel <= channelCount) (
+	        spl(channel - 1) = FixedArray_getAt(sampleList, channel);
+            channel += 1;
+        );
+    );
+
+    //--------------------
+
+    function SOX_writeOutputSampleList ()
+        /** Writes two channels of standard output sample list to
+            output channels */
+    (
+        SOX_writeSampleList(SOX_outputSampleList);
+    );
+
+    //========================================

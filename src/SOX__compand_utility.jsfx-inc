@@ -1,0 +1,120 @@
+desc:SOX compand utilities
+// common utility functions for SOX compand and mcompand
+//tags: compressor
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+//requires Base_fixedarray.jsfx-inc
+//requires SOX__base.jsfx-inc
+//requires SOX__compand_transfer.jsfx-inc
+
+
+@init
+    //====================
+
+    SOXCompander_SIZE = 7;
+    SOXCompander_transferFunction = 1;
+    SOXCompander_attackTime       = 2;
+    SOXCompander_releaseTime      = 3;
+    SOXCompander_volume           = 4;
+    SOXCompander_topFrequency     = 5;
+    SOXCompander_filter           = 6;
+    SOXCompander_buffer           = 7;
+
+    //--------------------
+
+    function SOXCompander_init (self)
+        /** initializes single line compander <self> */
+        local (transferFunction)
+    (
+        transferFunction = SOXTransferFunction_make();
+        FixedArray_setAt(self, SOXCompander_transferFunction,
+                         transferFunction);
+        FixedArray_setAt(self, SOXCompander_attackTime,        0);
+        FixedArray_setAt(self, SOXCompander_releaseTime,       0);
+        FixedArray_setAt(self, SOXCompander_volume,            1);
+        FixedArray_setAt(self, SOXCompander_topFrequency, 100000);
+        FixedArray_setAt(self, SOXCompander_filter,         null);
+        FixedArray_setAt(self, SOXCompander_buffer,         null);
+    );
+
+    //--------------------
+
+    function SOXCompander_make ()
+        /** creates a new single line compander */
+        local (self)
+    (
+        self = FixedArray_make(SOXCompander_SIZE);
+        SOXCompander_init(self);
+        self
+    );
+
+    //--------------------
+
+    function SOXCompander_adaptEnvelopeTime (t, sampleRate)
+        /** adapts envelope time <t> in seconds into a delta value
+            relative to <sampleRate> */
+    (
+        min(1, 1 - exp(-1 / (sampleRate * t)))
+    );
+
+    //--------------------
+
+    function SOXCompander_integrateVolume (self, inputVolume)
+        /** Adapts current volume of <self> within attack-release
+            curve from <inputVolume> by some integration */
+        local (delta increment timeKind volume)
+    (
+        volume = FixedArray_getAt(self, SOXCompander_volume); 
+        delta = inputVolume - volume;
+        timeKind = (delta > 0 ?
+                    SOXCompander_attackTime : SOXCompander_releaseTime);
+        increment = FixedArray_getAt(self, timeKind);
+        volume += (delta * increment);
+        FixedArray_setAt(self, SOXCompander_volume, volume);
+    );
+
+    //--------------------
+
+    function SOXCompander_maximumAbsoluteSample (sampleList)
+        /** Finds and returns maximum absolute sample among all input
+            channels */
+        local (channel result)
+    (
+        result = 0;
+        channel = 1;
+
+        while (channel <= SOX_channelCount) (
+            result = max(result, abs(FixedArray_getAt(sampleList, channel)));
+            channel += 1;
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function SOXCompander_apply (self, inputSampleList, outputSampleList)
+        /** Applies compander <self> to all channels based on samples
+            from <inputSampleList> and returns them in
+            <outputSampleList> */
+        local(amplificationFactor channel currentVolume inputSample
+              maximumSample outputSample)
+    (
+        maximumSample = SOXCompander_maximumAbsoluteSample(inputSampleList);
+        SOXCompander_integrateVolume(self, maximumSample);
+        currentVolume = FixedArray_getAt(self, SOXCompander_volume);
+        amplificationFactor = SOXTransferFunction_apply(transferFunction,
+                                                        currentVolume);
+
+        channel = 1;
+
+        while (channel <= SOX_channelCount) (
+            inputSample  = FixedArray_getAt(inputSampleList, channel);
+            outputSample = inputSample * amplificationFactor;
+            FixedArray_setAt(outputSampleList, channel, outputSample);
+            channel += 1;
+        );
+    );
+
+    //====================

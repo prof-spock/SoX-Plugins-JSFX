@@ -1,0 +1,97 @@
+desc:SOX MCompand (4 bands)
+// emulates the mcompand effect of SOX with 4 bands
+tags: compressor
+author: Dr. Thomas Tensi, 2019
+
+//--------------------
+// IMPORTS
+//--------------------
+
+import Base.jsfx-inc
+import Base_memory.jsfx-inc
+import Base_integerset.jsfx-inc
+import Base_string.jsfx-inc
+import Base_fixedarray.jsfx-inc
+import Base_display.jsfx-inc
+import Base_debug.jsfx-inc
+
+import SOX__base.jsfx-inc
+import SOX__compand_transfer.jsfx-inc
+import SOX__compand_utility.jsfx-inc
+import SOX__samplequeue.jsfx-inc
+import SOX__iirfilter.jsfx-inc
+import SOX__mcompand_utility.jsfx-inc
+
+//--------------------
+// SLIDERS
+//--------------------
+slider1:attackA=0.02<0.001,1,0.001>▒▒▒ BAND A ▒▒▒ Attack A [s]
+slider2:releaseA=0.15<0.001,1,0.001>Release A [s]
+slider3:dBKneeA=6<0.01,20,0.01>Knee A [dB]
+slider4:dBThresholdA=-20<-128,0,0.1>Threshold A [dB]
+slider5:ratioA=2<1,1000,0.1>Ratio A
+slider6:dBGainA=5<-20,20,1>OutGain A [dB]
+slider7:topFrequencyA=1000<20,20000,1>Crossover Frequency A [Hz]
+slider8:attackB=0.04<0.001,1,0.001>▒▒▒ BAND B ▒▒▒ Attack B [s]
+slider9:releaseB=0.4<0.001,1,0.001>Release B [s]
+slider10:dBKneeB=0<0,20,0.01>Knee B [dB]
+slider11:dBThresholdB=-60<-128,0,0.1>Threshold B [dB]
+slider12:ratioB=3<1,1000,0.1>Ratio B
+slider13:dBGainB=20<-20,20,1>OutGain B [dB]
+slider14:topFrequencyB=2000<20,20000,1>Crossover Frequency B [Hz]
+slider15:attackC=0.04<0.001,1,0.001>▒▒▒ BAND C ▒▒▒ Attack C [s]
+slider16:releaseC=0.4<0.001,1,0.001>Release C [s]
+slider17:dBKneeC=0<0,20,0.01>Knee C [dB]
+slider18:dBThresholdC=-60<-128,0,0.1>Threshold C [dB]
+slider19:ratioC=3<1,1000,0.1>Ratio C
+slider20:dBGainC=20<-20,20,1>OutGain C [dB]
+slider21:topFrequencyC=3000<20,20000,1>Crossover Frequency C [Hz]
+slider22:attackD=0.04<0.001,1,0.001>▒▒▒ BAND D ▒▒▒ Attack D [s]
+slider23:releaseD=0.4<0.001,1,0.001>Release D [s]
+slider24:dBKneeD=0<0,20,0.01>Knee D [dB]
+slider25:dBThresholdD=-60<-128,0,0.1>Threshold D [dB]
+slider26:ratioD=3<1,1000,0.1>Ratio D
+slider27:dBGainD=20<-20,20,1>OutGain D [dB]
+
+//--------------------
+// INITIALIZATION
+//--------------------
+@init
+    //============================================================
+
+    function SOXMCompander_Graphics_handleKey (key)
+    (
+        Graphics_currentMode == Graphics_Mode_effect ? (
+            Graphics_clear(Graphics_Color_black);
+        );
+    );
+
+    //============================================================
+
+    mCompander = SOXMCompander_make(4);
+
+//--------------------
+// SLIDER CHANGE
+//--------------------
+@slider
+    Debug_clear();
+
+    SOXMCompander_adjustSliders(7, 14, 21, 10);
+
+    SOXMCompanderBand_init(mCompander, 1, attackA, releaseA, dBThresholdA,
+                           ratioA, dBGainA, dBKneeA, topFrequencyA);
+    SOXMCompanderBand_init(mCompander, 2, attackB, releaseB, dBThresholdB,
+                           ratioB, dBGainB, dBKneeB, topFrequencyB);
+    SOXMCompanderBand_init(mCompander, 3, attackC, releaseC, dBThresholdC,
+                           ratioC, dBGainC, dBKneeC, topFrequencyC);
+    SOXMCompanderBand_init(mCompander, 4, attackD, releaseD, dBThresholdD,
+                           ratioD, dBGainD, dBKneeD,
+                           _MCompander_maxTopFrequency);
+
+//--------------------
+// GRAPHICS
+//--------------------
+@gfx
+    key = gfx_getchar();
+    key = Graphics_MTSMatrix_handleKey(key);
+    SOXMCompander_Graphics_handleKey(key);

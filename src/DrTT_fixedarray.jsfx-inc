@@ -1,0 +1,166 @@
+desc: fixed array routines
+// implements an array of fixed length where length is stored as first
+// entry in array (for bounds checking and length information)
+//author: Dr_TT
+
+//uses DrTT_memory.jsfx-inc
+
+@init
+    //========================================
+
+    _FixedArray_firstErrorCode = 999900;
+
+    //--------------------
+
+    function _FixedArray_positionIsOkay (array, position)
+        /** Checks whether <position> is in range of <array> */
+    (
+        0 < position && position <= array[0]
+    );
+
+    //--------------------
+
+    function _FixedArray_addressCHECKED (array, position)
+        /** Gets address of element in <array> at <position> (with
+            bounds checking) */
+        local (result)
+    (
+        _FixedArray_positionIsOkay(array, position) ? (
+            result = ADDR(array, position);
+        ) : (
+            result = 1E9;
+            signalError(_FixedArray_firstErrorCode + 1);
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function _FixedArray_addressFAST (array, position)
+        /** Gets address of element in <array> at <position> (without
+            bounds checking) */
+    (
+        array + position
+    );
+
+    //--------------------
+
+    function _FixedArray_getAtCHECKED (array, position)
+        /** Gets element in <array> at <position> (with bounds checking) */
+        local (result)
+    (
+        _FixedArray_positionIsOkay(array, position) ? (
+            result = array[position];
+        ) : (
+            result = 0;
+            signalError(_FixedArray_firstErrorCode + 2);
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function _FixedArray_getAtFAST (array, position)
+        /** Gets element in <array> at <position> (without bounds
+            checking) */
+    (
+        array[position]
+    );
+
+    //--------------------
+
+    function _FixedArray_setAtCHECKED (array, position, value)
+        /** Sets element in <array> at <position> to <value> (with
+            bounds checking) */
+    (
+        _FixedArray_positionIsOkay(array, position) ? (
+            array[position] = value;
+        ) : (
+            signalError(_FixedArray_firstErrorCode + 3);
+        );
+    );
+
+    //--------------------
+
+    function _FixedArray_setAtFAST (array, position, value)
+        /** Sets element in <array> at <position> to <value> (without
+            bounds checking) */
+    (
+        array[position] = value;
+    );
+
+    //--------------------
+    // EXPORTED ROUTINES
+    //--------------------
+
+    function FixedArray_make (length)
+        /** Makes a fixed array with <length> elements */
+        local (result)
+    (
+        // first entry contains the length, rest are the elements
+        result = Memory_allocate(length + 1);
+        result[0] = length;
+        result
+    );
+
+    //--------------------
+
+    function FixedArray_address (array, position)
+        /** Gets address of element in <array> at <position> */
+        local (result)
+    (
+        isCheckedMode ? (
+            result = _FixedArray_addressCHECKED(array, position);
+        ) : (
+            result = _FixedArray_addressFAST(array, position);
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function FixedArray_clear (array)
+        /** Clears <array> to zero entries */
+    (
+        Memory_set(array + 1, array[0], 0);
+    );
+
+    //--------------------
+
+    function FixedArray_getAt (array, position)
+        /** Gets element in <array> at <position> */
+        local (result)
+    (
+        isCheckedMode ? (
+            result = _FixedArray_getAtCHECKED(array, position);
+        ) : (
+            result = _FixedArray_getAtFAST(array, position);
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function FixedArray_length (array)
+        /** Gets length of <array> */
+    (
+        array[0]
+    );
+
+    //--------------------
+
+    function FixedArray_setAt (array, position, value)
+        /** Sets element in <array> at <position> to <value> */
+    (
+        isCheckedMode ? (
+            _FixedArray_setAtCHECKED(array, position, value);
+        ) : (
+            _FixedArray_setAtFAST(array, position, value);
+        );
+    );
+
+    //========================================

@@ -1,0 +1,74 @@
+desc: SOX Equalizer Filter
+tags: filter
+author: Dr. Thomas Tensi, 2019
+
+//--------------------
+// IMPORTS
+//--------------------
+
+import Base.jsfx-inc
+import Base_memory.jsfx-inc
+import Base_integerset.jsfx-inc
+import Base_string.jsfx-inc
+import Base_fixedarray.jsfx-inc
+import Base_display.jsfx-inc
+import Base_debug.jsfx-inc
+
+import SOX__base.jsfx-inc
+import SOX__samplequeue.jsfx-inc
+import SOX__iirfilter.jsfx-inc
+import SOX__biquadfilter.jsfx-inc
+
+//--------------------
+// SLIDERS
+//--------------------
+slider1:frequency=1000.0<10.0,20000.0,1>Frequency [Hz]
+slider2:bandwidth=1<0.001,20000,0.00001>Bandwidth
+slider3:bandwidthKind=0<0,3,1{Frequency,Octaves,Q,Butterworth}>Bandwidth Kind
+slider4:dBFilterGain=0<-25,25,0.05>Equalizer Gain [dB]
+
+//--------------------
+// INITIALIZATION
+//--------------------
+@init
+    //============================================================
+
+    function SOXEqualizer_Graphics_handleKey (key)
+    (
+        Graphics_currentMode == Graphics_Mode_effect ? (
+            Graphics_clear(Graphics_Color_black);
+        );
+    );
+
+    //============================================================
+
+//--------------------
+// SLIDER CHANGE
+//--------------------
+@slider
+    filterGain = 10^(dBFilterGain/40);
+
+    // coefficients for biquad transform
+    w0 = twoPi * frequency / srate;
+    alpha =
+        SOXBiquadFilter_alphaForBandwidth(bandwidth, bandwidthKind,
+                                          frequency, filterGain);
+
+    b0  = 1 + alpha * filterGain;
+    b1  = -2 * cos(w0);
+    b2  = 1 - alpha * filterGain;
+    a0 = 1 + alpha / filterGain;
+    a1 = b1;
+    a2 = 1 - alpha / filterGain;
+
+    SOXBiquadFilter_init(filter, b0, b1, b2, a0, a1, a2);
+    Debug_clear();
+    SOXBiquadFilter_print(filter);
+
+//--------------------
+// GRAPHICS
+//--------------------
+@gfx
+    key = gfx_getchar();
+    key = Graphics_MTSMatrix_handleKey(key);
+    SOXEqualizer_Graphics_handleKey(key);

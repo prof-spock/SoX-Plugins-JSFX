@@ -1,0 +1,386 @@
+desc: Display utilities for debugging
+author: Dr_TT
+
+@init
+    //========================================
+    // Color
+    //========================================
+
+    function Graphics_Color_bluePart (self)
+        /** Returns the blue component of <self> */
+    (
+        self & 0xFF
+    );
+
+    //--------------------
+
+    function Graphics_Color_greenPart (self)
+        /** Returns the green component of <self> */
+    (
+        (self >> 8) & 0xFF
+    );
+
+    //--------------------
+
+    function Graphics_Color_redPart (self)
+        /** Returns the red component of <self> */
+    (
+        (self >> 16) & 0xFF
+    );
+
+    //--------------------
+
+    function Graphics_Color_set (self)
+        /** Sets current color to <self> */
+    local (blue green red)
+    (
+        blue  = Graphics_Color_bluePart(self);
+        green = Graphics_Color_greenPart(self);
+        red   = Graphics_Color_redPart(self);
+        gfx_set(red, green, blue);
+    );
+
+    //--------------------
+
+    function Graphics_Color_make (red, green, blue)
+        /** Returns a new color combined from parts <red>, <green>
+        and <blue> between 0 and 1 */
+    (
+        blue  = forceToRange(blue * 255, 0, 255, true);
+        green = forceToRange(green * 255, 0, 255, true);
+        red   = forceToRange(red * 255, 0, 255, true);
+        blue + (green + red << 8) << 8
+    );
+
+    //--------------------
+
+    Graphics_Color_black       = Graphics_Color_make(  0,   0,   0);
+    Graphics_Color_darkBlue    = Graphics_Color_make(  0,   0, 0.5);
+    Graphics_Color_blue        = Graphics_Color_make(  0,   0,   1);
+    Graphics_Color_darkGreen   = Graphics_Color_make(  0, 0.5,   0);
+    Graphics_Color_green       = Graphics_Color_make(  0,   1,   0);
+    Graphics_Color_darkCyan    = Graphics_Color_make(  0, 0.5, 0.5);
+    Graphics_Color_cyan        = Graphics_Color_make(  0,   1,   1);
+    Graphics_Color_darkRed     = Graphics_Color_make(0.5,   0,   0);
+    Graphics_Color_red         = Graphics_Color_make(  1,   0,   0);
+    Graphics_Color_darkMagenta = Graphics_Color_make(0.5,   0, 0.5);
+    Graphics_Color_magenta     = Graphics_Color_make(  1,   0,   1);
+    Graphics_Color_darkYellow  = Graphics_Color_make(0.5, 0.5,   0);
+    Graphics_Color_yellow      = Graphics_Color_make(  1,   1,   0);
+    Graphics_Color_grey        = Graphics_Color_make(0.5, 0.5, 0.5);
+    Graphics_Color_white       = Graphics_Color_make(  1,   1,   1);
+
+    //========================================
+    // General Graphics
+    //========================================
+
+    function Graphics_clear (color)
+        /** Sets background to colour specified by <color> */
+    (
+        Graphics_color_set(color);
+        gfx_rect(0, 0, gfx_w, gfx_h);
+    );
+
+    //========================================
+    // Graphics Data Matrix
+    //========================================
+
+    _Graphics_DataMatrixEntry_SIZE = 2;
+    _Graphics_DataMatrixEntry_color = 0;
+    _Graphics_DataMatrixEntry_string  = 1;
+
+    _Graphics_DataMatrix_rowCount       = 1;
+    _Graphics_DataMatrix_columnCount    = 1;
+    _Graphics_DataMatrix_maxRowCount    = 30;
+    _Graphics_DataMatrix_maxColumnCount = 10;
+
+    _Graphics_DataMatrix_table = null;
+
+    //--------------------
+    // LOCAL ROUTINES
+    //--------------------
+
+    function _Graphics_DataMatrix_count ()
+        /** returns total number of elements in matrix */
+    (
+        _Graphics_DataMatrix_rowCount * _Graphics_DataMatrix_columnCount
+    );
+
+    //--------------------
+
+    function _Graphics_DataMatrix_index (rowIndex, columnIndex, columnSize)
+        /** returns 1D-index of matrix with given <rowIndex>,
+            <columnIndex> and <columnSize>*/
+    (
+        rowIndex + columnIndex * columnSize 
+    );
+
+    //--------------------
+    // EXPORTED ROUTINES
+    //--------------------
+
+    function Graphics_DataMatrix_clear ()
+        /** sets debugging matrix to empty */
+        local (i matrixEntry totalCount)
+    (
+        totalCount = _Graphics_DataMatrix_count();
+        i = 0;
+
+        while (i < totalCount) (
+            matrixEntry = ARRAYADDR(_Graphics_DataMatrix_table, i,
+                                    _Graphics_DataMatrixEntry_SIZE);
+            matrixEntry[_Graphics_DataMatrixEntry_color] = 0;
+            String_clear(matrixEntry[_Graphics_DataMatrixEntry_string]);
+            i += 1;
+        );
+    );
+
+    //--------------------
+
+    function Graphics_DataMatrix_make ()
+        /** allocate debugging matrix and clear it */
+        local (i matrixEntry totalCount)
+    (
+        totalCount = (_Graphics_DataMatrix_maxRowCount
+                      * _Graphics_DataMatrix_maxColumnCount);
+        _Graphics_DataMatrix_table =
+            Memory_allocateArray(totalCount,
+                                 _Graphics_DataMatrixEntry_SIZE);
+        i = 0;
+
+        while (i < totalCount) (
+            matrixEntry = ARRAYADDR(_Graphics_DataMatrix_table,
+                                    i, _Graphics_DataMatrixEntry_SIZE);
+            matrixEntry[_Graphics_DataMatrixEntry_string] = String_make();
+            i += 1;
+        );
+
+        Graphics_DataMatrix_clear();
+    );
+
+    //--------------------
+    //--------------------
+
+    function Graphics_DataMatrix_show ()
+        /** Shows contents of matrix on screen */
+        local (color columnIndex deltaX deltaY index matrixEntry
+               st rowIndex x y)
+    (
+        Graphics_clear(Graphics_Color_black);
+
+        deltaX = gfx_w / _Graphics_DataMatrix_columnCount;
+        deltaY = gfx_h / _Graphics_DataMatrix_rowCount;
+
+        columnIndex = 0;
+        index = 0;
+        st = String_make();
+
+        while (columnIndex < _Graphics_DataMatrix_columnCount) (
+            x = deltaX * columnIndex;
+            rowIndex = 0;
+
+            while (rowIndex < _Graphics_DataMatrix_rowCount) (
+                y = deltaY * rowIndex;
+                matrixEntry = ARRAYADDR(_Graphics_DataMatrix_table, index,
+                                        _Graphics_DataMatrixEntry_SIZE);
+                color = matrixEntry[_Graphics_DataMatrixEntry_color];
+                String_copy(st,
+                            matrixEntry[_Graphics_DataMatrixEntry_string]);
+                Graphics_color_set(color);
+                gfx_x = x;
+                gfx_y = y;
+                gfx_drawstr(st);
+                rowIndex += 1;
+                index += 1;
+            );
+
+            columnIndex += 1;
+        );
+
+        String_destroy(st);
+    );
+
+    //--------------------
+
+    function Graphics_DataMatrix_setAtRaw (index, color, st)
+        /** Sets matrix entry at <index> to (<color>,<st>)
+            with indices starting at 0 */
+        local (matrixEntry totalCount)
+    (
+        index = forceToRange(index, 0,
+                             _Graphics_DataMatrix_count() - 1, true);
+        matrixEntry = ARRAYADDR(_Graphics_DataMatrix_table, index,
+                                _Graphics_DataMatrixEntry_SIZE);
+        matrixEntry[_Graphics_DataMatrixEntry_color] = color;
+        String_copy(matrixEntry[_Graphics_DataMatrixEntry_string], st);
+    );
+
+    //--------------------
+
+    function Graphics_DataMatrix_setAt (rowIndex, columnIndex, color, st)
+        /** Sets matrix entry at (<rowIndex>,<columnIndex>) to
+        (<color>,<st>) with indices starting at 0 */
+        local (index)
+    (
+        rowIndex    = forceToRange(rowIndex,
+                                   0, _Graphics_DataMatrix_rowCount - 1,
+                                   true);
+        columnIndex = forceToRange(columnIndex,
+                                   0, _Graphics_DataMatrix_columnCount - 1,
+                                   true);
+        index = _Graphics_DataMatrix_index(rowIndex, columnIndex,
+                                           _Graphics_DataMatrix_rowCount);
+        Graphics_DataMatrix_setAtRaw(index, color, st);
+    );
+
+    //--------------------
+
+    function Graphics_DataMatrix_setDimensions (rowCount, columnCount)
+        /** Sets division of debug matrix to (<rowCount>,<columnCount>) */
+    (
+        _Graphics_DataMatrix_rowCount    =
+            forceToRange(rowCount,
+                         1, _Graphics_DataMatrix_maxRowCount, true);
+        _Graphics_DataMatrix_columnCount =
+            forceToRange(columnCount,
+                         1, _Graphics_DataMatrix_maxColumnCount, true);
+    );
+
+    //========================================
+    // Graphics Memory & String Matrix
+    //========================================
+
+    function _Graphics_MemAndStringMatrix_columnCount ()
+        /** Tells the column count of the memory matrix calculated
+            from width and standard column */
+        local (h referenceWidth)
+    (
+        gfx_measurestr("00000: 000000000000 ", referenceWidth, h);
+        max(1, floor(gfx_w / referenceWidth))
+    );
+
+    //--------------------
+
+    function _Graphics_MemAndStringMatrix_rowCount ()
+        /** Tells the row count of the memory matrix calculated from
+        height and textheight */
+    (
+        max(1, floor(gfx_h / gfx_texth))
+    );
+
+    //--------------------
+
+    function Graphics_MemAndStringMatrix_show (address, maximumAddress,
+                                               isString)
+        /** Shows contents of memory or string matrix on screen
+            starting at <address>; <isString> tells whether this is a
+            string of memory matrix */
+        local (columnCount columnIndex data deltaX deltaY
+               rowCount rowIndex template x)
+    (
+        columnCount = _Graphics_MemAndStringMatrix_columnCount();
+        rowCount    = _Graphics_MemAndStringMatrix_rowCount();
+
+        deltaX = gfx_w / columnCount;
+        deltaY = gfx_h / rowCount;
+
+        columnIndex = 0;
+
+        while (columnIndex < columnCount) (
+            x = deltaX * columnIndex;
+            rowIndex = 0;
+
+            while (rowIndex < rowCount) (
+                address <= maximumAddress ? (
+                    gfx_x = x;
+                    gfx_y = deltaY * rowIndex;
+                    Graphics_color_set(Graphics_Color_darkGreen);
+                    gfx_printf("%5d: ", address);
+                    Graphics_color_set(Graphics_Color_white);
+
+                    isString ? (
+                        data = address;
+                        template = "%.12s"
+                    ) : (
+                        data = address[];
+                        template = (floor(data) == data
+                                    ? "%12i" : "%+5.4e");
+                    );
+
+                    gfx_printf(template, data);
+                    address += 1;
+                );
+
+                rowIndex += 1;
+            );
+
+            columnIndex += 1;
+        );
+    );
+
+//============================================================
+
+    Graphics_Mode_none   = 0;
+    Graphics_Mode_memory = 1;
+    Graphics_Mode_string = 2;
+    Graphics_Mode_data   = 3;
+
+    key_d     = $'d';
+    key_m     = $'m';
+    key_n     = $'n';
+    key_s     = $'s';
+    key_plus  = $'+';
+    key_minus = $'-';
+
+    //--------------------
+
+    function updateDisplay ()
+        /** Updates display depending on graphics mode */
+        local (graphicsMode isString keyPressed maximumAddress
+               memoryViewAddress stringViewAddress totalCount)
+    (
+        keyPressed = gfx_getchar();
+        graphicsMode = iif(keyPressed == key_d, Graphics_Mode_data,
+                           keyPressed == key_m, Graphics_Mode_memory,
+                           keyPressed == key_n, Graphics_Mode_none,
+                           keyPressed == key_s, Graphics_Mode_string,
+                           graphicsMode);
+
+        graphicsMode == Graphics_Mode_none ? (
+            Graphics_clear(Graphics_Color_black);
+        ) : graphicsMode == Graphics_Mode_data ? (
+            Graphics_DataMatrix_show();
+        ) : (
+            totalCount = (_Graphics_MemAndStringMatrix_rowCount() 
+                          * _Graphics_MemAndStringMatrix_columnCount());
+            isString = (graphicsMode == Graphics_Mode_string);
+            maximumAddress = (isString ? 1023 : __memtop());
+
+            graphicsMode == Graphics_Mode_memory ? (
+                memoryViewAddress +=
+                    iif(keyPressed == key_plus, totalCount,
+                        keyPressed == key_minus, -totalCount,
+                        0);
+                memoryViewAddress =
+                    forceToRange(memoryViewAddress,
+                                 0, maximumAddress, true);
+                Graphics_MemAndStringMatrix_show(memoryViewAddress,
+                                                 maximumAddress, isString);
+            ) : (
+                stringViewAddress +=
+                    iif(keyPressed == key_plus, totalCount,
+                        keyPressed == key_minus, -totalCount,
+                        0);
+                stringViewAddress =
+                    forceToRange(stringViewAddress,
+                                 0, maximumAddress, true);
+                Graphics_MemAndStringMatrix_show(stringViewAddress,
+                                                 maximumAddress, isString);
+            );
+        );
+    );
+
+//--------------------
+
+@gfx
+    updateDisplay()

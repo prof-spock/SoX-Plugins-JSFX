@@ -1,0 +1,83 @@
+desc:SOX Compand
+// emulates the compand effect of SOX
+tags: compressor
+author: Dr. Thomas Tensi, 2019
+
+//--------------------
+// IMPORTS
+//--------------------
+
+import Base.jsfx-inc
+import Base_memory.jsfx-inc
+import Base_integerset.jsfx-inc
+import Base_fixedarray.jsfx-inc
+import Base_string.jsfx-inc
+import Base_display.jsfx-inc
+import Base_debug.jsfx-inc
+
+import SOX__base.jsfx-inc
+import SOX__compand_transfer.jsfx-inc
+import SOX__compand_utility.jsfx-inc
+
+//--------------------
+// SLIDERS
+//--------------------
+slider1:attack=0.02<0.001,1,0.001>Attack [s]
+slider2:release=0.15<0.001,1,0.001>Decay [s]
+slider3:dBKnee=6<0.01,20,0.01>Knee [dB]
+slider4:dBThreshold=-20<-128,0,0.1>Threshold [dBFS]
+slider5:ratio=2<0.001,1000,0.001>Ratio
+slider6:dBGain=5<-20,20,1>OutGain [dB]
+//slider7:delay=0<0,2000,1>Delay [ms]
+
+//--------------------
+// INITIALIZATION
+//--------------------
+@init
+    //============================================================
+
+    function SOXCompander_Graphics_handleKey (key)
+    (
+        Graphics_currentMode == Graphics_Mode_effect ? (
+            Graphics_clear(Graphics_Color_black);
+        );
+    );
+
+    //============================================================
+
+    compander = SOXCompander_make();
+
+//--------------------
+// SLIDER CHANGE
+//--------------------
+
+@slider
+    Debug_clear();
+    FixedArray_setAt(compander, SOXCompander_volume, 1);
+    time = SOXCompander_adaptEnvelopeTime(attack, srate);
+    FixedArray_setAt(compander, SOXCompander_attackTime, time);
+    time = SOXCompander_adaptEnvelopeTime(release, srate);
+    FixedArray_setAt(compander, SOXCompander_releaseTime, time);
+    transferFunction =
+        FixedArray_getAt(compander, SOXCompander_transferFunction);
+    SOXTransferFunction_adapt(transferFunction,
+                              dBKnee, dBThreshold, ratio, dBGain);
+    SOXTransferFunction_print(transferFunction);
+
+//--------------------
+// SAMPLE
+//--------------------
+
+@sample
+    SOX_setInputSampleList(spl0, spl1);
+    SOXCompander_apply(compander,
+                       SOX_inputSampleList, SOX_outputSampleList);
+    SOX_writeOutputSampleList();
+
+//--------------------
+// GRAPHICS
+//--------------------
+@gfx
+    key = gfx_getchar();
+    key = Graphics_MTSMatrix_handleKey(key);
+    SOXCompander_Graphics_handleKey(key);

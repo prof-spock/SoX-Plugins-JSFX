@@ -1,0 +1,159 @@
+desc:JSFX string functions
+// provides utility functions for string handling
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+//requires Base_memory.jsfx-inc
+
+@init
+    //============================================================
+
+    String_maximumValue = 1023;
+    String_slotIsFree = IntegerSet_make(String_maximumValue);
+    IntegerSet_fill(String_slotIsFree);
+
+    //--------------------
+    //--------------------
+
+    function String_make ()
+        /** Returns a new string */
+        local (self)
+    (
+        self = IntegerSet_lookup(String_slotIsFree);
+	    IntegerSet_exclude(String_slotIsFree, self);
+        self
+    );
+
+    //--------------------
+
+    function String_destroy (st)
+        /** Destroys string <st> */
+    (
+        IntegerSet_include(String_slotIsFree, st);
+    );
+
+    //--------------------
+    //--------------------
+
+    function String_length (st)
+        /** Tells length of string <st> */
+    (
+	    strlen(st);
+    );
+
+    //--------------------
+
+    function String_isEqual (st, other)
+        /** Tells whether string <other> and <st> are equal */
+    (
+	    strcmp(st, other) == 0;
+    );
+
+    //--------------------
+
+    function String_append (st, other)
+        /** Appends string <other> to <st> */
+    (
+	    strcat(st, other);
+    );
+
+    //--------------------
+
+    function String_copy (st, other)
+        /** Assigns string <other> to <st> */
+    (
+	    strcpy(st, other);
+    );
+
+    //--------------------
+
+    function String_clear (st)
+        /** Clears string <st> */
+    (
+	    strcpy(st, "");
+    );
+
+    //------------------------------
+    // overloaded substring function
+    //------------------------------
+
+    function String_substring (st, other, start, count)
+        /** Copies substring of <other> to <st> starting from <start>
+            with <count> characters */
+    (
+	    strcpy_substr(st, other, start, count);
+    );
+
+    //--------------------
+
+    function String_substring (st, other, start)
+        /** Copies substring of <other> to <st> starting from <start> */
+    (
+	    strcpy_substr(st, other, start, 1000000);
+    );
+
+    //---------------------------
+    // overloaded format function
+    //---------------------------
+
+    function String_format (st, template, x1)
+        /** Formats <xi> to according to template to <st> */
+    (
+	    sprintf(st, template, x1);
+    );
+
+    //--------------------
+
+    function String_format (st, template, x1, x2)
+        /** Formats <xi> to according to template to <st> */
+    (
+	    sprintf(st, template, x1, x2);
+    );
+
+    //--------------------
+
+    function String_format (st, template, x1, x2, x3)
+        /** Formats <xi> to according to template to <st> */
+    (
+	    sprintf(st, template, x1, x2, x3);
+    );
+
+    //--------------------
+
+    function String_format (st, template, x1, x2, x3, x4)
+        /** Formats <xi> to according to template to <st> */
+    (
+	    sprintf(st, template, x1, x2, x3, x4);
+    );
+
+    //--------------------
+
+    function String_format (st, template, x1, x2, x3, x4, x5)
+        /** Formats <xi> to according to template to <st> */
+    (
+	    sprintf(st, template, x1, x2, x3, x4, x5);
+    );
+
+    //--------------------
+
+    function String_format (st, template, x1, x2, x3, x4, x5, x6)
+        /** Formats <xi> to according to template to <st> */
+    (
+	    sprintf(st, template, x1, x2, x3, x4, x5, x6);
+    );
+
+    //--------------------
+
+    function String_startsWith (st, other)
+        /** Tells whether <st> starts with <other> */
+        local (otherLength prefix result)
+    (
+        prefix = String_make();
+	    otherLength = String_length(other);
+        String_substring(prefix, st, 0, otherLength);
+        result = String_isEqual(prefix, other);
+        String_destroy(prefix);
+        result
+    );
+
+    //============================================================

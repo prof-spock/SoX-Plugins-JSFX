@@ -1,0 +1,191 @@
+desc: general JSFX utility routines
+author: Dr. Thomas Tensi, 2019
+
+@init
+    //========================================
+
+    // several constants
+    true  = (1 == 1);
+    false = !true;
+    twoPi = 2 * $pi;
+    maximumInteger = 2147483647;
+
+    // no-operation statement
+    pass = -1;
+
+    // fast processing is enabled by default
+    isCheckedMode = (isCheckedMode != 0);
+
+    //--------------------
+
+    function degreesToRadians (x)
+        /** Returns degrees for <x> in radians */
+    (
+        x / 360 * twoPi
+    );
+
+    //--------------------
+
+    function forceToRange (value, lowBound, highBound, isInteger)
+        /** Returns <value> forced into range
+           (<lowBound>,<highBound>); if <isInteger< is set, the
+           returned value is an integer */
+        local (result)
+    (
+        result = min(highBound, max(value, lowBound));
+	    result = isInteger ? floor(result) : result;
+	    result
+    );
+
+    //--------------------
+
+    function forceToRange (value, lowBound, highBound)
+        /** Returns <value> forced into range
+           (<lowBound>,<highBound>) */
+    (
+        forceToRange(value, lowBound, highBound, false)
+    );
+
+    //--------------------
+
+    function forceToPercentage (value, isInteger)
+        /** Returns <value> forced into range (0, 100); if <isInteger<
+            is set, the returned value is an integer */
+    (
+        forceToRange(value, 0, 100, isInteger)
+    );
+
+    //--------------------
+
+    function forceToPercentage (value)
+        /** Returns <value> forced into range (0, 100) */
+    (
+        forceToPercentage(value, false)
+    );
+
+    //--------------------
+
+    function fractionalPart (value)
+        /** Returns fractional part of <value> between -1 and +1 with
+            the sign of value */
+        local (result)
+    (
+        result = abs(value);
+        result -= floor(result);
+        result *= sign(value);
+        result
+    );
+
+    //--------------------
+
+    function iif (condition, trueValue, falseValue)
+        /** Returns result of a conditional expression with all
+	    parameters evaluated */
+    (
+        condition ? trueValue : falseValue
+    );
+
+    //--------------------
+
+    function iif (conditionA, valueA, conditionB, valueB, elseValue)
+        /** Returns result of a two-way conditional expression with
+	    all parameters evaluated */
+    (
+        iif(conditionA, valueA, iif(conditionB, valueB, elseValue))
+    );
+
+    //--------------------
+
+    function iif (conditionA, valueA, conditionB, valueB,
+		   conditionC, valueC, elseValue)
+        /** Returns result of a three-way conditional expression with
+	    all parameters evaluated */
+    (
+        iif(conditionA, valueA,
+	        iif(conditionB, valueB, conditionC, valueC, elseValue))
+    );
+
+    //--------------------
+
+    function iif (conditionA, valueA, conditionB, valueB,
+		           conditionC, valueC, conditionD, valueD,
+                   elseValue)
+        /** Returns result of a four-way conditional expression with
+	    all parameters evaluated */
+    (
+        iif(conditionA, valueA,
+	        iif(conditionB, valueB, conditionC, valueC,
+                conditionD, valueD, elseValue))
+    );
+
+    //--------------------
+
+    function ln (x)
+        /** returns the natural logarithm of <x> */
+    (
+        log(x)
+    );
+
+    //--------------------
+
+    function mod (x, i)
+        /** Returns the integer modulus; brings <x> into the range
+            [0,d) */
+    (
+        (x + i) % i
+    );
+
+    //--------------------
+
+    function modulo (x, d)
+        /** Returns the real modulus; brings <x> into the range
+            [0,d) */
+    (
+        d > 0.00001 ? (
+            while (x >= d) (
+                x -= d;
+            );
+
+            while (x < 0) (
+                x += d;
+            );
+        );
+
+        x
+    );
+
+    //--------------------
+
+    function radiansToDegrees (x)
+        /** Returns radians for <x> in degrees */
+    (
+        x * 360 / twoPi
+    );
+
+    //--------------------
+
+    function round (x)
+        /** Returns the rounded form of <x> */
+    (
+        x >= 0 ? floor(x + 0.5) : ceil(x - 0.5)
+    );
+
+    //--------------------
+
+    function sinh (x)
+        /** Returns the hyperbolic sine of <x> */
+    (
+        (exp(x) - exp(-x)) / 2
+    );
+
+    //-------------------------
+    // primitive error handling
+    //-------------------------
+
+    function signalError (errorCode)
+        /** Writes <errorCode> to memory cell 0 */
+    (
+        0[] = errorCode;
+    );
+
+    //========================================

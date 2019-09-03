@@ -1,0 +1,221 @@
+desc: SOX sample queue routines
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+//requires Base_memory.jsfx-inc
+//requires Base_fixedarray.jsfx-inc
+
+@init
+    //========================================
+
+    // the sox sample queue is a fixed length ring buffer with
+    // a pointer onto the top element
+
+    //--------------------
+    // LOCAL FEATURES
+    //--------------------
+
+    SOXSampleQueue_allocatedLength = 0;
+    SOXSampleQueue_length          = 1;
+    SOXSampleQueue_firstIndex      = 2;  // contains index from start
+                                         // of array!
+    SOXSampleQueue_startIndex      = 3;
+
+    //--------------------
+
+    function SOXSampleQueue_index (self, position)
+        /** Returns index for <self> at <position> (where position
+            starts at 1) */
+        local (firstIndex length result)
+    (
+        length     = self[SOXSampleQueue_length];
+        firstIndex = self[SOXSampleQueue_firstIndex];
+        result = firstIndex + position - 1;
+        result = (SOXSampleQueue_startIndex
+                  + mod(result - SOXSampleQueue_startIndex, length));
+        result
+    );
+
+    //--------------------
+    // EXPORTED FEATURES
+    //--------------------
+
+    function SOXSampleQueue_clear (self)
+        /** Clears sample queue <self> */
+        local (length)
+    (
+        length = self[SOXSampleQueue_length];
+        self[SOXSampleQueue_firstIndex] = SOXSampleQueue_startIndex;
+        Memory_set(ADDR(self, SOXSampleQueue_startIndex), length, 0);
+    );
+
+    //--------------------
+
+    function SOXSampleQueue_make (length)
+        /** Makes a sample queue with at most <length> entries */
+        local (self)
+    (
+        self = Memory_allocate(length + SOXSampleQueue_startIndex);
+        self[SOXSampleQueue_allocatedLength] = length;
+        self[SOXSampleQueue_length]          = length;
+        SOXSampleQueue_clear(self);
+        self
+    );
+
+    //--------------------
+
+    function SOXSampleQueue_setEffectiveLength (self, length)
+        /** Sets effective length of queue <self> to <length> entries */
+        local (allocatedLength)
+    (
+        allocatedLength = self[SOXSampleQueue_allocatedLength];
+
+        length <= allocatedLength ? (
+            self[SOXSampleQueue_length] = length;
+        );
+
+        SOXSampleQueue_clear(self);
+    );
+
+    //--------------------
+
+    function SOXSampleQueue_length (self)
+        /** Returns effective length of queue <self> */
+    (
+        self[SOXSampleQueue_length]
+    );
+
+    //--------------------
+
+    function SOXSampleQueue_getAt (self, position)
+        /** Gets sample in <self> at <position> (where position starts
+            at 1) */
+        local (index)
+    (
+        index = SOXSampleQueue_index(self, position);
+        self[index]
+    );
+
+    //--------------------
+
+    function SOXSampleQueue_first (self)
+        /** Gets first sample of <self> */
+        local (firstIndex)
+    (
+        firstIndex = self[SOXSampleQueue_firstIndex];
+        self[firstIndex]
+    );
+
+    //--------------------
+
+    function SOXSampleQueue_last (self)
+        /** Gets last sample of <self> */
+    (
+        SOXSampleQueue_getAt(self, self[SOXSampleQueue_length])
+    );
+
+    //--------------------
+
+    function SOXSampleQueue_setAt (self, position, value)
+        /** Sets sample in <self> at <position> to <value> (where
+            position starts at 1) */
+        local (index)
+    (
+        index = SOXSampleQueue_index(self, position);
+        self[index] = value;
+    );
+
+    //--------------------
+
+    function SOXSampleQueue_setFirst (self, value)
+        /** Sets first sample  of <self> to <value> */
+        local (firstIndex)
+    (
+        firstIndex = self[SOXSampleQueue_firstIndex];
+        self[firstIndex] = value;
+    );
+
+    //--------------------
+
+   function SOXSampleQueue_setLast (self, value)
+        /** Sets last sample of <self> to <value> */
+    (
+        SOXSampleQueue_setAt(self, self[SOXSampleQueue_length], value);
+    );
+
+    //--------------------
+
+    function SOXSampleQueue_shiftLeft (self, value)
+        /** Shifts contents of <self> by one position to the left
+            (making space for a new bottom entry); value is inserted
+            as the bottom entry */
+        local (length firstIndex)
+    (
+        length = self[SOXSampleQueue_length];
+        firstIndex = self[SOXSampleQueue_firstIndex];
+        self[firstIndex] = value;
+        firstIndex = (SOXSampleQueue_startIndex
+                      + mod(firstIndex + 1 - SOXSampleQueue_startIndex,
+                            length));
+        self[SOXSampleQueue_firstIndex] = firstIndex;
+    );
+
+    //--------------------
+
+    function SOXSampleQueue_shiftRight (self, value)
+        /** Shifts contents of <self> by one position to the right
+            (making space for a new first entry); value is inserted as
+            the new first entry */
+        local (length firstIndex)
+    (
+        length = self[SOXSampleQueue_length];
+        firstIndex = self[SOXSampleQueue_firstIndex];
+        firstIndex = (SOXSampleQueue_startIndex
+                      + mod(firstIndex - 1 - SOXSampleQueue_startIndex,
+                            length));
+        self[SOXSampleQueue_firstIndex] = firstIndex;
+        self[firstIndex] = value;
+    );
+
+    //--------------------
+    // SOXSampleQueueList
+    // providing sample queues for all input/output channels
+    //--------------------
+
+    function SOXSampleQueueList_make (queueLength, hasTwoQueuesPerChannel)
+        /** Makes a list of sample queues for each channel with queues
+            having length <queueLength>; depending on
+            <hasTwoQueuesPerChannel> either one or two queues are
+            provided per channel */
+        local (channel i result sampleQueue totalCount)
+    (
+        totalCount = SOX_channelCount * (hasTwoQueuesPerChannel ? 2 : 1);
+        result = FixedArray_make(totalCount);
+        i = 1;
+
+        while (i <= totalCount) (
+            sampleQueue = SOXSampleQueue_make(queueLength);
+            FixedArray_setAt(result, i, sampleQueue);
+            i += 1;
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function SOXSampleQueueList_clear (self)
+        /** Clears list of sample queues <self> */
+        local (i length sampleQueue)
+    (
+        length = FixedArray_length(self);
+        i = 1;
+
+        while (i <= length) (
+            sampleQueue = FixedArray_getAt(self, i);
+            SOXSampleQueue_clear(sampleQueue);
+            i += 1;
+        );
+    );
+
+    //========================================

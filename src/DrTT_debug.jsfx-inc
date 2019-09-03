@@ -1,0 +1,86 @@
+desc: Display utilities for debugging
+author: Dr_TT
+
+@init
+    //========================================
+    // Debugging routines
+    //========================================
+
+    _Debug_cursor = 0;
+    Debug_headingColor1 = Graphics_color_yellow;
+    Debug_headingColor2 = Graphics_color_green;
+    Debug_standardColor = Graphics_color_white;
+
+    //--------------------
+
+    function Debug_clear ()
+        /** Resets debugging output */
+    (
+        _Debug_cursor = 0;
+        Graphics_DataMatrix_clear();
+    );
+
+    //--------------------
+
+    function Debug_printLine (st, color)
+        /** Prints <st> in debug matrix in <color> and advances
+            cursor; overprints last cell if necessary */
+        local (index)
+    (
+        index = _Debug_cursor;
+        index = forceToRange(index,
+                             0, _Graphics_DataMatrix_count() - 1, true);
+        Graphics_DataMatrix_setAtRaw(index, color, st);
+        _Debug_cursor = index + 1;
+    );
+
+    //--------------------
+
+    function Debug_printLine (st)
+        /** Prints <st> in debug matrix and advances
+            cursor; overprints last cell if necessary */
+    (
+        Debug_printLine(st, Debug_standardColor);
+    );
+
+    //--------------------
+
+    function Debug_printValue (name, value)
+        /** Prints <name> and <value> in debug matrix and
+            advances cursor; overprints last cell if necessary */
+        local (color localName st)
+    (
+        st = String_make();
+        localName = String_make();
+
+        String_startsWith(name, "[H1]") ? (
+            color = Debug_headingColor1;
+            String_substring(localName, name, 4);
+        ) : String_startsWith(name, "[H2]") ? (
+            color = Debug_headingColor2;
+            String_substring(localName, name, 4);
+        ) : (
+            color = Debug_standardColor;
+            String_copy(localName, name);
+        );
+
+        String_format(st, "%s: %5.4e", localName, value);
+        Debug_printLine(st, color);
+        
+        String_destroy(localName);
+        String_destroy(st);
+    );
+
+    //--------------------
+
+    function Debug_setDimensions (rowCount, columnCount)
+        /** Sets dimensions of debug data matrix to
+            (<rowCount>,<columnCount>) */
+    (
+        Graphics_DataMatrix_setDimensions(rowCount, columnCount);
+    );
+
+    //--------------------
+    //--------------------
+
+    Graphics_DataMatrix_make();
