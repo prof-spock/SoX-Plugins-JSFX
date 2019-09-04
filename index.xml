@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <index version="1" name="DrTT JSFX">
   <category name="DrTT">
-    <reapack name="SOX JSFX" type="effect" desc="JSFX plugins for SOX emulation">
+    <reapack name="JSFX-SOX" type="effect" desc="JSFX plugins for SOX emulation">
       <metadata>
         <description><![CDATA[{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1031{\fonttbl{\f0\fnil\fcharset0 Times New Roman;}{\f1\fnil\fcharset2 Symbol;}}
 {\colortbl ;\red0\green0\blue255;}
@@ -80,15 +80,8 @@ The Reaper project file "testSoxPlugins.rpp" references those test and result fi
         <source>https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX_Phaser.jsfx</source>
         <source>https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX_Reverb.jsfx</source>
         <source>https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX_Tremolo.jsfx</source>
-      </version>
-    </reapack>
-  </category>
-  <category name="DrTT/Test">
-    <reapack name="SOX JSFX Test" type="data" desc="Test Suite for SOX JSFX plugins">
-      <version name="0.9" author="Dr. Thomas Tensi" time="2019-09-03T00:00:00Z">
-        <changelog><![CDATA[Initial Release]]></changelog>
-        <source>https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/test/makeTestFiles.bat</source>
-        <source>https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/test/testSoxPlugins.RPP</source>
+        <source file="test/makeTestFiles.bat">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/test/makeTestFiles.bat</source>
+        <source file="test/testSoxPlugins.RPP">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/test/testSoxPlugins.RPP</source>
       </version>
     </reapack>
   </category>
