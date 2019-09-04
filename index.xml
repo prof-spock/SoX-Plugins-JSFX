@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <index version="1" name="DrTT">
   <category name="JSFXSOX">
-    <reapack name="JSFXSOX" type="effect" desc="JSFX plugins for emulation of SOX">
+    <reapack name="JSFXSOX" type="effect" desc="JSFX plugins for emulation of SOX audio processor">
       <metadata>
         <description><![CDATA[{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1031{\fonttbl{\f0\fnil\fcharset0 Times New Roman;}{\f1\fnil\fcharset2 Symbol;}}
 {\colortbl ;\red0\green0\blue255;}
