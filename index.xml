@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <index version="1" name="DrTT">
-  <category name="JSFX-SOX">
-    <reapack name="JSFX-SOX" type="effect" desc="JSFX plugins for emulation of SOX">
+  <category name="JSFXSOX">
+    <reapack name="JSFXSOX" type="effect" desc="JSFX plugins for emulation of SOX">
       <metadata>
         <description><![CDATA[{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1031{\fonttbl{\f0\fnil\fcharset0 Times New Roman;}{\f1\fnil\fcharset2 Symbol;}}
 {\colortbl ;\red0\green0\blue255;}
@@ -45,7 +45,7 @@ The Reaper project file "testSoxPlugins.rpp" references those test and result fi
       </metadata>
       <version name="0.9" author="Dr. Thomas Tensi" time="2019-09-03T00:00:00Z">
         <changelog><![CDATA[Initial Release]]></changelog>
-        <source file="JSFXSOX-Plugins-Documentation.pdf">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/JSFXSOX-Plugins-Documentation.pdf</source>
+        <source file="doc/JSFXSOX-Plugins-Documentation.pdf">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/JSFXSOX-Plugins-Documentation.pdf</source>
         <source file="Base.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/Base.jsfx-inc</source>
         <source file="Base_debug.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/Base_debug.jsfx-inc</source>
         <source file="Base_display.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/Base_display.jsfx-inc</source>
