@@ -261,7 +261,7 @@ The installation in Windows is as follows:
   
    \item Close the Reaper application (if open).
 
-   \item Make a subdirectory \embeddedCode{DrTT} in the
+   \item Make a subdirectory \embeddedCode{Dr\_TT} in the
      \embeddedCode{Effects} directory of the Reaper installation
      (typically in
       \embeddedCode{\bsl Program Files\bsl Reaper\bsl Effects}).
@@ -270,6 +270,10 @@ The installation in Windows is as follows:
      \embeddedCode{*.jsfx-inc} files from the distribution into this
      directory.  If helpful, also add the documentation from the docs
      and root directory.
+
+   \item If helpful, also copy the test files from \embeddedCode{test}
+     to the effects sub-directory \embeddedCode{Dr\_TT\bsl Test} (see
+     section~\ref{section:regressionTest}).
 
    \item Restart Reaper.  You should now be able to select the
       plugins from the JS folder (they are all prefixed with
@@ -879,9 +883,10 @@ calculation for complicated modulation frequencies.
 By this method event time-variant effects can be synced with
 externally generated audio material.
 
-%========================
+%=============================
 \section{Regression Test}
-%========================
+\label{section:regressionTest}
+%=============================
 
 To test that the plugins of \JSFXSOX\ really are bit-identical to sox,
 a little test suite has been set up.
