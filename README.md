@@ -6,7 +6,10 @@ Overview
 
 The JSFX-SOX software package provides JSFX (Jesusonic)
 plugins for being used in the Reaper DAW; they implement
-some of the audio processing effects from SOX.
+some of the audio processing effects from SOX.  It is also
+possible to use them in any VST compatible DAW using the
+freely available [ReaJS VST plugin][] that is able to
+interpret JSFX files.
 
 *[SOX][]* is a command line audio processing tool for Unix,
 Windows and Mac OS that transforms source audio files in
@@ -109,19 +112,22 @@ Installation
 
 The installation is as follows:
 
-   1. Close the Reaper application (if open).
+   1. Close the Reaper application or your DAW using ReaJS
+      (if open).
 
-   2. Make a subdirectory "DrTT" in the "Effects" directory
-      of the Reaper installation (typically in
-      "\Program Files\Reaper\Effects").
+   2. Make a subdirectory "Dr_TT" in either the "Effects"
+      directory of the Reaper installation (typically in
+      "\Program Files\Reaper\Effects") or - if your DAW uses
+      some different directory for JSFX files - in that
+      directory.
 
    3. Copy over all *.jsfx and *.jsfx-inc files from the
       distribution into this directory.  If helpful, also
-      add the documentation from the docs and root directory.
+      add the documentation from the root directory.
 
-   4. Restart Reaper.  You should now be able to select the
-      plugins from the JS folder (they are all prefixed with
-      "SOX").
+   4. Restart Reaper (or your other DAW).  You should now be
+      able to select the plugins from the JSFX folder (they
+      are all prefixed with "SOX").
 
 Testing the Plugins
 -------------------
@@ -147,3 +153,4 @@ The detailed user manual can be found
 
 
 [SOX]: http://sox.sourceforge.net/
+[ReaJS VST plugin]: https://www.reaper.fm/reaplugs/

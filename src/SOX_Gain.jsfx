@@ -8,7 +8,10 @@ author: Dr. Thomas Tensi, 2019
 
 import Base.jsfx-inc
 import Base_memory.jsfx-inc
+import Base_integerset.jsfx-inc
 import Base_fixedarray.jsfx-inc
+import Base_string.jsfx-inc
+import Base_display.jsfx-inc
 import SOX__base.jsfx-inc
 
 //--------------------

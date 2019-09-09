@@ -17,15 +17,13 @@ REM ==========================
 ECHO === preparing test files ===
 SET soxCommandsSuffix=fade 0.1 -0 pad 1 1
 
-REM -- a stereo noise file with two bursts --
-SET fileListA=-v 0.2 noise-partA%soxFileType% -v 0.6 noise-partA%soxFileType%
-SET fileListA=%fileListA% %fileListA%
+REM -- a stereo file with noise on one channel and sine on the other
+REM -- (both with two bursts)
 SET soxCommands=synth %durationInSecondsBy4% pinknoise
-%sox% -n %soxFileSettings% noise-partA%soxFileType% %soxCommands%
-%sox% %fileListA% noiseA%soxFileType% %soxCommandsSuffix%
-SET soxCommands=synth %durationInSeconds% sine 135 tremolo 0.5
-%sox% -n %soxFileSettings% noiseB%soxFileType% %soxCommands%
-%sox% -M noiseA%soxFileType% noiseB%soxFileType% noise%soxFileType%
+CALL :makeBurstFile channelA false
+SET soxCommands=synth %durationInSecondsBy4% sine 135
+CALL :makeBurstFile channelB true
+%sox% -M channelA%soxFileType% channelB%soxFileType% noise%soxFileType%
 
 REM -- two sine files, one with a sweep --
 SET soxCommands=synth %durationInSeconds% sine 100-5000 gain -6 remix 1 1
@@ -39,63 +37,88 @@ REM === perform tests ===
 REM =====================
 
 SET soxCommands=allpass 1050 3q
-CALL :makeTest noise allpass
+CALL :performTest noise allpass
 
 SET soxCommands=band 1222 2.3q
-CALL :makeTest noise band
+CALL :performTest noise band
 
 SET soxCommands=bandpass -c 520 2o
-CALL :makeTest noise bandpass
+CALL :performTest noise bandpass
 
 SET soxCommands=bandreject 1531 1q
-CALL :makeTest noise bandreject
+CALL :performTest noise bandreject
 
 SET soxCommands=bass -1.23 536 2q
-CALL :makeTest sine-sweep bass
+CALL :performTest sine-sweep bass
 
 SET soxCommands=biquad 0.3 -0.5 0.3 2 -0.4 0.1
-CALL :makeTest noise biquad
+CALL :performTest noise biquad
 
 SET soxCommands=compand 0.02,0.15 -4:-60,0,-20 +4.5
-CALL :makeTest noise compander
+CALL :performTest noise compander
 
 SET soxCommands=equalizer 520 2o -3
-CALL :makeTest sine-sweep equalizer
+CALL :performTest sine-sweep equalizer
 
 SET soxCommands=gain -7.5
-CALL :makeTest noise gain
+CALL :performTest noise gain
 
 SET soxCommands=highpass -1 2750
-CALL :makeTest sine-sweep highpass
+CALL :performTest sine-sweep highpass
 
 SET soxCommands=lowpass -2 250 2o
-CALL :makeTest noise lowpass
+CALL :performTest noise lowpass
 
 SET soxCommands=overdrive 3 40
-CALL :makeTest noise overdrive
+CALL :performTest noise overdrive
 
 SET soxCommands=mcompand "0.02,0.15 4:-60,0,-20 +4.5" 1000
 SET soxCommands=%soxCommands% "0.15,0.4 -20,0,-10 -2"
-CALL :makeTest noise mcompander
+CALL :performTest noise mcompander
 
 SET soxCommands=phaser 0.6 0.66 3 0.6 0.5 -t
-CALL :makeTest noise phaser
-CALL :makeTest sine-sweep phaser
+CALL :performTest noise phaser
+CALL :performTest sine-sweep phaser
 
 SET soxCommands=reverb 60 22 87.5 34.88 20 -3
-CALL :makeTest noise reverb
+CALL :performTest noise reverb
 
 SET soxCommands=treble +2.75 5200 2o
-CALL :makeTest noise treble
+CALL :performTest noise treble
 
 SET soxCommands=tremolo 0.395 94.67
-CALL :makeTest sine-500Hz tremolo
+CALL :performTest sine-sweep tremolo
 
 GOTO :EOF
 
 REM ============================================================
 
-:makeTest
+:makeBurstFile
+    REM Makes file from <targetFileStem> with two bursts on
+    REM <soxCommands> for <durationInSeconds>
+
+    SET targetFileStem=%1
+    SET isChannelB=%2
+
+    %sox% -n %soxFileSettings% part%soxFileType% %soxCommands%
+
+    IF "%isChannelB%"=="true" GOTO ELSE1
+        SET fileList=-v 0.2 part%soxFileType% -v 0.6 part%soxFileType%
+	GOTO ENDIF1
+    :ELSE1
+        SET fileList=-v 0.6 part%soxFileType% -v 0.2 part%soxFileType%
+    :ENDIF1
+
+    SET fileList=%fileList% %fileList%
+    %sox% %fileList% %targetFileStem%%soxFileType% %soxCommandsSuffix%
+GOTO :EOF
+
+REM --------------------
+
+:performTest
+    REM Performs test on source file given by <sourceStem>
+    REM for effect kind <category> with <soxCommands>
+
     SET sourceStem=%1
     SET category=%2
 

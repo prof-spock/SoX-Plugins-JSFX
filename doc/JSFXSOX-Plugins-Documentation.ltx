@@ -152,7 +152,10 @@
 
 The \JSFXSOX\ software package provides JSFX (Jesusonic) plugins for
 being used in the Reaper DAW~\cite{reference:reaper}; they implement
-some of the audio processing effects from SOX.
+some of the audio processing effects from SOX.  It is also possible to
+use them in any VST compatible DAW using the freely available ReaJS
+VST plugin~\cite{reference:reaplugs} that is able to interpret JSFX
+files.
 
 SOX (\cite{reference:soxDocumentation}) is a command line audio
 processing tool for Unix, Windows and Mac OS that transforms source
@@ -259,31 +262,37 @@ The installation in Windows is as follows:
    \item Load the \JSFXSOX\ files from the repository in
      \cite{reference:jsfxSoxRepository}.
   
-   \item Close the Reaper application (if open).
+   \item Close the Reaper application or your other DAW using ReaJS
+     (if open).
 
-   \item Make a subdirectory \embeddedCode{Dr\_TT} in the
+   \item Make a subdirectory \embeddedCode{Dr\_TT} in either the
      \embeddedCode{Effects} directory of the Reaper installation
-     (typically in
-      \embeddedCode{\bsl Program Files\bsl Reaper\bsl Effects}).
+     (typically in \embeddedCode{\bsl Program Files\bsl Reaper\bsl
+      Effects}) or ---~if your DAW uses some different directory for
+     JSFX files~--- in that directory.
 
    \item Copy over all \embeddedCode{*.jsfx} and
      \embeddedCode{*.jsfx-inc} files from the distribution into this
-     directory.  If helpful, also add the documentation from the docs
-     and root directory.
+     directory.  If helpful, also add the documentation from the root
+     directory.
 
    \item If helpful, also copy the test files from \embeddedCode{test}
      to the effects sub-directory \embeddedCode{Dr\_TT\bsl Test} (see
      section~\ref{section:regressionTest}).
 
-   \item Restart Reaper.  You should now be able to select the
-      plugins from the JS folder (they are all prefixed with
-      "SOX").
+   \item Restart Reaper (or your other DAW).  You should now be able
+     to select the plugins from the JSFX folder (they are all prefixed
+     with "SOX").
 
 \end{enumerate}
 
 %===============================================
 \section{Description of the Effects in \JSFXSOX}
 %===============================================
+
+%---------------------------
+\subsection{General Remarks}
+%---------------------------
 
 As mentioned in the introduction this package provides several audio
 tools written in JSFX for emulating SOX bit-exactly.
@@ -319,7 +328,7 @@ via keypresses in the effects window as follows:
 \end{itemize}
 
 \begin{centeredFigure}
-  \centeredExternalPicture{0.7}{memoryViewer.png}
+  \centeredExternalPicture{0.75}{memoryViewer.png}
   \caption{Memory View for \JSFXSOX\ Effects in Reaper}
   \label{figure:memoryViewer}
 \end{centeredFigure}
@@ -351,7 +360,7 @@ This effect is a two-pole all-pass filter with
 \embeddedCode{bandWidth} with unit \embeddedCode{bandwidthKind}.  The
 bandwidth kinds are a relative \textit{frequency}, a specification of
 \textit{octaves}, the filter \textit{quality} or the
-\textit{butterworth} quality \(q=\sqrt{2}/2\).
+\textit{butterworth} quality (with fixed quality \(q=\sqrt{2}/2\)).
 
 An all-pass filter changes the audio's frequency-to-phase relationship
 without changing its frequency-to-amplitude relationship.  The
@@ -545,19 +554,19 @@ increases in volume and decays refer to decreases. For most
 situations, the attack time (response to the music getting louder)
 should be shorter than the decay time because the human ear is more
 sensitive to sudden loud music than sudden soft music.  Typical values
-are 0.3,0.8 seconds.
+are 0.3s for attack and 0.8s for decay.
 
 The transfer function of the compander is given by parameters
 \embeddedCode{threshold}, \embeddedCode{ratio} and
 \embeddedCode{knee}.  The compander leaves the original level
 unchanged, when it is below threshold and compresses it by ratio
-beyond this threshold.  So e.g. for a threshold of 20dBFS and a ratio
-of 4:1 the transfer function is a graph shown in
+beyond this threshold.  So e.g. for a threshold of 20dBFS, a knee of
+0dB and a ratio of 4:1 the transfer function is a graph shown in
 figure~\ref{figure:transferFunction}.
 
 \begin{centeredFigure}
   \centeredExternalPicture{1.0}{transferFunction.png}
-  \caption{Example Transfer Function (Threshold 20dBFS, Ratio 4:1)}
+  \caption{Example Transfer Function (Threshold 20dBFS, Ratio~4:1)}
   \label{figure:transferFunction}
 \end{centeredFigure}
 
@@ -789,16 +798,15 @@ details refer to section~\ref{section:timelocking}.
                      {percentage for reverb density}
                      {---}
   \parameterTableLine{hfDamping}
-                     {amount of damping of high frequencies for each
-                      reflection relative to low frequencies
-                      (between 0 and 1)}
+                     {percentage amount of damping of high frequencies
+                      for each reflection relative to low frequencies}
                      {---}
   \parameterTableLine{roomScale}
                      {percentage for size of the room
                       (more precisely the reflectivity of the room)}
                      {---}
   \parameterTableLine{stereoDepth}
-                     {amount of stereo effect (between 0 and 1)}
+                     {percentage amount of stereo effect}
                      {---}
   \parameterTableLine{predelay}
                      {time offset until first reverb occurs}
@@ -824,7 +832,7 @@ Details on this algorithm can be found in \cite{reference:freeverb}.
                      {the modulation frequency of the tremolo}
                      {Hz}
   \parameterTableLine{depth}
-                     {the intensity of modulation (between 0 and 1)}
+                     {percentage value for the intensity of modulation}
                      {---}
   \parameterTableLine{timeOffset}
                      {the point in project time where modulation is at
@@ -916,10 +924,12 @@ When subtracting the rendered audio in Reaper and the externally
 rendered audio from sox, they (almost) cancel out.  This can be
 checked by a spectrum analyser in the master channel, which is shown
 in figure~\ref{figure:regressionTestNoiseFloor}.  It shows a noise
-floor of typically less than -140dB.
+floor of typically less than -140dB.  This comes from the 24~bit
+sample depth used in the FLAC files of the test suite; increasing that
+sample depth would even lead to less residual noise.
 
 \begin{centeredFigure}
-  \centeredExternalPicture{0.4}{noiseFloor.png}
+  \centeredExternalPicture{0.5}{noiseFloor.png}
   \caption{Example Noise Floor for Regression Test in Reaper}
   \label{figure:regressionTestNoiseFloor}
 \end{centeredFigure}
@@ -927,7 +937,7 @@ floor of typically less than -140dB.
 %===========================
 \clearpage
 \addcontentsline{toc}{section}{References}
-\begin{thebibliography}{DBIQFILT}
+\begin{thebibliography}{REAPLUGSXX}
 %===========================
 
   \bibitem[DBIQFILT]{reference:digitalBiquadFilter}
@@ -951,6 +961,11 @@ floor of typically less than -140dB.
     \textit{Reaper Digital Audio Workstation.}\\
     \hyperlink{https://www.reaper.fm/}
 
+  \bibitem[REAPLUGS]{reference:reaplugs}
+    Cockos Incorporated.\\
+    \textit{ReaPlugs VST FX Suite.}\\
+    \hyperlink{https://www.reaper.fm/reaplugs/}
+    
   \bibitem[RBJFILT]{reference:filter-cookbook}
     R. Bristow-Johnson.\\
     \textit{Cookbook formulae for audio EQ biquad filter coefficients.}\\

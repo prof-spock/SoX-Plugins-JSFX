@@ -1,4 +1,4 @@
-<REAPER_PROJECT 0.1 "5.982/x64" 1567542046
+<REAPER_PROJECT 0.1 "5.983/x64" 1567949038
   <NOTES 0
     |midiFilePath = generated
   >
@@ -17,8 +17,8 @@
   TIMEMODE 1 5 -1 30 0 0 -1
   PANMODE 3
   CURSOR 332
-  ZOOM 3.84343154724001 0 0
-  VZOOMEX 2
+  ZOOM 3.84343154724001 866 0
+  VZOOMEX 1
   USE_REC_CFG 0
   RECMODE 1
   SMPTESYNC 0 30 100 40 1000 300 0 0 1 0 0
@@ -60,8 +60,8 @@
   GLOBAL_AUTO -1
   TEMPO 120 4 4
   PLAYRATE 1 0 0.25 4
-  SELECTION 0 0
-  SELECTION2 0 0
+  SELECTION 332 350
+  SELECTION2 332 350
   MASTERAUTOMODE 0
   MASTERTRACKHEIGHT 0 0
   MASTERPEAKCOL 16576
@@ -71,20 +71,17 @@
   MASTER_NCH 2 2
   MASTER_VOLUME 2.47350879051496 0 -1 -1 1
   MASTER_FX 1
-  MASTER_SEL 1
+  MASTER_SEL 0
   <MASTERFXLIST
-    WNDRECT 136 465 481 354
+    WNDRECT 124 150 532 354
     SHOW 0
     LASTSEL 0
     DOCKED 0
     BYPASS 0 0 0
     <JS analysis/gfxanalyzer ""
-      10.970000 -200.800000 0.000000 0.000000 0.000000 0.000000 1000.000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - "cancellation control"
+      8.600000 -200.000000 0.000000 0.000000 0.000000 0.000000 1000.000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - "cancellation control"
     >
     JS_DIMS 361 268
-    <JS_PINMAP
-      6AMAABwAAADoAwAAAgAAAAIAAAABAAAAAAAAAAIAAAAAAAAADAAAAOgDAAACAAAAAAAAAA==
-    >
     PRESETNAME "cancellation control"
     FLOATPOS 1158 560 377 307
     FXID {015FB90E-B38D-47AB-829B-BA23135FBC34}
@@ -156,7 +153,7 @@
     SEL 0
     REC 0 0 0 0 0 0 0
     VU 2
-    TRACKHEIGHT 24 0 0
+    TRACKHEIGHT 0 0 0
     INQ 0 0 0 0.5 100 0 0 100
     NCHAN 2
     FX 1
@@ -548,13 +545,13 @@
     MUTESOLO 0 0 0
     IPHASE 0
     ISBUS 1 1
-    BUSCOMP 2 0
+    BUSCOMP 0 0
     SHOWINMIX 1 0.6667 0.5 1 0.5 0 0 0
     FREEMODE 0
     SEL 0
     REC 0 0 0 0 0 0 0
     VU 2
-    TRACKHEIGHT 24 0 0
+    TRACKHEIGHT 0 0 0
     INQ 0 0 0 0.5 100 0 0 100
     NCHAN 2
     FX 1
@@ -584,7 +581,7 @@
     SEL 0
     REC 0 0 0 0 0 0 0
     VU 2
-    TRACKHEIGHT 0 1 0
+    TRACKHEIGHT 0 0 0
     INQ 0 0 0 0.5 100 0 0 100
     NCHAN 2
     FX 1
@@ -647,7 +644,7 @@
     SEL 0
     REC 0 0 0 0 0 0 0
     VU 2
-    TRACKHEIGHT 0 1 0
+    TRACKHEIGHT 0 0 0
     INQ 0 0 0 0.5 100 0 0 100
     NCHAN 2
     FX 1
@@ -709,7 +706,7 @@
     SEL 0
     REC 0 0 0 0 0 0 0
     VU 2
-    TRACKHEIGHT 0 1 0
+    TRACKHEIGHT 0 0 0
     INQ 0 0 0 0.5 100 0 0 100
     NCHAN 2
     FX 1
@@ -770,7 +767,7 @@
     SEL 0
     REC 0 0 0 0 0 0 0
     VU 2
-    TRACKHEIGHT 0 1 0
+    TRACKHEIGHT 0 0 0
     INQ 0 0 0 0.5 100 0 0 100
     NCHAN 2
     FX 1
@@ -832,7 +829,7 @@
     SEL 0
     REC 0 0 0 0 0 0 0
     VU 2
-    TRACKHEIGHT 0 1 0
+    TRACKHEIGHT 0 0 0
     INQ 0 0 0 0.5 100 0 0 100
     NCHAN 2
     FX 1
@@ -892,7 +889,7 @@
     SEL 0
     REC 0 0 0 0 0 0 0
     VU 2
-    TRACKHEIGHT 0 1 0
+    TRACKHEIGHT 0 0 0
     INQ 0 0 0 0.5 100 0 0 100
     NCHAN 2
     FX 1
@@ -954,7 +951,7 @@
     SEL 0
     REC 0 0 0 0 0 0 0
     VU 2
-    TRACKHEIGHT 0 1 0
+    TRACKHEIGHT 0 0 0
     INQ 0 0 0 0.5 100 0 0 100
     NCHAN 2
     FX 1
@@ -1016,7 +1013,7 @@
     SEL 0
     REC 0 0 0 0 0 0 0
     VU 2
-    TRACKHEIGHT 0 1 0
+    TRACKHEIGHT 0 0 0
     INQ 0 0 0 0.5 100 0 0 100
     NCHAN 2
     FX 1
@@ -1077,7 +1074,7 @@
     SEL 0
     REC 0 0 0 0 0 0 0
     VU 2
-    TRACKHEIGHT 0 1 0
+    TRACKHEIGHT 0 0 0
     INQ 0 0 0 0.5 100 0 0 100
     NCHAN 2
     FX 1
@@ -1086,7 +1083,7 @@
     MIDIOUT -1
     MAINSEND 1 0
     <FXCHAIN
-      WNDRECT 850 196 682 166
+      WNDRECT 211 17 609 390
       SHOW 0
       LASTSEL 0
       DOCKED 0
@@ -1094,6 +1091,7 @@
       <JS Dr_TT/SOX_Gain.jsfx ""
         -7.500000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - TEST
       >
+      JS_DIMS 489 304
       PRESETNAME TEST
       FLOATPOS 0 0 0 0
       FXID {A522B371-5758-40B4-AE29-3BACEE688F9C}
@@ -1138,7 +1136,7 @@
     SEL 0
     REC 0 0 0 0 0 0 0
     VU 2
-    TRACKHEIGHT 0 1 0
+    TRACKHEIGHT 0 0 0
     INQ 0 0 0 0.5 100 0 0 100
     NCHAN 2
     FX 1
@@ -1199,7 +1197,7 @@
     SEL 0
     REC 0 0 0 0 0 0 0
     VU 2
-    TRACKHEIGHT 0 1 0
+    TRACKHEIGHT 0 0 0
     INQ 0 0 0 0.5 100 0 0 100
     NCHAN 2
     FX 1
@@ -1261,7 +1259,7 @@
     SEL 0
     REC 0 0 0 0 0 0 0
     VU 2
-    TRACKHEIGHT 0 1 0
+    TRACKHEIGHT 0 0 0
     INQ 0 0 0 0.5 100 0 0 100
     NCHAN 2
     FX 1
@@ -1323,7 +1321,7 @@
     SEL 0
     REC 0 0 0 0 0 0 0
     VU 2
-    TRACKHEIGHT 0 1 0
+    TRACKHEIGHT 0 0 0
     INQ 0 0 0 0.5 100 0 0 100
     NCHAN 2
     FX 1
@@ -1385,7 +1383,7 @@
     SEL 0
     REC 0 0 0 0 0 0 0
     VU 2
-    TRACKHEIGHT 0 1 0
+    TRACKHEIGHT 0 0 0
     INQ 0 0 0 0.5 100 0 0 100
     NCHAN 2
     FX 1
@@ -1447,7 +1445,7 @@
     SEL 0
     REC 0 0 0 0 0 0 0
     VU 2
-    TRACKHEIGHT 0 1 0
+    TRACKHEIGHT 0 0 0
     INQ 0 0 0 0.5 100 0 0 100
     NCHAN 2
     FX 1
@@ -1509,7 +1507,7 @@
     SEL 0
     REC 0 0 0 0 0 0 0
     VU 2
-    TRACKHEIGHT 0 1 0
+    TRACKHEIGHT 0 0 0
     INQ 0 0 0 0.5 100 0 0 100
     NCHAN 2
     FX 1
@@ -1518,7 +1516,7 @@
     MIDIOUT -1
     MAINSEND 1 0
     <FXCHAIN
-      WNDRECT 644 150 686 516
+      WNDRECT 850 0 686 516
       SHOW 0
       LASTSEL 0
       DOCKED 0
@@ -1571,7 +1569,7 @@
     SEL 0
     REC 0 0 0 0 0 0 0
     VU 2
-    TRACKHEIGHT 0 1 0
+    TRACKHEIGHT 0 0 0
     INQ 0 0 0 0.5 100 0 0 100
     NCHAN 2
     FX 1
@@ -1580,7 +1578,7 @@
     MIDIOUT -1
     MAINSEND 1 0
     <FXCHAIN
-      WNDRECT 549 80 685 586
+      WNDRECT 505 80 736 586
       SHOW 0
       LASTSEL 0
       DOCKED 0
@@ -1606,14 +1604,14 @@
       SEL 0
       IGUID {A71004DA-DAE2-44E2-87B3-27B9DA16335A}
       IID 763
-      NAME sine-500Hz.flac
+      NAME sine-sweep.flac
       VOLPAN 1 0 1 -1
       SOFFS 0
       PLAYRATE 1 1 0 -1 0 0.0025
       CHANMODE 0
       GUID {C2FDEAA5-5B65-445D-8081-8DC78E6FD393}
       <SOURCE FLAC
-        FILE "sine-500Hz.flac"
+        FILE "sine-sweep.flac"
       >
     >
   >
@@ -1629,10 +1627,10 @@
     BUSCOMP 0 0
     SHOWINMIX 1 0.6667 0.5 1 0.5 0 0 0
     FREEMODE 0
-    SEL 0
+    SEL 1
     REC 0 0 0 0 0 0 0
     VU 2
-    TRACKHEIGHT 24 0 0
+    TRACKHEIGHT 0 0 0
     INQ 0 0 0 0.5 100 0 0 100
     NCHAN 2
     FX 1
@@ -1641,7 +1639,7 @@
     MIDIOUT -1
     MAINSEND 1 0
     <FXCHAIN
-      WNDRECT -196 342 655 408
+      WNDRECT 506 298 651 220
       SHOW 0
       LASTSEL 0
       DOCKED 0
@@ -2013,17 +2011,17 @@
       FADEIN 1 0.01 0 1 0 0
       FADEOUT 1 0.01 0 1 0 0
       MUTE 0
-      SEL 0
+      SEL 1
       IGUID {F19FB00C-7CC3-41D3-93C0-C82619E1EC64}
       IID 764
-      NAME sine-500Hz-tremolotest.flac
+      NAME sine-sweep-tremolotest.flac
       VOLPAN 1 0 1 -1
       SOFFS 0
       PLAYRATE 1 1 0 -1 0 0.0025
       CHANMODE 0
       GUID {8E2CAA2E-32BA-4609-84F8-9C08738F7F5E}
       <SOURCE FLAC
-        FILE "sine-500Hz-tremolotest.flac"
+        FILE "sine-sweep-tremolotest.flac"
       >
     >
   >
