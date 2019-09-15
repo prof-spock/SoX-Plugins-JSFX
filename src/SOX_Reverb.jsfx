@@ -66,7 +66,7 @@ slider7:wetDbGain=0<-10,10,0.01>Wet Gain [dB]
 //--------------------
 
 @sample
-    SOX_setInputSampleList(spl0, spl1);
+    SOX_readInputSampleList();
     SOXReverb_apply(reverb, SOX_inputSampleList, SOX_outputSampleList);
     SOX_writeOutputSampleList();
 

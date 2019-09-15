@@ -13,23 +13,23 @@ author: Dr. Thomas Tensi, 2019
 
     //--------------------
 
-    function FixedArray_positionIsOkay (array, position)
-        /** Checks whether <position> is in range of <array> */
+    function FixedArray_positionIsOkay (self, position)
+        /** Checks whether <position> is in range of <self> */
     (
-        0 < position && position <= array[0]
+        0 < position && position <= self[0]
     );
 
     //--------------------
 
-    function FixedArray_addressCHECKED (array, position)
-        /** Gets address of element in <array> at <position> (with
+    function FixedArray_addressCHECKED (self, position)
+        /** Gets address of element in <self> at <position> (with
             bounds checking) */
         local (result)
     (
-        FixedArray_positionIsOkay(array, position) ? (
-            result = ADDR(array, position);
+        FixedArray_positionIsOkay(self, position) ? (
+            result = ADDR(self, position);
         ) : (
-            result = 1E9;
+            result = maximumInteger;
             signalError(FixedArray_firstErrorCode + 1);
         );
 
@@ -38,21 +38,22 @@ author: Dr. Thomas Tensi, 2019
 
     //--------------------
 
-    function FixedArray_addressFAST (array, position)
-        /** Gets address of element in <array> at <position> (without
+    function FixedArray_addressFAST (self, position)
+        /** Gets address of element in <self> at <position> (without
             bounds checking) */
     (
-        array + position
+        self + position
     );
 
     //--------------------
 
-    function FixedArray_getAtCHECKED (array, position)
-        /** Gets element in <array> at <position> (with bounds checking) */
+    function FixedArray_getAtCHECKED (self, position)
+        /** Gets element in <self> at <position> (with bounds
+            checking) */
         local (result)
     (
-        FixedArray_positionIsOkay(array, position) ? (
-            result = array[position];
+        FixedArray_positionIsOkay(self, position) ? (
+            result = self[position];
         ) : (
             result = 0;
             signalError(FixedArray_firstErrorCode + 2);
@@ -63,21 +64,21 @@ author: Dr. Thomas Tensi, 2019
 
     //--------------------
 
-    function FixedArray_getAtFAST (array, position)
-        /** Gets element in <array> at <position> (without bounds
+    function FixedArray_getAtFAST (self, position)
+        /** Gets element in <self> at <position> (without bounds
             checking) */
     (
-        array[position]
+        self[position]
     );
 
     //--------------------
 
-    function FixedArray_setAtCHECKED (array, position, value)
-        /** Sets element in <array> at <position> to <value> (with
+    function FixedArray_setAtCHECKED (self, position, value)
+        /** Sets element in <self> at <position> to <value> (with
             bounds checking) */
     (
-        FixedArray_positionIsOkay(array, position) ? (
-            array[position] = value;
+        FixedArray_positionIsOkay(self, position) ? (
+            self[position] = value;
         ) : (
             signalError(FixedArray_firstErrorCode + 3);
         );
@@ -85,11 +86,11 @@ author: Dr. Thomas Tensi, 2019
 
     //--------------------
 
-    function FixedArray_setAtFAST (array, position, value)
-        /** Sets element in <array> at <position> to <value> (without
+    function FixedArray_setAtFAST (self, position, value)
+        /** Sets element in <self> at <position> to <value> (without
             bounds checking) */
     (
-        array[position] = value;
+        self[position] = value;
     );
 
     //--------------------
@@ -97,7 +98,7 @@ author: Dr. Thomas Tensi, 2019
     //--------------------
 
     function FixedArray_make (length)
-        /** Makes a fixed array with <length> elements */
+        /** Makes a fixed self with <length> elements */
         local (self)
     (
         // first entry contains the length, rest are the elements
@@ -108,14 +109,14 @@ author: Dr. Thomas Tensi, 2019
 
     //--------------------
 
-    function FixedArray_address (array, position)
-        /** Gets address of element in <array> at <position> */
+    function FixedArray_address (self, position)
+        /** Gets address of element in <self> at <position> */
         local (result)
     (
         isCheckedMode ? (
-            result = FixedArray_addressCHECKED(array, position);
+            result = FixedArray_addressCHECKED(self, position);
         ) : (
-            result = FixedArray_addressFAST(array, position);
+            result = FixedArray_addressFAST(self, position);
         );
 
         result
@@ -123,22 +124,30 @@ author: Dr. Thomas Tensi, 2019
 
     //--------------------
 
-    function FixedArray_clear (array)
-        /** Clears <array> to zero entries */
+    function FixedArray_fill (self, value)
+        /** Fills <self> with entries of <value> */
     (
-        Memory_set(array + 1, array[0], 0);
+        Memory_set(self + 1, self[0], value);
     );
 
     //--------------------
 
-    function FixedArray_getAt (array, position)
-        /** Gets element in <array> at <position> */
+    function FixedArray_clear (self)
+        /** Clears <self> to zero entries */
+    (
+        FixedArray_fill(self, 0);
+    );
+
+    //--------------------
+
+    function FixedArray_getAt (self, position)
+        /** Gets element in <self> at <position> */
         local (result)
     (
         isCheckedMode ? (
-            result = FixedArray_getAtCHECKED(array, position);
+            result = FixedArray_getAtCHECKED(self, position);
         ) : (
-            result = FixedArray_getAtFAST(array, position);
+            result = FixedArray_getAtFAST(self, position);
         );
 
         result
@@ -146,21 +155,21 @@ author: Dr. Thomas Tensi, 2019
 
     //--------------------
 
-    function FixedArray_length (array)
-        /** Gets length of <array> */
+    function FixedArray_length (self)
+        /** Gets length of <self> */
     (
-        array[0]
+        self[0]
     );
 
     //--------------------
 
-    function FixedArray_setAt (array, position, value)
-        /** Sets element in <array> at <position> to <value> */
+    function FixedArray_setAt (self, position, value)
+        /** Sets element in <self> at <position> to <value> */
     (
         isCheckedMode ? (
-            FixedArray_setAtCHECKED(array, position, value);
+            FixedArray_setAtCHECKED(self, position, value);
         ) : (
-            FixedArray_setAtFAST(array, position, value);
+            FixedArray_setAtFAST(self, position, value);
         );
     );
 

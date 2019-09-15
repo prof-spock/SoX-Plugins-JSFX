@@ -53,15 +53,10 @@ slider6:dBGain=5<-20,20,1>OutGain [dB]
 
 @slider
     Debug_clear();
-    FixedArray_setAt(compander, SOXCompander_volume, 1);
-    time = SOXCompander_adaptEnvelopeTime(attack, srate);
-    FixedArray_setAt(compander, SOXCompander_attackTime, time);
-    time = SOXCompander_adaptEnvelopeTime(release, srate);
-    FixedArray_setAt(compander, SOXCompander_releaseTime, time);
-    transferFunction =
-        FixedArray_getAt(compander, SOXCompander_transferFunction);
-    SOXTransferFunction_adapt(transferFunction,
-                              dBKnee, dBThreshold, ratio, dBGain);
+    SOXCompander_init(compander,
+                      attack, release, dBKnee, dBThreshold, ratio, dBGain,
+                      maximumInteger);
+    transferFunction = FixedArray_getAt(compander, SOXCompander_transferFunction);
     SOXTransferFunction_print(transferFunction);
 
 //--------------------
@@ -69,9 +64,9 @@ slider6:dBGain=5<-20,20,1>OutGain [dB]
 //--------------------
 
 @sample
-    SOX_setInputSampleList(spl0, spl1);
+    SOX_readInputSampleList();
     SOXCompander_apply(compander,
-                       SOX_inputSampleList, SOX_outputSampleList);
+                       SOX_inputSampleList, SOX_outputSampleList, false);
     SOX_writeOutputSampleList();
 
 //--------------------

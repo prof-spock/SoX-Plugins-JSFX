@@ -1,4 +1,4 @@
-<REAPER_PROJECT 0.1 "5.983/x64" 1567949038
+<REAPER_PROJECT 0.1 "5.983/x64" 1568558649
   <NOTES 0
     |midiFilePath = generated
   >
@@ -16,8 +16,8 @@
   GRID 3199 8 0.25 8 1 0 0 0
   TIMEMODE 1 5 -1 30 0 0 -1
   PANMODE 3
-  CURSOR 332
-  ZOOM 3.84343154724001 866 0
+  CURSOR 0
+  ZOOM 3.84343154724001 0 0
   VZOOMEX 1
   USE_REC_CFG 0
   RECMODE 1
@@ -60,8 +60,8 @@
   GLOBAL_AUTO -1
   TEMPO 120 4 4
   PLAYRATE 1 0 0.25 4
-  SELECTION 332 350
-  SELECTION2 332 350
+  SELECTION 0 0
+  SELECTION2 0 0
   MASTERAUTOMODE 0
   MASTERTRACKHEIGHT 0 0
   MASTERPEAKCOL 16576
@@ -73,7 +73,7 @@
   MASTER_FX 1
   MASTER_SEL 0
   <MASTERFXLIST
-    WNDRECT 124 150 532 354
+    WNDRECT 1018 549 499 267
     SHOW 0
     LASTSEL 0
     DOCKED 0
@@ -81,7 +81,7 @@
     <JS analysis/gfxanalyzer ""
       8.600000 -200.000000 0.000000 0.000000 0.000000 0.000000 1000.000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - "cancellation control"
     >
-    JS_DIMS 361 268
+    JS_DIMS 328 181
     PRESETNAME "cancellation control"
     FLOATPOS 1158 560 377 307
     FXID {015FB90E-B38D-47AB-829B-BA23135FBC34}
@@ -591,7 +591,7 @@
     MIDIOUT -1
     MAINSEND 1 0
     <FXCHAIN
-      WNDRECT 851 315 685 547
+      WNDRECT 172 75 736 543
       SHOW 0
       LASTSEL 0
       DOCKED 0
@@ -599,7 +599,7 @@
       <JS Dr_TT/SOX_Allpass-Filter.jsfx ""
         1050.000000 3.000000 2.000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - TEST
       >
-      JS_DIMS 565 461
+      JS_DIMS 565 457
       PRESETNAME TEST
       FLOATPOS 0 0 0 0
       FXID {F5A00626-0960-4F3A-98FE-7CD3EE1BD98A}
@@ -653,7 +653,7 @@
     MIDIOUT -1
     MAINSEND 1 0
     <FXCHAIN
-      WNDRECT 651 135 681 328
+      WNDRECT 118 211 732 328
       SHOW 0
       LASTSEL 0
       DOCKED 0
@@ -898,7 +898,7 @@
     MIDIOUT -1
     MAINSEND 1 0
     <FXCHAIN
-      WNDRECT 356 171 685 582
+      WNDRECT 431 -5 736 582
       SHOW 0
       LASTSEL 0
       DOCKED 0
@@ -960,7 +960,7 @@
     MIDIOUT -1
     MAINSEND 1 0
     <FXCHAIN
-      WNDRECT 849 219 684 537
+      WNDRECT 676 382 735 537
       SHOW 0
       LASTSEL 0
       DOCKED 0
@@ -1010,7 +1010,7 @@
     BUSCOMP 0 0
     SHOWINMIX 1 0.6667 0.5 1 0.5 0 0 0
     FREEMODE 0
-    SEL 0
+    SEL 1
     REC 0 0 0 0 0 0 0
     VU 2
     TRACKHEIGHT 0 0 0
@@ -1268,7 +1268,7 @@
     MIDIOUT -1
     MAINSEND 1 0
     <FXCHAIN
-      WNDRECT 848 211 684 641
+      WNDRECT 703 151 735 695
       SHOW 0
       LASTSEL 0
       DOCKED 0
@@ -1276,7 +1276,7 @@
       <JS Dr_TT/SOX_MCompand2.jsfx ""
         0.020000 0.150000 4.000000 -60.000000 1.500000 4.500000 1000.000000 0.150000 0.400000 0.000000 -20.000000 2.000000 -2.000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - TEST
       >
-      JS_DIMS 564 555
+      JS_DIMS 564 609
       PRESETNAME TEST
       FLOATPOS 0 0 0 0
       FXID {823D3677-3661-4CFB-A4B5-F57821671060}
@@ -1627,7 +1627,7 @@
     BUSCOMP 0 0
     SHOWINMIX 1 0.6667 0.5 1 0.5 0 0 0
     FREEMODE 0
-    SEL 1
+    SEL 0
     REC 0 0 0 0 0 0 0
     VU 2
     TRACKHEIGHT 0 0 0
@@ -2011,7 +2011,7 @@
       FADEIN 1 0.01 0 1 0 0
       FADEOUT 1 0.01 0 1 0 0
       MUTE 0
-      SEL 1
+      SEL 0
       IGUID {F19FB00C-7CC3-41D3-93C0-C82619E1EC64}
       IID 764
       NAME sine-sweep-tremolotest.flac

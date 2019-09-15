@@ -130,7 +130,7 @@ slider3:timeOffset=0<-100000,100000,0.0001>Time Offset
     );
 
     previousPlayPosition = play_position;
-    SOX_setInputSampleList(spl0, spl1);
+    SOX_readInputSampleList();
     SOXTremolo_apply(tremolo, SOX_inputSampleList, SOX_outputSampleList);
     SOX_writeOutputSampleList();
 

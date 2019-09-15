@@ -199,7 +199,7 @@ processing.
 \subsection{Available Effects}
 %-----------------------------
 
-The following effect are supported:
+The following effects are supported:
 
 \begin{ttDescription}
   \item[allpass:] a biquad allpass filter two-poled with filter
@@ -222,7 +222,8 @@ The following effect are supported:
 
   \item[compand:] a compander with attack, decay, input gain shift,
     threshold and compression and soft knee; this is a reduced version
-    of SOX compand with only a simple transfer function
+    of SOX compand with only a simple transfer function and a combined
+    attack/decay setting
 
   \item[equalizer:] a biquad filter for equalizing with settings for
     the pole count, the filter frequency and the filter bandwith (in
@@ -578,7 +579,9 @@ applied at all points on the transfer function and allows easy
 adjustment of the overall gain.
 
 \restriction{Only one overall pair of attack/decay parameters may be
-  specified (where SOX allows one pair per channel).}
+  specified (where SOX allows one pair per channel).This is in
+  principle supported by the effects engine of \JSFXSOX, but not
+  supported in the current user interface.}
 \restriction{The original SOX allows an arbitrary multi-segmented
   transfer function.  This is in principle supported by the effects
   engine of \JSFXSOX, but not supported in the current user
@@ -709,7 +712,9 @@ the compand effect in~\ref{section:effect-compand} for the definition
 of its parameters).
 
 \restriction{Only one overall pair of attack/decay parameters may be
-  specified per band (where SOX allows one pair per channel).}
+  specified per band (where SOX allows one pair per channel).This is
+  in principle supported by the effects engine of \JSFXSOX, but not
+  supported in the current user interface.}
 \restriction{The original SOX allows an arbitrary multi-segmented
   transfer function.  This is in principle supported by the effects
   engine of \JSFXSOX, but not supported in the current user
@@ -978,4 +983,3 @@ sample depth would even lead to less residual noise.
 
 \end{thebibliography}
 \end{document}
-

@@ -343,7 +343,7 @@ author: Dr. Thomas Tensi, 2019
             <topFrequency> defines the crossover frequency for this
             band */
         local (bandCount compander companderList crossoverFilter
-               isLastBand lrFilter time transferFunction)
+               isLastBand transferFunction)
     (
         companderList =
             FixedArray_getAt(mCompander, SOXMCompander_companderList);
@@ -351,20 +351,10 @@ author: Dr. Thomas Tensi, 2019
 
         1 <= bandIndex && bandIndex <= bandCount ? (
             compander = FixedArray_getAt(companderList, bandIndex);
-            time = SOXCompander_adaptEnvelopeTime(attack, srate);
-            FixedArray_setAt(compander, SOXCompander_attackTime, time);
-            time = SOXCompander_adaptEnvelopeTime(release, srate);
-            FixedArray_setAt(compander, SOXCompander_releaseTime, time);
-            FixedArray_setAt(compander, SOXCompander_volume, 1);
-            FixedArray_setAt(compander, SOXCompander_topFrequency,
-                             topFrequency);
-
+            SOXCompander_init(compander, attack, release,
+                              dBKnee, dBThreshold, ratio, dBGain, topFrequency);
             transferFunction =
                 FixedArray_getAt(compander, SOXCompander_transferFunction);
-            SOXTransferFunction_adapt(transferFunction,
-                                      dBKnee, dBThreshold,
-                                      ratio, dBGain);
-
             crossoverFilter = FixedArray_getAt(compander,
                                                SOXCompander_filter);
             isLastBand = (bandIndex == bandCount);
@@ -386,9 +376,7 @@ author: Dr. Thomas Tensi, 2019
     function SOXMCompanderBand_apply (self, inputSampleList, outputSampleList)
         /** Applies band compander <self> and updates
             <outputSampleList> */
-        local (amplificationFactor buffer channel currentVolume
-               inputSample offset outputQueueLow outputSample
-               transferFunction)
+        local (buffer channel inputSample outputQueueLow)
     (
         buffer = FixedArray_getAt(self, SOXCompander_buffer);
 	    channel = 1;
@@ -402,24 +390,7 @@ author: Dr. Thomas Tensi, 2019
 	        channel += 1;
 	    );
 
-        maximumSample =
-            SOXCompander_maximumAbsoluteSample(inputSampleList);
-        SOXCompander_integrateVolume(self, maximumSample);
-	    currentVolume = FixedArray_getAt(self, SOXCompander_volume);
-        transferFunction = FixedArray_getAt(self,
-                                            SOXCompander_transferFunction);
-	    amplificationFactor = SOXTransferFunction_apply(transferFunction,
-							                            currentVolume);
-
-	    channel = 1;
-
-	    while (channel <= SOX_channelCount) (
-            outputSample = FixedArray_getAt(inputSampleList, channel);
-            outputSample *= amplificationFactor;
-            outputSample += FixedArray_getAt(outputSampleList, channel);
-	        FixedArray_setAt(outputSampleList, channel, outputSample);
-	        channel += 1;
-	    );
+        SOXCompander_apply(self, inputSampleList, outputSampleList, true);
     );
 
     //--------------------
@@ -634,7 +605,7 @@ author: Dr. Thomas Tensi, 2019
 //--------------------
 
 @sample
-    SOX_setInputSampleList(spl0, spl1);
+    SOX_readInputSampleList();
     SOXMCompander_apply(mCompander, SOX_inputSampleList,
                         SOXMCompander_outputSampleList);
     SOX_writeSampleList(SOXMCompander_outputSampleList);

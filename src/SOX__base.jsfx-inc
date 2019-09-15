@@ -7,20 +7,40 @@ author: Dr. Thomas Tensi, 2019
 @init
     //========================================
 
-    SOX_channelCount = 2; //num_ch;
+    SOX_channelCount = 2;
+    // effective channel count for this effect
+
+    SOX_maximumChannelCount = 2;
+    // maximum number of supported channels
 
     //--------------------
 
     function SOX_dBToLinear (dBValue)
         /** returns linear factor for <dBValue> */
     (
-        10.0 ^ (dBValue * 0.05);
+        10.0 ^ (dBValue / 20);
     );
 
     //--------------------
 
-    SOX_inputSampleList  = FixedArray_make(SOX_channelCount);
-    SOX_outputSampleList = FixedArray_make(SOX_channelCount);
+    SOX_inputSampleList  = FixedArray_make(SOX_maximumChannelCount);
+    SOX_outputSampleList = FixedArray_make(SOX_maximumChannelCount);
+
+    //--------------------
+
+    function SOX_readInputSampleList ()
+        /** Reads input samples into inputSampleList */
+        local (channel channelCount sampleList)
+    (
+        channelCount = SOX_channelCount;
+        sampleList = SOX_inputSampleList;
+        channel = 1;
+
+        while (channel <= channelCount) (
+	        FixedArray_setAt(sampleList, channel, spl(channel - 1));
+            channel += 1;
+        );
+    );
 
     //--------------------
 
@@ -32,12 +52,12 @@ author: Dr. Thomas Tensi, 2019
 
     //--------------------
 
-    function SOX_writeSampleList (sampleList)
-        /** Writes all entries of <sampleList> to output channels */
-        local (channel channelCount)
+    function SOX_writeSampleList (sampleList, channelCount)
+        /** Writes first <channelCount> entries of <sampleList> to
+            output channels */
+        local (channel)
     (
 	    // write all channel samples
-        channelCount = FixedArray_length(sampleList);
         channel = 1;
 
         while (channel <= channelCount) (
@@ -48,11 +68,22 @@ author: Dr. Thomas Tensi, 2019
 
     //--------------------
 
+    function SOX_writeSampleList (sampleList)
+        /** Writes all entries of <sampleList> to output channels */
+    (
+        SOX_writeSampleList(sampleList, FixedArray_length(sampleList));
+    );
+
+    //--------------------
+
     function SOX_writeOutputSampleList ()
         /** Writes two channels of standard output sample list to
             output channels */
     (
-        SOX_writeSampleList(SOX_outputSampleList);
+        SOX_writeSampleList(SOX_outputSampleList, SOX_channelCount);
     );
 
     //========================================
+
+@slider
+    SOX_channelCount = num_ch;

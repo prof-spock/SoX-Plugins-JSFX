@@ -134,7 +134,7 @@ author: Dr. Thomas Tensi, 2019
 //--------------------
 
 @sample
-    SOX_setInputSampleList(spl0, spl1);
+    SOX_readInputSampleList();
     SOXBiquadFilter_apply(filter,
                           SOX_inputSampleList, SOX_outputSampleList);
     SOX_writeOutputSampleList();

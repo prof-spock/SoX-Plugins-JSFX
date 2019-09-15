@@ -48,7 +48,7 @@ slider6:a2=0<-1,1,1e-6>a2
 // SLIDER CHANGE
 //--------------------
 @slider
-    bound = 1e-6;
+    bound = 0.000001;
 
     abs(a0) < bound ? (
         a0 = bound;

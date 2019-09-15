@@ -135,7 +135,7 @@ slider2:colour=20<0,100,1>Colour
 // SAMPLE
 //--------------------
 @sample
-    SOX_setInputSampleList(spl0, spl1);
+    SOX_readInputSampleList();
     SOXOverdrive_apply(overdrive,
                        SOX_inputSampleList, SOX_outputSampleList);
     SOX_writeOutputSampleList();
