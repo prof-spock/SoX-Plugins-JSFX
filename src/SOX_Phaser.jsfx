@@ -21,13 +21,13 @@ import SOX__waveform.jsfx-inc
 //--------------------
 // SLIDERS
 //--------------------
-slider1:inGain=0.4<0,1,0.001>In Gain
-slider2:outGain=0.74<0,1000,0.001>Out Gain
+slider1:inGain=0.4<0,1,0.001>In Gain [dB]
+slider2:outGain=0.74<0,1000,0.001>Out Gain [dB]
 slider3:delayInMilliseconds=3.0<0,5,0.001>Delay [ms]
 slider4:decay=0.4<0,0.99,0.001>Decay
 slider5:frequency=0.5<0.1,2.0,0.001>Modulation [Hz]
 slider6:waveFormKind=1<0,1,1{Sine,Triangle}>Waveform
-slider7:timeOffset=0<-100000,100000,0.0001>Time Offset
+slider7:timeOffset=0<-100000,100000,0.0001>Time Offset [s]
 
 //--------------------
 // INITIALIZATION

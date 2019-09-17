@@ -23,7 +23,7 @@ import SOX__biquadfilter.jsfx-inc
 // SLIDERS
 //--------------------
 slider1:mode=0<0,1,1{Bass,Treble}>Mode
-slider2:dBFilterGain=0<-25,25,0.05>Filter Gain [dB]
+slider2:dBFilterGain=0<-25,25,0.05>Gain [dB]
 slider3:frequency=1000.0<10.0,20000.0,1>Frequency [Hz]
 slider4:bandwidth=1<0.001,20000,0.00001>Bandwidth
 slider5:bandwidthKind=0<0,4,1{Frequency,Octaves,Q,Butterworth,Slope}>Bandwidth Kind

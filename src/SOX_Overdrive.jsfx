@@ -22,7 +22,7 @@ import SOX__samplequeue.jsfx-inc
 // SLIDERS
 //--------------------
 slider1:dBGain=20<0,100,1>Gain [dB]
-slider2:colour=20<0,100,1>Colour
+slider2:colour=20<0,100,1>Colour [%]
 
 //--------------------
 // INITIALIZATION

@@ -27,7 +27,7 @@ slider2:release=0.15<0.001,1,0.001>Decay [s]
 slider3:dBKnee=6<0.01,20,0.01>Knee [dB]
 slider4:dBThreshold=-20<-128,0,0.1>Threshold [dBFS]
 slider5:ratio=2<0.001,1000,0.001>Ratio
-slider6:dBGain=5<-20,20,1>OutGain [dB]
+slider6:dBGain=5<-20,20,1>Gain [dB]
 //slider7:delay=0<0,2000,1>Delay [ms]
 
 //--------------------

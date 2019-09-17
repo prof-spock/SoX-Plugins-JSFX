@@ -66,6 +66,8 @@
 	         {\begin{figure}[h]\begin{center}}%
 	         {\end{center}\end{figure}}
 
+  \newcommand{\comment}[1]{\medskip \textbf{#1} \medskip}
+
   \newcommand{\degrees}[1]{\(#1^{\circ}\)}
                  
   \newcommand{\embeddedCode}[1]{\textsf{#1}}
@@ -126,7 +128,7 @@
   %-------------------
 
   \newcommand{\JSFXSOX}{JSFX-SOX}
-  \newcommand{\N}{\mathbb{N}_0}
+  \newcommand{\Z}{\mathbb{Z}}
 
   \setcounter{secnumdepth}{3}
   \setcounter{tocdepth}{3}
@@ -195,12 +197,12 @@ and unnecessary complexity due to its several contributors.
 Nevertheless the effects provided here faithfully model the SOX
 processing.
 
+\clearpage
 %-----------------------------
 \subsection{Available Effects}
 %-----------------------------
 
 The following effects are supported:
-
 \begin{ttDescription}
   \item[allpass:] a biquad allpass filter two-poled with filter
     frequency and the filter bandwith (in several units)
@@ -270,13 +272,13 @@ The installation in Windows is as follows:
    \item Make a subdirectory \embeddedCode{Dr\_TT} in either the
      \embeddedCode{Effects} directory of the Reaper installation
      (typically in \embeddedCode{\bsl Program Files\bsl Reaper\bsl
-      Effects}) or ---~if your DAW uses some different directory for
+       Effects}) or ---~if your DAW uses some different directory for
      JSFX files~--- in that directory.
 
    \item Copy over all \embeddedCode{*.jsfx} and
-     \embeddedCode{*.jsfx-inc} files from the distribution into this
-     directory.  If helpful, also add the documentation from the root
-     directory.
+     \embeddedCode{*.jsfx-inc} files from the distribution
+     \embeddedCode{src} directory into the target directory.  If
+     helpful, also add the documentation from the root directory.
 
    \item If helpful, also copy the test files from \embeddedCode{test}
      to the effects sub-directory \embeddedCode{Dr\_TT\bsl Test} (see
@@ -564,7 +566,9 @@ The transfer function of the compander is given by parameters
 unchanged, when it is below threshold and compresses it by ratio
 beyond this threshold.  So e.g. for a threshold of 20dBFS, a knee of
 0dB and a ratio of 4:1 the transfer function is a graph shown in
-figure~\ref{figure:transferFunction}.
+figure~\ref{figure:transferFunction}.  Note that for technical reasons
+SOX uses a linear lead-in segment with size 10dB below threshold
+value.
 
 \begin{centeredFigure}
   \centeredExternalPicture{1.0}{transferFunction.png}
@@ -604,6 +608,9 @@ adjustment of the overall gain.
   \parameterTableLine{bandwidthKind}
                      {the bandwidth unit of the filter}
                      {frequency / octaves / quality / butterworth}
+  \parameterTableLine{gain}
+                     {gain of filter at frequency}
+                     {dB}
 \end{parameterTable}
 
 This effect implements a two-pole peaking equalisation (EQ) filter.
@@ -614,7 +621,7 @@ band-reject filters) that at all other frequencies is unchanged.
 The parameter \embeddedCode{frequency} gives the filter's central
 frequency in Hz, parameters \embeddedCode{bandWidth} and
 \embeddedCode{bandwidthKind} the bandwidth and \embeddedCode{gain} the
-required gain or attenuation in decibels.  Beware of clipping when
+required amplification or attenuation in decibels.  Beware of clipping when
 using a positive gain.
 
 The filter is described in detail in \cite{reference:filter-cookbook}.
@@ -735,7 +742,8 @@ of its parameters).
                      {the overdrive gain before processing}
                      {dB}
   \parameterTableLine{colour}
-                     {the amount of even harmonic content in output}
+                     {percentage for the amount of even harmonic
+                      content in output}
                      {---}
 \end{parameterTable}
 
@@ -749,6 +757,8 @@ output.
 %----------------------
 
 \soxPanel{Phaser}
+\comment{dB units for gains and seconds unit for time offset}
+
 \begin{parameterTable}
   \parameterTableLine{inGain}
                      {the gain before processing}
@@ -890,8 +900,8 @@ modulation is exactly at \degrees{0} at position 155s within your
 song\footnote{This is a little lie, because the inital phaser
   modulation phase is \degrees{90}, but the argument is still valid.}.
 Then you just set \embeddedCode{timeOffset} to ``155''.  Because the
-period of the modulation is 4s it is also okay to use \(155\pm4\cdot
-k, k\in \N\) as offset (e.g. ``3''), but the above saves you from some
+period of the modulation is 4s it is also okay to use \(155+4k, k\in
+\Z\) as offset (e.g. ``3''), but the above saves you from some
 calculation for complicated modulation frequencies.
 
 By this method even time-variant effects can be synced with

@@ -21,8 +21,8 @@ import SOX__waveform.jsfx-inc
 // SLIDERS
 //--------------------
 slider1:frequency=0.5<0.1,2.0,0.001>Modulation [Hz]
-slider2:depth=40<0,100,1>Depth
-slider3:timeOffset=0<-100000,100000,0.0001>Time Offset
+slider2:depth=40<0,100,1>Depth [%]
+slider3:timeOffset=0<-100000,100000,0.0001>Time Offset [s]
 
 //--------------------
 // INITIALIZATION
