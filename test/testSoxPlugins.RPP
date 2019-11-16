@@ -596,7 +596,7 @@
       LASTSEL 0
       DOCKED 0
       BYPASS 0 0 0
-      <JS Dr_TT/SOX_Allpass-Filter.jsfx ""
+      <JS Dr_TT/JSFXSOX/SOX_Allpass-Filter.jsfx ""
         1050.000000 3.000000 2.000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - TEST
       >
       JS_DIMS 565 457
@@ -658,7 +658,7 @@
       LASTSEL 0
       DOCKED 0
       BYPASS 0 0 0
-      <JS Dr_TT/SOX_Band-Filter.jsfx ""
+      <JS Dr_TT/JSFXSOX/SOX_Band-Filter.jsfx ""
         0.000000 1222.000000 2.300000 2.000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - TEST
       >
       JS_DIMS 561 242
@@ -720,7 +720,7 @@
       LASTSEL 0
       DOCKED 0
       BYPASS 0 0 0
-      <JS Dr_TT/SOX_BPBRJ-Filter.jsfx ""
+      <JS Dr_TT/JSFXSOX/SOX_BPBRJ-Filter.jsfx ""
         1.000000 0.000000 1531.000000 1.000000 2.000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - TEST-BRJ
       >
       PRESETNAME TEST-BRJ
@@ -781,7 +781,7 @@
       LASTSEL 0
       DOCKED 0
       BYPASS 0 0 0
-      <JS Dr_TT/SOX_BPBRJ-Filter.jsfx ""
+      <JS Dr_TT/JSFXSOX/SOX_BPBRJ-Filter.jsfx ""
         0.000000 1.000000 520.000000 2.000000 1.000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - TEST-BP
       >
       JS_DIMS 565 266
@@ -843,7 +843,7 @@
       LASTSEL 0
       DOCKED 0
       BYPASS 0 0 0
-      <JS Dr_TT/SOX_BSTRB-Filter.jsfx ""
+      <JS Dr_TT/JSFXSOX/SOX_BSTRB-Filter.jsfx ""
         0.000000 -1.230000 536.000000 2.000000 2.000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - TEST-BS
       >
       PRESETNAME TEST-BS
@@ -903,7 +903,7 @@
       LASTSEL 0
       DOCKED 0
       BYPASS 0 0 0
-      <JS Dr_TT/SOX_Biquad.jsfx ""
+      <JS Dr_TT/JSFXSOX/SOX_Biquad.jsfx ""
         0.300000 -0.500000 0.300000 2.000000 -0.400000 0.100000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - TEST
       >
       JS_DIMS 565 496
@@ -965,7 +965,7 @@
       LASTSEL 0
       DOCKED 0
       BYPASS 0 0 0
-      <JS Dr_TT/SOX_Compand.jsfx ""
+      <JS Dr_TT/JSFXSOX/SOX_Compand.jsfx ""
         0.020000 0.150000 4.000000 -60.000000 1.500000 4.500000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - TEST
       >
       JS_DIMS 564 451
@@ -1027,7 +1027,7 @@
       LASTSEL 0
       DOCKED 0
       BYPASS 0 0 0
-      <JS Dr_TT/SOX_EQU-Filter.jsfx ""
+      <JS Dr_TT/JSFXSOX/SOX_EQU-Filter.jsfx ""
         520.000000 2.000000 1.000000 -3.000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - TEST
       >
       JS_DIMS 565 450
@@ -1088,7 +1088,7 @@
       LASTSEL 0
       DOCKED 0
       BYPASS 0 0 0
-      <JS Dr_TT/SOX_Gain.jsfx ""
+      <JS Dr_TT/JSFXSOX/SOX_Gain.jsfx ""
         -7.500000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - TEST
       >
       JS_DIMS 489 304
@@ -1150,7 +1150,7 @@
       LASTSEL 0
       DOCKED 0
       BYPASS 0 0 0
-      <JS Dr_TT/SOX_LPHP-Filter.jsfx ""
+      <JS Dr_TT/JSFXSOX/SOX_LPHP-Filter.jsfx ""
         0.000000 0.000000 2750.000000 1.000000 2.000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - TEST-HP
       >
       JS_DIMS 489 433
@@ -1211,7 +1211,7 @@
       LASTSEL 0
       DOCKED 0
       BYPASS 0 0 0
-      <JS Dr_TT/SOX_LPHP-Filter.jsfx ""
+      <JS Dr_TT/JSFXSOX/SOX_LPHP-Filter.jsfx ""
         1.000000 1.000000 250.000000 2.000000 1.000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - TEST-LP
       >
       JS_DIMS 564 266
@@ -1273,7 +1273,7 @@
       LASTSEL 0
       DOCKED 0
       BYPASS 0 0 0
-      <JS Dr_TT/SOX_MCompand2.jsfx ""
+      <JS Dr_TT/JSFXSOX/SOX_MCompand2.jsfx ""
         0.020000 0.150000 4.000000 -60.000000 1.500000 4.500000 1000.000000 0.150000 0.400000 0.000000 -20.000000 2.000000 -2.000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - TEST
       >
       JS_DIMS 564 609
@@ -1335,7 +1335,7 @@
       LASTSEL 0
       DOCKED 0
       BYPASS 0 0 0
-      <JS Dr_TT/SOX_Overdrive.jsfx ""
+      <JS Dr_TT/JSFXSOX/SOX_Overdrive.jsfx ""
         3.000000 40.000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - TEST
       >
       JS_DIMS 565 539
@@ -1397,7 +1397,7 @@
       LASTSEL 0
       DOCKED 0
       BYPASS 0 0 0
-      <JS Dr_TT/SOX_Phaser.jsfx ""
+      <JS Dr_TT/JSFXSOX/SOX_Phaser.jsfx ""
         0.600000 0.660000 3.000000 0.600000 0.500000 1.000000 0.000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - TEST
       >
       JS_DIMS 564 513
@@ -1459,7 +1459,7 @@
       LASTSEL 0
       DOCKED 0
       BYPASS 0 0 0
-      <JS Dr_TT/SOX_Reverb.jsfx ""
+      <JS Dr_TT/JSFXSOX/SOX_Reverb.jsfx ""
         0.000000 60.000000 22.000000 87.500000 34.880000 20.000000 -3.000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - TEST
       >
       JS_DIMS 792 493
@@ -1521,7 +1521,7 @@
       LASTSEL 0
       DOCKED 0
       BYPASS 0 0 0
-      <JS Dr_TT/SOX_BSTRB-Filter.jsfx ""
+      <JS Dr_TT/JSFXSOX/SOX_BSTRB-Filter.jsfx ""
         1.000000 2.750000 5200.000000 2.000000 1.000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - TEST-TRB
       >
       JS_DIMS 566 430
@@ -1583,7 +1583,7 @@
       LASTSEL 0
       DOCKED 0
       BYPASS 0 0 0
-      <JS Dr_TT/SOX_Tremolo.jsfx ""
+      <JS Dr_TT/JSFXSOX/SOX_Tremolo.jsfx ""
         0.395000 94.670000 324.000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - TEST
       >
       JS_DIMS 565 500

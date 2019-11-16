@@ -269,11 +269,11 @@ The installation in Windows is as follows:
    \item Close the Reaper application or your other DAW using ReaJS
      (if open).
 
-   \item Make a subdirectory \embeddedCode{Dr\_TT} in either the
-     \embeddedCode{Effects} directory of the Reaper installation
-     (typically in \embeddedCode{\bsl Program Files\bsl Reaper\bsl
-       Effects}) or ---~if your DAW uses some different directory for
-     JSFX files~--- in that directory.
+   \item Make a subdirectory \embeddedCode{Dr\_TT\bsl JSFXSOX} in
+     either the \embeddedCode{Effects} directory of the Reaper
+     installation (typically in \embeddedCode{\bsl Program Files\bsl
+       Reaper\bsl Effects}) or ---~if your DAW uses some different
+     directory for JSFX files~--- in that directory.
 
    \item Copy over all \embeddedCode{*.jsfx} and
      \embeddedCode{*.jsfx-inc} files from the distribution
@@ -281,14 +281,18 @@ The installation in Windows is as follows:
      helpful, also add the documentation from the root directory.
 
    \item If helpful, also copy the test files from \embeddedCode{test}
-     to the effects sub-directory \embeddedCode{Dr\_TT\bsl Test} (see
-     section~\ref{section:regressionTest}).
+     to the effects sub-directory \embeddedCode{Dr\_TT\bsl JSFXSOX\bsl
+     Test} (see section~\ref{section:regressionTest}).
 
    \item Restart Reaper (or your other DAW).  You should now be able
      to select the plugins from the JSFX folder (they are all prefixed
      with "SOX").
 
 \end{enumerate}
+
+Alternatively you can use the ReaPack plugin \cite{reference:reapack}
+and do an automatic install via the \embeddedCode{index.xml} file in
+the repository \cite{reference:jsfxSoxRepository}.
 
 %===============================================
 \section{Description of the Effects in \JSFXSOX}
@@ -317,6 +321,12 @@ For the same reasons none of the effects of \JSFXSOX\ displays
 anything; they just process audio parametrized by their slider
 settings.
 
+\begin{centeredFigure}
+  \centeredExternalPicture{0.75}{memoryViewer.png}
+  \caption{Memory View for \JSFXSOX\ Effects in Reaper}
+  \label{figure:memoryViewer}
+\end{centeredFigure}
+
 Nevertheless for debugging purposes, some textual display is supported
 via keypresses in the effects window as follows:
 
@@ -330,12 +340,6 @@ via keypresses in the effects window as follows:
   \item The display of the effect (if any) is shown via ``e''(ffect)
     which is the default (and ---~as mentioned before~--- empty).
 \end{itemize}
-
-\begin{centeredFigure}
-  \centeredExternalPicture{0.75}{memoryViewer.png}
-  \caption{Memory View for \JSFXSOX\ Effects in Reaper}
-  \label{figure:memoryViewer}
-\end{centeredFigure}
 
 All effects of \JSFXSOX\ are discussed in alphabetical order in the
 following chapter.  Note that the effects description is mostly taken
@@ -972,15 +976,20 @@ sample depth would even lead to less residual noise.
     \textit{SOX Plugins for Reaper DAW in JSFX Language.}\\
     \hyperlink{https://github.com/prof-spock/JSFX-SOX-Plugins}
 
+  \bibitem[REAPACK]{reference:reapack}
+    Christian Fillion.\\
+    \textit{ReaPack: Package manager for REAPER.}\\
+    \hyperlink{https://reapack.com}
+    
   \bibitem[REAPER]{reference:reaper}
     Cockos Incorporated.\\
     \textit{Reaper Digital Audio Workstation.}\\
-    \hyperlink{https://www.reaper.fm/}
+    \hyperlink{https://www.reaper.fm}
 
   \bibitem[REAPLUGS]{reference:reaplugs}
     Cockos Incorporated.\\
     \textit{ReaPlugs VST FX Suite.}\\
-    \hyperlink{https://www.reaper.fm/reaplugs/}
+    \hyperlink{https://www.reaper.fm/reaplugs}
     
   \bibitem[RBJFILT]{reference:filter-cookbook}
     R. Bristow-Johnson.\\
