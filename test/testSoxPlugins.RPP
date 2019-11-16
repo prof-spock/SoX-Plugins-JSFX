@@ -1,4 +1,4 @@
-<REAPER_PROJECT 0.1 "5.983/x64" 1568558649
+<REAPER_PROJECT 0.1 "5.985/x64" 1573925333
   <NOTES 0
     |midiFilePath = generated
   >
@@ -16,7 +16,7 @@
   GRID 3199 8 0.25 8 1 0 0 0
   TIMEMODE 1 5 -1 30 0 0 -1
   PANMODE 3
-  CURSOR 0
+  CURSOR 12
   ZOOM 3.84343154724001 0 0
   VZOOMEX 1
   USE_REC_CFG 0
@@ -73,15 +73,15 @@
   MASTER_FX 1
   MASTER_SEL 0
   <MASTERFXLIST
-    WNDRECT 1018 549 499 267
-    SHOW 0
+    WNDRECT 855 207 499 424
+    SHOW 1
     LASTSEL 0
     DOCKED 0
     BYPASS 0 0 0
     <JS analysis/gfxanalyzer ""
       8.600000 -200.000000 0.000000 0.000000 0.000000 0.000000 1000.000000 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - "cancellation control"
     >
-    JS_DIMS 328 181
+    JS_DIMS 328 338
     PRESETNAME "cancellation control"
     FLOATPOS 1158 560 377 307
     FXID {015FB90E-B38D-47AB-829B-BA23135FBC34}
