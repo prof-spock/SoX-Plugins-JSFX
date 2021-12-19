@@ -15,7 +15,7 @@ author: Dr. Thomas Tensi, 2019
     SOXCompander_transferFunction      = 1;
     SOXCompander_channelsAreAggregated = 2;
     SOXCompander_attackTimeList        = 3;
-    SOXCompander_releaseTimeList       = 4;
+    SOXCompander_decayTimeList         = 4;
     SOXCompander_volumeList            = 5;
     SOXCompander_topFrequency          = 6;
     SOXCompander_filter                = 7;
@@ -32,13 +32,13 @@ author: Dr. Thomas Tensi, 2019
 
     //--------------------
 
-    function SOXCompander_init (self, attack, release,
+    function SOXCompander_init (self, attack, decay,
                                 dBKnee, dBThreshold, ratio, dBGain,
                                 topFrequency)
         /** Sets parameters of single line compander <self> to
-            <attack>, <release>, <dBKnee>, <dBThreshold>, <ratio>,
+            <attack>, <decay>, <dBKnee>, <dBThreshold>, <ratio>,
             <dBGain> and <topFrequency> */
-        local (attackTime attackTimeList channel releaseTime releaseTimeList
+        local (attackTime attackTimeList channel decayTime decayTimeList
                transferFunction volumeList)
     (
         transferFunction =
@@ -57,8 +57,8 @@ author: Dr. Thomas Tensi, 2019
         list = FixedArray_getAt(self, SOXCompander_attackTimeList);
         FixedArray_fill(list, time);
 
-        time = SOXCompander_adaptEnvelopeTime(release, srate);
-        list = FixedArray_getAt(self, SOXCompander_releaseTimeList);
+        time = SOXCompander_adaptEnvelopeTime(decay, srate);
+        list = FixedArray_getAt(self, SOXCompander_decayTimeList);
         FixedArray_fill(list, time);
     );
 
@@ -76,7 +76,7 @@ author: Dr. Thomas Tensi, 2019
         list = FixedArray_make(SOX_maximumChannelCount);
         FixedArray_setAt(self, SOXCompander_attackTimeList,  list);
         list = FixedArray_make(SOX_maximumChannelCount);
-        FixedArray_setAt(self, SOXCompander_releaseTimeList, list);
+        FixedArray_setAt(self, SOXCompander_decayTimeList, list);
         list = FixedArray_make(SOX_maximumChannelCount);
 
         FixedArray_setAt(self, SOXCompander_volumeList,     list);
@@ -91,7 +91,7 @@ author: Dr. Thomas Tensi, 2019
     //--------------------
 
     function SOXCompander_integrateVolume (self, channel, inputVolume)
-        /** Adapts current volume of <self> within attack-release
+        /** Adapts current volume of <self> within attack-decay
             curve from <inputVolume> by some integration */
         local (channelsAreAggregated delta increment timeList timeListKind
                volume)
@@ -104,7 +104,7 @@ author: Dr. Thomas Tensi, 2019
         delta = inputVolume - volume;
         timeListKind = (delta > 0
                         ? SOXCompander_attackTimeList
-                        : SOXCompander_releaseTimeList);
+                        : SOXCompander_decayTimeList);
         timeList = FixedArray_getAt(self, timeListKind);
         increment = FixedArray_getAt(timeList, channel);
         volume += (delta * increment);
@@ -128,7 +128,8 @@ author: Dr. Thomas Tensi, 2019
         channel = 1;
 
         while (channel <= SOX_channelCount) (
-            result = max(result, abs(FixedArray_getAt(sampleList, channel)));
+            result = max(result,
+                         abs(FixedArray_getAt(sampleList, channel)));
             channel += 1;
         );
 
@@ -137,14 +138,15 @@ author: Dr. Thomas Tensi, 2019
 
     //--------------------
 
-function SOXCompander_apply (self, inputSampleList, outputSampleList,
-                             outputValuesAreSummed)
+    function SOXCompander_apply (self, inputSampleList, outputSampleList,
+                                 outputValuesAreSummed)
         /** Applies compander <self> to all channels based on samples
             from <inputSampleList> and returns them in
             <outputSampleList>; if <outputValuesAreSummed> is set, the
             output samples are summed up into <outputSampleList> */
-        local(amplificationFactor channel channelsAreAggregated currentVolume
-              inputSample maximumSample outputSample transferFunction volumeList)
+        local(amplificationFactor channel channelsAreAggregated
+              currentVolume inputSample maximumSample outputSample
+              transferFunction volumeList)
     (
         channelsAreAggregated =
             FixedArray_getAt(self, SOXCompander_channelsAreAggregated);
@@ -152,7 +154,8 @@ function SOXCompander_apply (self, inputSampleList, outputSampleList,
         channelsAreAggregated ? (
             // use settings of channel 1 to represent all channels
             channel = 1;
-            maximumSample = SOXCompander_maximumAbsoluteSample(inputSampleList);
+            maximumSample =
+                SOXCompander_maximumAbsoluteSample(inputSampleList);
             SOXCompander_integrateVolume(self, channel, maximumSample);
         ) : (
             channel = 1;
@@ -164,15 +167,17 @@ function SOXCompander_apply (self, inputSampleList, outputSampleList,
             );
         );
 
-        volumeList       = FixedArray_getAt(self, SOXCompander_volumeList);
-        transferFunction = FixedArray_getAt(self, SOXCompander_transferFunction);
+        volumeList = FixedArray_getAt(self, SOXCompander_volumeList);
+        transferFunction =
+            FixedArray_getAt(self, SOXCompander_transferFunction);
         channel = 1;
 
         while (channel <= SOX_channelCount) (
             inputSample   = FixedArray_getAt(inputSampleList, channel);
             currentVolume = FixedArray_getAt(volumeList, channel);
-            amplificationFactor = SOXTransferFunction_apply(transferFunction,
-                                                            currentVolume);
+            amplificationFactor =
+                SOXTransferFunction_apply(transferFunction,
+                                          currentVolume);
             outputSample = inputSample * amplificationFactor;
 
             outputValuesAreSummed ? (

@@ -40,8 +40,8 @@ author: Dr. Thomas Tensi, 2019
     // EXPORTED FEATURES
     //--------------------
 
-    function SOXSampleQueue_clear (self)
-        /** Clears sample queue <self> */
+    function SOXSampleQueue_setToZero (self)
+        /** Sets contents of sample queue <self> to zero */
         local (length)
     (
         length = self[SOXSampleQueue_length];
@@ -58,7 +58,7 @@ author: Dr. Thomas Tensi, 2019
         self = Memory_allocate(length + SOXSampleQueue_startIndex);
         self[SOXSampleQueue_allocatedLength] = length;
         self[SOXSampleQueue_length]          = length;
-        SOXSampleQueue_clear(self);
+        SOXSampleQueue_setToZero(self);
         self
     );
 
@@ -74,7 +74,7 @@ author: Dr. Thomas Tensi, 2019
             self[SOXSampleQueue_length] = length;
         );
 
-        SOXSampleQueue_clear(self);
+        SOXSampleQueue_setToZero(self);
     );
 
     //--------------------
@@ -204,8 +204,8 @@ author: Dr. Thomas Tensi, 2019
 
     //--------------------
 
-    function SOXSampleQueueList_clear (self)
-        /** Clears list of sample queues <self> */
+    function SOXSampleQueueList_setToZero (self)
+        /** Sets all sample queues in <self> to all zeros */
         local (i length sampleQueue)
     (
         length = FixedArray_length(self);
@@ -213,7 +213,7 @@ author: Dr. Thomas Tensi, 2019
 
         while (i <= length) (
             sampleQueue = FixedArray_getAt(self, i);
-            SOXSampleQueue_clear(sampleQueue);
+            SOXSampleQueue_setToZero(sampleQueue);
             i += 1;
         );
     );

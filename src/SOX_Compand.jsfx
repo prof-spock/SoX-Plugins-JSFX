@@ -23,7 +23,7 @@ import SOX__compand_utility.jsfx-inc
 // SLIDERS
 //--------------------
 slider1:attack=0.02<0.001,1,0.001>Attack [s]
-slider2:release=0.15<0.001,1,0.001>Decay [s]
+slider2:decay=0.15<0.001,1,0.001>Decay [s]
 slider3:dBKnee=6<0.01,20,0.01>Knee [dB]
 slider4:dBThreshold=-20<-128,0,0.1>Threshold [dBFS]
 slider5:ratio=2<0.001,1000,0.001>Ratio
@@ -54,7 +54,7 @@ slider6:dBGain=5<-20,20,1>Gain [dB]
 @slider
     Debug_clear();
     SOXCompander_init(compander,
-                      attack, release, dBKnee, dBThreshold, ratio, dBGain,
+                      attack, decay, dBKnee, dBThreshold, ratio, dBGain,
                       maximumInteger);
     transferFunction = FixedArray_getAt(compander, SOXCompander_transferFunction);
     SOXTransferFunction_print(transferFunction);

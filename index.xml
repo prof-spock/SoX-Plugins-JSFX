@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="Dr_TT" desc="JSFX plugins by Dr. Thomas Tensi">
+<index version="1" name="DrTT-SoX_(JSFX)"
+       desc="JSFX Plugins Emulating SoX (by Dr. Thomas Tensi)">
   <metadata>
     <description><![CDATA[{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1031{\fonttbl{\f0\fnil\fcharset0 Times New Roman;}{\f1\fnil\fcharset2 Symbol;}}
 {\colortbl ;\red0\green0\blue255;}

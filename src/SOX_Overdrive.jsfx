@@ -47,7 +47,7 @@ slider2:colour=20<0,100,1>Colour [%]
         FixedArray_setAt(self, SOXOverdrive_colour, colour / 200);
         sampleQueueList =
             FixedArray_getAt(self, SOXOverdrive_sampleQueueList);
-        SOXSampleQueueList_clear(sampleQueueList);
+        SOXSampleQueueList_setToZero(sampleQueueList);
     );
 
     //--------------------

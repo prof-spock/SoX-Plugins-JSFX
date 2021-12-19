@@ -483,8 +483,8 @@ author: Dr. Thomas Tensi, 2019
         /** Applies reverb channel <self> to <inputSample> and returns
             output samples with parameters <feedback>, <hfDamping> and
             <gain> in <outputSampleList> */
-        //local (firstSample i outputSample inputSampleQueue
-        //       reverbLine reverbLineCount reverbLineList)
+        local (firstSample i outputSample inputSampleQueue
+               reverbLine reverbLineCount reverbLineList)
     (
         // check and process predelay
         inputSampleQueue =
@@ -679,7 +679,7 @@ author: Dr. Thomas Tensi, 2019
         FixedArray_setAt(self, SOXReverb_predelay,    predelay);
         FixedArray_setAt(self, SOXReverb_stereoDepth, stereoDepth);
         FixedArray_setAt(self, SOXReverb_wetGain,     wetGain);
-        FixedArray_setAt(self, SOXReverb_roomScale, roomScale);
+        FixedArray_setAt(self, SOXReverb_roomScale,   roomScale);
 
         reverbChannelList = FixedArray_getAt(self,
                                              SOXReverb_reverbChannelList);

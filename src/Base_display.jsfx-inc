@@ -85,6 +85,9 @@ author: Dr. Thomas Tensi, 2019
     // Graphics Memory, Text & String Matrix
     //========================================
 
+    Graphics_Font_name = "Courier New";
+    Graphics_Font_size = 20;
+
     Graphics_Mode_COUNT = 3;
     Graphics_Mode_effect   = 0;
     Graphics_Mode_memory   = 1;
@@ -185,7 +188,7 @@ author: Dr. Thomas Tensi, 2019
     function Graphics_MTSMatrix_showEntry (index)
         /** Shows memory, data or string matrix in current
             mode */
-        local (indexTemplate isString st template textEntry)
+        local (color indexTemplate isString st template textEntry)
     (
         st == 0 ? (
             st = String_make();
@@ -227,6 +230,7 @@ author: Dr. Thomas Tensi, 2019
                index maximumIndex rowCount rowIndex x)
     (
         Graphics_currentMode > 0 ? (
+            gfx_setfont(1, Graphics_Font_name, Graphics_Font_size);
             columnCount = Graphics_MTSMatrix_columnCount();
             rowCount    = Graphics_MTSMatrix_rowCount();
             deltaX = gfx_w / columnCount;

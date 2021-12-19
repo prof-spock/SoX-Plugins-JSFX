@@ -26,14 +26,14 @@ import SOX__mcompand_utility.jsfx-inc
 // SLIDERS
 //--------------------
 slider1:attackA=0.02<0.001,1,0.001>▒▒▒ BAND A ▒▒▒ Attack A [s]
-slider2:releaseA=0.15<0.001,1,0.001>Decay A [s]
+slider2:decayA=0.15<0.001,1,0.001>Decay A [s]
 slider3:dBKneeA=6<0.01,20,0.01>Knee A [dB]
 slider4:dBThresholdA=-20<-128,0,0.1>Threshold A [dB]
 slider5:ratioA=2<1,1000,0.1>Ratio A
 slider6:dBGainA=5<-20,20,1>Gain A [dB]
 slider7:topFrequencyA=1000<20,20000,1>Crossover Frequency A [Hz]
 slider8:attackB=0.04<0.001,1,0.001>▒▒▒ BAND B ▒▒▒ Attack B [s]
-slider9:releaseB=0.4<0.001,1,0.001>Decay B [s]
+slider9:decayB=0.4<0.001,1,0.001>Decay B [s]
 slider10:dBKneeB=0<0,20,0.01>Knee B [dB]
 slider11:dBThresholdB=-60<-128,0,0.1>Threshold B [dB]
 slider12:ratioB=3<1,1000,0.1>Ratio B
@@ -61,9 +61,9 @@ slider13:dBGainB=20<-20,20,1>Gain B [dB]
 //--------------------
 @slider
     Debug_clear();
-    SOXMCompanderBand_init(mCompander, 1, attackA, releaseA, dBThresholdA,
+    SOXMCompanderBand_init(mCompander, 1, attackA, decayA, dBThresholdA,
                            ratioA, dBGainA, dBKneeA, topFrequencyA);
-    SOXMCompanderBand_init(mCompander, 2, attackB, releaseB, dBThresholdB,
+    SOXMCompanderBand_init(mCompander, 2, attackB, decayB, dBThresholdB,
                            ratioB, dBGainB, dBKneeB,
                            _MCompander_maxTopFrequency);
 

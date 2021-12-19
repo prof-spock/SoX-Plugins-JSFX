@@ -34,34 +34,34 @@ author: Dr. Thomas Tensi, 2019
     //--------------------
     //--------------------
 
-    function SOXBiquadFilter_alphaForBandwidth (bandwidth, bandwidthKind,
+    function SOXBiquadFilter_alphaForBandwidth (bandwidth, unit,
                                                 frequency, dBGain)
-        /** returns the alpha for given <bandwidth> measured
-            as <bandwidthKind> with <frequency> and <dBgain> */
+        /** returns the alpha for given <bandwidth> measured as <unit>
+            with <frequency> and <dBgain> */
         local (a alpha w0)
     (
         w0 = twoPi * frequency / srate;
 
-        bandwidthKind == SOXBandwidthKind_quality ? (
+        unit == SOXBandwidthKind_quality ? (
             alpha = sin(w0) / (2 * bandwidth);
         );
 
-        bandwidthKind == SOXBandwidthKind_octaves ? (
-            alpha = sin(w0) * sinh(ln(2)/2 * bandWidth * w0 / sin(w0));
+        unit == SOXBandwidthKind_octaves ? (
+            alpha = sin(w0) * sinh(ln(2)/2 * bandwidth * w0 / sin(w0));
         );
 
-        bandwidthKind == SOXBandwidthKind_butterworth ? (
+        unit == SOXBandwidthKind_butterworth ? (
             alpha = sin(w0) / (2 * sqrt(0.5));
         );
 
-        bandwidthKind == SOXBandwidthKind_frequency ? (
-            alpha = sin(w0) / (2 * frequency / bandWidth);
+        unit == SOXBandwidthKind_frequency ? (
+            alpha = sin(w0) / (2 * frequency / bandwidth);
         );
 
-        bandwidthKind == SOXBandwidthKind_slope ? (
-            a = 10^(dBFilterGain/40);
+        unit == SOXBandwidthKind_slope ? (
+            a = 10^(dBGain/40);
             alpha = (sin(w0) / 2
-                     * sqrt((a + 1/a) * (1/bandWidth - 1) + 2));
+                     * sqrt((a + 1 / a) * (1 / bandwidth - 1) + 2));
         );
 
         alpha

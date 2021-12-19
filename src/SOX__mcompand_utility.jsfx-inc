@@ -212,7 +212,6 @@ author: Dr. Thomas Tensi, 2019
     // queues and each band covers a window of three entries
     // overlapping in one entry
     //
-
     // additionally for debugging there is one total output queue for
     // each channel, hence we have (channelCount * (2 * bandCount +
     // 2)) queues
@@ -319,6 +318,7 @@ author: Dr. Thomas Tensi, 2019
     function SOXMCompanderBand_getQueue (self, channel, stream)
         /** Returns stream queue for band compander <self> for
             <channel> and <stream> */
+        local (offset)
     (
         offset = SOX_channelCount * (stream - 1) + channel;
 
@@ -335,7 +335,7 @@ author: Dr. Thomas Tensi, 2019
     //--------------------
 
     function SOXMCompanderBand_init (mCompander, bandIndex,
-                                     attack, release,
+                                     attack, decay,
                                      dBThreshold, ratio,
                                      dBGain, dBKnee, topFrequency)
         /** Sets up band of multiband compander <mCompander> with
@@ -351,7 +351,7 @@ author: Dr. Thomas Tensi, 2019
 
         1 <= bandIndex && bandIndex <= bandCount ? (
             compander = FixedArray_getAt(companderList, bandIndex);
-            SOXCompander_init(compander, attack, release,
+            SOXCompander_init(compander, attack, decay,
                               dBKnee, dBThreshold, ratio, dBGain, topFrequency);
             transferFunction =
                 FixedArray_getAt(compander, SOXCompander_transferFunction);
@@ -379,16 +379,16 @@ author: Dr. Thomas Tensi, 2019
         local (buffer channel inputSample outputQueueLow)
     (
         buffer = FixedArray_getAt(self, SOXCompander_buffer);
-	    channel = 1;
+        channel = 1;
 
-	    while (channel <= SOX_channelCount) (
+        while (channel <= SOX_channelCount) (
             stream = SOXMCompanderStream_lowOutput;
-	        outputQueueLow =
+            outputQueueLow =
                 SOXMCompanderBand_getQueue(self, channel, stream);
             inputSample = SOXSampleQueue_first(outputQueueLow);
-	        FixedArray_setAt(inputSampleList, channel, inputSample);
-	        channel += 1;
-	    );
+            FixedArray_setAt(inputSampleList, channel, inputSample);
+            channel += 1;
+        );
 
         SOXCompander_apply(self, inputSampleList, outputSampleList, true);
     );
@@ -413,7 +413,7 @@ author: Dr. Thomas Tensi, 2019
             outputQueueLow =
                 SOXMCompanderBand_getQueue(self, channel, stream);
             stream = SOXMCompanderStream_highOutput;
-	        outputQueueHigh =
+            outputQueueHigh =
                 SOXMCompanderBand_getQueue(self, channel, stream);
             SOXLR4CrossoverFilter_apply(crossoverFilter, inputQueue,
                                         outputQueueLow, outputQueueHigh);
@@ -503,7 +503,7 @@ author: Dr. Thomas Tensi, 2019
                                          SOXMCompander_sampleBuffer);
         bandCount = FixedArray_length(companderList);
 
-	    FixedArray_clear(outputSampleList);
+        FixedArray_clear(outputSampleList);
         totalChannelCount = SOX_channelCount;
         totalChannelCount *= SOXMCompand_bandsAreWritten ? bandCount + 1 : 1;
 
@@ -520,7 +520,7 @@ author: Dr. Thomas Tensi, 2019
 
         // calculate crossover filtering from input queues into
         // low and high outputs
-	    bandIndex = 1;
+        bandIndex = 1;
 
         while (bandIndex <= bandCount) (
             compander = FixedArray_getAt(companderList, bandIndex);
@@ -534,17 +534,17 @@ author: Dr. Thomas Tensi, 2019
             bandIndex += 1;
         );
 
-	    // do compression across all bands
-	    bandIndex = 1;
+        // do compression across all bands
+        bandIndex = 1;
 
-	    while (bandIndex <= bandCount) (
+        while (bandIndex <= bandCount) (
             compander = FixedArray_getAt(companderList, bandIndex);
-	        SOXMCompanderBand_apply(compander,
+            SOXMCompanderBand_apply(compander,
                                     inputSampleList, outputSampleList);
-	        bandIndex += 1;
-	    );
+            bandIndex += 1;
+        );
 
-	    // write all output channel samples
+        // write all output channel samples
         channel = 1;
 
         while (channel <= SOX_channelCount) (
