@@ -132,7 +132,7 @@ The Reaper project file "testSoxPlugins.rpp" references those test and result fi
         <source file="SOX_Reverb.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX_Reverb.jsfx</source>
         <source file="SOX_Tremolo.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX_Tremolo.jsfx</source>
         <source file="test/makeTestFiles.bat">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/test/makeTestFiles.bat</source>
-        <source file="test/testJSFXSoxPlugins.RPP">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/test/testSoxPlugins.RPP</source>
+        <source file="test/testJSFXSoxPlugins.RPP">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/test/testJSFXSoxPlugins.RPP</source>
       </version>
     </reapack>
   </category>
