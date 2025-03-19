@@ -1,0 +1,375 @@
+desc: Graphics display utilities (mostly for debugging)
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+//requires Base_fixedarray.jsfx-inc
+//requires Base_string.jsfx-inc
+
+@init
+    //####################
+    // Color
+    //####################
+
+    //====================
+    // PRIVATE ROUTINES
+    //====================
+
+    function Graphics_Color__bluePart (self)
+        /** Returns the blue component of <self> */
+    (
+        (self & 0xFF) / 255
+    );
+
+    //--------------------
+
+    function Graphics_Color__greenPart (self)
+        /** Returns the green component of <self> */
+    (
+        ((self >> 8) & 0xFF) / 255
+    );
+
+    //--------------------
+
+    function Graphics_Color__redPart (self)
+        /** Returns the red component of <self> */
+    (
+        ((self >> 16) & 0xFF) / 255
+    );
+
+    //--------------------
+    // con-/destruction
+    //--------------------
+
+    function Graphics_Color_make (red, green, blue)
+        /** Returns a new color combined from parts <red>, <green>
+        and <blue> between 0 and 1 */
+    (
+        blue  = forceToRange(blue * 255, 0, 255, true);
+        green = forceToRange(green * 255, 0, 255, true);
+        red   = forceToRange(red * 255, 0, 255, true);
+        blue + (green + red << 8) << 8
+    );
+
+    //--------------------
+
+    function Graphics_Color_makeGrey (brightness)
+        /** Returns a new color combined from parts <red>, <green>
+        and <blue> between 0 and 1 */
+    (
+        Graphics_Color_make(brightness, brightness, brightness)
+    );
+
+    //--------------------
+    // measurement
+    //--------------------
+
+    function Graphics_Color_current ()
+        /** Returns current color */
+    (
+        Graphics_Color_make(gfx_r, gfx_g, gfx_b)
+    );
+
+    //--------------------
+    // change
+    //--------------------
+
+    function Graphics_Color_set (self)
+        /** Sets current color to <self> */
+        local (blue green red)
+    (
+        blue  = Graphics_Color__bluePart(self);
+        green = Graphics_Color__greenPart(self);
+        red   = Graphics_Color__redPart(self);
+        gfx_set(red, green, blue);
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function Graphics_Color_toString (self, st)
+        /** Converts <self> to string <st> */
+        local (blue green red)
+    (
+        blue  = Graphics_Color__bluePart(self);
+        green = Graphics_Color__greenPart(self);
+        red   = Graphics_Color__redPart(self);
+        String_format(st, "R%02xG%02xB%02x", red, green, blue);
+    );
+
+    //--------------------
+    // constants
+    //--------------------
+
+    Graphics_Color_black       = Graphics_Color_makeGrey(0);
+    Graphics_Color_darkBlue    = Graphics_Color_make(  0,   0, 0.5);
+    Graphics_Color_blue        = Graphics_Color_make(  0,   0,   1);
+    Graphics_Color_darkGreen   = Graphics_Color_make(  0, 0.5,   0);
+    Graphics_Color_green       = Graphics_Color_make(  0,   1,   0);
+    Graphics_Color_darkCyan    = Graphics_Color_make(  0, 0.5, 0.5);
+    Graphics_Color_cyan        = Graphics_Color_make(  0,   1,   1);
+    Graphics_Color_darkRed     = Graphics_Color_make(0.5,   0,   0);
+    Graphics_Color_red         = Graphics_Color_make(  1,   0,   0);
+    Graphics_Color_darkMagenta = Graphics_Color_make(0.5,   0, 0.5);
+    Graphics_Color_magenta     = Graphics_Color_make(  1,   0,   1);
+    Graphics_Color_darkYellow  = Graphics_Color_make(0.5, 0.5,   0);
+    Graphics_Color_yellow      = Graphics_Color_make(  1,   1,   0);
+    Graphics_Color_grey        = Graphics_Color_makeGrey(0.5);
+    Graphics_Color_white       = Graphics_Color_makeGrey(1);
+
+    //========================================
+    // General Graphics
+    //========================================
+
+    function Graphics_clear (color)
+        /** Sets background to colour specified by <color> */
+    (
+        Graphics_color_set(color);
+        gfx_rect(0, 0, gfx_w, gfx_h);
+    );
+
+    //########################################
+    // Graphics Object Types
+    //########################################
+
+    //====================
+    // Point
+    //====================
+    // a two-dimensional point with real coordinates
+
+    GO_Point__SIZE = 2;
+    GO_Point__ATT_x = 0;
+    GO_Point__ATT_y = 1;
+
+    //--------------------
+    // property access
+    //--------------------
+
+    function GO_Point_x (self)
+        /** Returns x-coordinate of point <self> */
+    (
+        self[GO_Point__ATT_x];
+    );
+
+    //--------------------
+
+    function GO_Point_y (self)
+        /** Returns y-coordinate of point <self> */
+    (
+        self[GO_Point__ATT_y];
+    );
+
+    //--------------------
+    // change
+    //--------------------
+
+    function GO_Point_set (self, x, y)
+        /** Sets point <self> to (<x>,<y>)*/
+    (
+        self[GO_Point__ATT_x] = x;
+        self[GO_Point__ATT_y] = y;
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function GO_Point_toString (self, prefix, elementFormat, st)
+        /** Sets string <st> to a representation of <self> with
+            newline separators for each component */
+        local (line lineFormat)
+    (
+        line       = String_make();
+        lineFormat = String_make();
+
+        String_copy(lineFormat, "%s_%s=");
+        String_append(lineFormat, elementFormat);
+
+        String_format(line, lineFormat,
+                      prefix, "x", self[GO_Point__ATT_x]);
+        String_copy(st, line);
+        String_appendChar(st, String_multiLineSeparator);
+        String_format(line, lineFormat,
+                      prefix, "y", self[GO_Point__ATT_y]);
+        String_append(st, line);
+        
+        String_destroy(lineFormat);
+        String_destroy(line);
+    );
+
+    //====================
+    // Rectangle
+    //====================
+    // a rectangle with real coordinates and sides parallel to axes
+
+    GO_Rectangle__SIZE = 4;
+    GO_Rectangle__ATT_x      = 0;
+    GO_Rectangle__ATT_y      = 1;
+    GO_Rectangle__ATT_width  = 2;
+    GO_Rectangle__ATT_height = 3;
+
+    //--------------------
+    // con-/destruction
+    //--------------------
+
+    function GO_Rectangle_make (x, y, width, height)
+        /** Constructs new rectangle at (<x>,<y>) with size
+            (<width>,<height>) */
+        local (self)
+    (
+        self = STRUCT_make(GO_Rectangle__SIZE);
+        self[GO_Rectangle__ATT_x]      = x;
+        self[GO_Rectangle__ATT_y]      = y;
+        self[GO_Rectangle__ATT_width]  = width;
+        self[GO_Rectangle__ATT_height] = height;
+
+        self
+    );
+
+    //--------------------
+
+    function GO_Rectangle_make ()
+        /** Constructs new empty rectangle */
+    (
+        GO_Rectangle_make(0, 0, 0, 0)
+    );
+
+    //--------------------
+
+    function GO_Rectangle_destroy (self)
+        /** Destroys rectangle <self> */
+    (
+        STRUCT_destroy(self);
+    );
+
+    //--------------------
+    // property access
+    //--------------------
+
+    function GO_Rectangle_x (self)
+        /** Returns x-coordinate of start point of rectangle <self> */
+    (
+        self[GO_Rectangle__ATT_x];
+    );
+
+    //--------------------
+
+    function GO_Rectangle_y (self)
+        /** Returns y-coordinate of start point of rectangle <self> */
+    (
+        self[GO_Rectangle__ATT_y];
+    );
+
+    //--------------------
+
+    function GO_Rectangle_width (self)
+        /** Returns width of rectangle <self> */
+    (
+        self[GO_Rectangle__ATT_width];
+    );
+
+    //--------------------
+
+    function GO_Rectangle_height (self)
+        /** Returns width of rectangle <self> */
+    (
+        self[GO_Rectangle__ATT_height]
+    );
+
+    //--------------------
+
+    function GO_Rectangle_point (self)
+        /** Returns start point of rectangle <self> */
+    (
+        self + GO_Rectangle__ATT_x
+    );
+
+    //--------------------
+
+    function GO_Rectangle_size (self)
+        /** Returns size pair of rectangle <self> */
+    (
+        self + GO_Rectangle__ATT_width
+    );
+
+    //--------------------
+    // change
+    //--------------------
+
+    function GO_Rectangle_setPoint (self, x, y)
+        /** Sets point <self> to (<x>,<y>) */
+    (
+        self[GO_Rectangle__ATT_x] = x;
+        self[GO_Rectangle__ATT_y] = y;
+    );
+
+    //--------------------
+
+    function GO_Rectangle_setSize (self, width, height)
+        /** Sets point <self> to (<x>,<y>)*/
+    (
+        self[GO_Rectangle__ATT_width]  = width;
+        self[GO_Rectangle__ATT_height] = height;
+    );
+
+    //--------------------
+    // measurement
+    //--------------------
+
+    function GO_Rectangle_contains (self, x, y)
+        /** Checks whether point (<x>,<y>) is in rectangle <self> */
+        local (rX rY rWidth rHeight)
+    (
+        rX      = self[GO_Rectangle__ATT_x];
+        rY      = self[GO_Rectangle__ATT_y];
+        rWidth  = self[GO_Rectangle__ATT_width];
+        rHeight = self[GO_Rectangle__ATT_height];
+
+        rX <= x && x < rX + rWidth && rY <= y && y < rY + rHeight
+    );
+
+    //--------------------
+
+    function GO_Rectangle_contains (self, p)
+        /** Checks whether point <p> is in rectangle <self> */
+    (
+        GO_Rectangle_contains(self,
+                              p[GO_Point__ATT_x], p[GO_Point__ATT_y])
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function GO_Rectangle_toString (self, prefix, elementFormat, st)
+        /** Sets string <st> to a representation of <self> with
+            newline separators for each component */
+        local (line lineFormat)
+    (
+        line       = String_make();
+        lineFormat = String_make();
+
+        String_copy(lineFormat, "%s_%s=");
+        String_append(lineFormat, elementFormat);
+
+        String_format(line, lineFormat,
+                      prefix, "x", self[GO_Rectangle__ATT_x]);
+        String_copy(st, line);
+        String_appendChar(st, String_multiLineSeparator);
+        String_format(line, lineFormat,
+                      prefix, "y", self[GO_Rectangle__ATT_y]);
+        String_append(st, line);
+        String_appendChar(st, String_multiLineSeparator);
+        String_format(line, lineFormat,
+                      prefix, "w", self[GO_Rectangle__ATT_width]);
+        String_append(st, line);
+        String_appendChar(st, String_multiLineSeparator);
+        String_format(line, lineFormat,
+                      prefix, "h", self[GO_Rectangle__ATT_height]);
+        String_append(st, line);
+        
+        String_destroy(lineFormat);
+        String_destroy(line);
+    );
+
+

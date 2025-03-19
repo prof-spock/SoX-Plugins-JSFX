@@ -1,0 +1,187 @@
+desc:SoX Multiband Compander
+// emulates the compand/mcompand effect of SoX
+tags: compressor
+author: Dr. Thomas Tensi, 2019
+
+//--------------------
+// IMPORTS
+//--------------------
+
+import ../_BaseModules/Base.jsfx-inc
+import ../_BaseModules/Base_memory.jsfx-inc
+import ../_BaseModules/Base_naturalset.jsfx-inc
+import ../_BaseModules/Base_string.jsfx-inc
+import ../_BaseModules/Base_fixedarray.jsfx-inc
+import ../_BaseModules/Base_struct.jsfx-inc
+import ../_BaseModules/Base_graphics.jsfx-inc
+import ../_BaseModules/Base_debug.jsfx-inc
+
+import ../_Audio/Audio_samplequeue.jsfx-inc
+
+import SoX__base.jsfx-inc
+import SoX__compand_transfer.jsfx-inc
+import SoX__iirfilter.jsfx-inc
+import SoX__compand_utility.jsfx-inc
+import SoX__multipageslider.jsfx-inc
+
+//--------------------
+// SLIDERS
+//--------------------
+
+slider1:SL_bandCount=1<1,10,1>Band Count
+slider2:SL_bandIndex=1<1,10,1>Band Index
+
+
+// generate slider groups for compander bands via preprocessor
+<?
+    maxBandCount = 10;
+    sliderIndex  =  4;
+    groupLength  =  7;
+    i = 1;
+
+    while (i <= maxBandCount) (
+        bandCharacter = $'A' + i - 1;
+        printf("slider%d:SL_attack%c"
+               "=0.02<0.001,1,0.001>Attack %c [s]\n",
+               sliderIndex + 0, bandCharacter, bandCharacter);
+        printf("slider%d:SL_decay%c"
+               "=0.15<0.001,1,0.001>Decay %c\n",
+               sliderIndex + 1, bandCharacter, bandCharacter);
+        printf("slider%d:SL_dBKnee%c="
+               "6<0.01,20,0.01>Knee %c [dB]\n",
+               sliderIndex + 2, bandCharacter, bandCharacter);
+        printf("slider%d:SL_dBThreshold%c="
+               "20<-128,0,0.1>Threshold %c [dBFS]\n",
+               sliderIndex + 3, bandCharacter, bandCharacter);
+        printf("slider%d:SL_ratio%c="
+               "2<0.001,1000,0.001>Ratio %c\n",
+               sliderIndex + 4, bandCharacter, bandCharacter);
+        printf("slider%d:SL_dBGain%c="
+               "5<-20,20,0.1>Gain %c [dB]\n",
+               sliderIndex + 5, bandCharacter, bandCharacter);
+        printf("slider%d:SL_topFrequency%c="
+               "1000<20,20000,1>Crossover Frequency %c [Hz]\n",
+               sliderIndex + 6, bandCharacter, bandCharacter);
+        sliderIndex += groupLength;
+        i += 1;
+    );
+?>
+
+//--------------------
+// INITIALIZATION
+//--------------------
+
+@init
+
+    SoXMCompander__effect = SoXMCompander_make();
+
+    //--------------------
+
+    function SoXMCompander_update ()
+        /** Updates compander when sliders have changed */
+        local (attack bandCount bandIndex companderBand dBGain dBKnee
+               dBThreshold decay firstGroupSliderIndex groupLength
+               isLastBand ratio sliderIndex topFrequency)
+    (
+        firstGroupSliderIndex = 4;
+        groupLength = 7;
+
+        SL_bandCount = max(1, toInteger(SL_bandCount));
+        SL_bandIndex = max(1, toInteger(SL_bandIndex));
+        bandCount = SL_bandCount;
+
+        SoXMultiPageSlider_initialize(SoXMCompander__maximumBandCount,
+                                      groupLength, groupLength,
+                                      firstGroupSliderIndex);
+        SoXMultiPageSlider_update(bandCount, SL_bandIndex);
+        // hide crossover frequency slider of last band
+        sliderIndex = firstGroupSliderIndex + bandCount * groupLength - 1;
+        slider_show(slider(sliderIndex), 0);
+
+        // read sliders and update compander
+        SoXMCompander_setBandCount(SoXMCompander__effect, bandCount);
+
+        sliderIndex = firstGroupSliderIndex;
+        bandIndex = 1;
+
+        while (bandIndex <= bandCount) (
+            isLastBand = (bandIndex == bandCount);
+            attack       = slider(sliderIndex + 0);
+            decay        = slider(sliderIndex + 1);
+            dBKnee       = slider(sliderIndex + 2);
+            dBThreshold  = slider(sliderIndex + 3);
+            ratio        = slider(sliderIndex + 4);
+            dBGain       = slider(sliderIndex + 5);
+            topFrequency = slider(sliderIndex + 6);
+
+            companderBand = SoXMCompander_band(SoXMCompander__effect,
+                                               bandIndex);
+            SoXMCompanderBand_init(companderBand, isLastBand,
+                                   attack, decay, dBKnee, dBThreshold,
+                                   ratio, dBGain, topFrequency);
+        
+            bandIndex += 1;
+            sliderIndex += groupLength;
+        );
+
+        // clear all remaining compander bands
+        while (bandIndex <= SoXMCompander__maximumBandCount) (
+            companderBand = SoXMCompander_band(SoXMCompander__effect,
+                                               bandIndex);
+            SoXMCompanderBand_clear(companderBand);
+            bandIndex += 1;
+        );
+
+        Debug_clear();
+        SoXMCompander_print(SoXMCompander__effect);
+    );
+
+    //--------------------
+
+    function SoXMCompander_handleKey (key)
+    (
+        Debug_currentMode == Debug_Mode_effect ? (
+            Graphics_clear(Graphics_Color_black);
+        );
+    );
+
+    //============================================================
+
+    SoXMCompander_update();
+
+//--------------------
+// BLOCK
+//--------------------
+
+@block
+    srate != SoXMCompander__previousSampleRate ? (
+        SoXMCompander_update();
+        SoXMCompander__previousSampleRate = srate;
+    );
+
+//--------------------
+// SLIDER CHANGE
+//--------------------
+
+@slider
+    SoXMCompander_update();
+
+//--------------------
+// SAMPLE
+//--------------------
+
+@sample
+    SoX_readInputSampleList();
+    SoXMCompander_apply(SoXMCompander__effect,
+                        SoX_inputSampleList,
+                        SoXMCompander_outputSampleList);
+    SoX_writeSampleList(SoXMCompander_outputSampleList);
+
+//--------------------
+// GRAPHICS
+//--------------------
+
+@gfx
+    key = gfx_getchar();
+    key = Debug_handleKey(key);
+    SoXMCompander_handleKey(key);

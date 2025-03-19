@@ -1,0 +1,2150 @@
+desc: Multilane Oscilloscope Meter (DrTT)
+tags: multilane analysis scope meter
+author: DrTT
+
+/*
+Based on gfxscope from 2007, Cockos Incorporated
+*/
+
+options:no_meter
+
+//--------------------
+// IMPORTS
+//--------------------
+
+import ../_BaseModules/Base.jsfx-inc
+import ../_BaseModules/Base_memory.jsfx-inc
+import ../_BaseModules/Base_naturalset.jsfx-inc
+import ../_BaseModules/Base_string.jsfx-inc
+import ../_BaseModules/Base_fixedarray.jsfx-inc
+import ../_BaseModules/Base_struct.jsfx-inc
+import ../_BaseModules/Base_graphics.jsfx-inc
+import ../_BaseModules/Base_debug.jsfx-inc
+import ../_BaseModules/Base_mouse.jsfx-inc
+import ../_BaseModules/Base_button.jsfx-inc
+
+//--------------------
+// SLIDERS
+//--------------------
+
+/* hidden sliders for the plugin persistence */
+slider1:SL_laneCount=3<1,4,1>-SL1
+slider2:SL_magnificationFactor=0<-100,100,1>-SL2
+slider3:SL_timeRange=20<0.0001,100,0.0001>-SL3
+slider4:SL_timeOffset=0<0,100,0.0001>-SL4
+
+/*====================*/
+
+in_pin:channel_1 left
+in_pin:channel_1 right
+in_pin:channel_2 left
+in_pin:channel_2 right
+in_pin:channel_3 left
+in_pin:channel_3 right
+in_pin:channel_4 left
+in_pin:channel_4 right
+options:no_meter
+
+/*====================*/
+@init
+
+    ext_nodenorm = 1;
+
+    //====================
+    /* Audio */
+    //====================
+
+    function Audio_decibelsToLinear (dBValue)
+        /** Returns linear representation for decibel <dBValue>*/
+    (
+        exp(dBValue * log(10)/20)
+    );
+
+    //--------------------
+
+    function Audio_samplesToTime (samples)
+        /** Converts <samples> to time in seconds */
+    (
+        samples / srate
+    );
+
+    //--------------------
+
+    function Audio_timeToSamples (time)
+        /** Converts <time> in seconds to samples */
+    (
+        time * srate
+    );
+
+    //====================
+    // FrameBuffer
+    //====================
+
+    FrameBuffer__SIZE = 7;
+
+    /** count of sample frames */
+    FrameBuffer__ATT_frameCount       = STRUCT_INDEX(1);
+    /** the list of audio samples grouped by frames */
+    FrameBuffer__ATT_data             = STRUCT_INDEX(2);
+    /** current frame index (starting at 1) */
+    FrameBuffer__ATT_frameIndex       = STRUCT_INDEX(3);
+    /** frame time when the first frame was added to sample matrix */
+    FrameBuffer__ATT_initialFrameTime = STRUCT_INDEX(4);
+    /** current frame time */
+    FrameBuffer__ATT_frameTime        = STRUCT_INDEX(5);
+    /** current time delta in seconds between two adjacent frames */
+    FrameBuffer__ATT_frameTimeDelta   = STRUCT_INDEX(6);
+    /** the current sample rate in this frame buffer */
+    FrameBuffer__ATT_sampleRate       = STRUCT_INDEX(7);
+
+    //--------------------
+    // EXPORTED FEATURES
+    //--------------------
+
+    /** maximum count of lanes */
+    FrameBuffer_laneCount = 4;
+
+    /** total channel count */
+    FrameBuffer_channelCount = 2 * FrameBuffer_laneCount;
+
+    //--------------------
+    // private functions
+    //--------------------
+
+    function FrameBuffer__updateFrameTime (self, frameTime)
+        /** Sets current frame time for buffer <self> to position
+            given by <frameTime> */
+        local (frameTime frameBufferTime isPlaying)
+    (
+        isPlaying = (play_state == 1);
+        isPlaying ? (
+            frameBufferTime = self[FrameBuffer__ATT_frameTime];
+
+            !isInRange(frameTime,
+                       frameBufferTime - 0.5, frameBufferTime + 0.5) ? (
+                FixedArray_clear(self[FrameBuffer__ATT_data]);
+                self[FrameBuffer__ATT_initialFrameTime] = frameTime;
+                self[FrameBuffer__ATT_frameIndex] = 1;
+             );
+
+            self[FrameBuffer__ATT_frameTime] = frameTime;
+        );
+    );
+
+    //--------------------
+    // con-/destruction
+    //--------------------
+
+    function FrameBuffer_make ()
+        /** Makes a new framebuffer object */
+        local (self)
+    (
+        self = STRUCT_make(FrameBuffer__SIZE);
+
+        self[FrameBuffer__ATT_frameCount]       = 0;
+        self[FrameBuffer__ATT_data]             = null;
+        self[FrameBuffer__ATT_frameIndex]       = 1;
+        self[FrameBuffer__ATT_initialFrameTime] = 0;
+        self[FrameBuffer__ATT_frameTime]        = 0;
+        self[FrameBuffer__ATT_frameTimeDelta]   = 0;
+        self[FrameBuffer__ATT_sampleRate]       = -1;
+
+        self
+    );
+
+    //--------------------
+    // property access
+    //--------------------
+
+    function FrameBuffer_deltaTime (self)
+        /** Returns delta time between samples for buffer <self> */
+    (
+        self[FrameBuffer__ATT_frameTimeDelta]
+    );
+
+    //--------------------
+
+    function FrameBuffer_frameTime (self)
+        /** Returns current frame time for buffer <self> */
+    (
+        self[FrameBuffer__ATT_frameTime]
+    );
+
+    //--------------------
+    // element access
+    //--------------------
+
+    function FrameBuffer_get (self, frameIndex, channel)
+        /** Returns sample values at <frameIndex> for <channel> in
+            buffer <self> */
+        local (channelCount data index result)
+    (
+        self[FrameBuffer__ATT_frameCount] == 0 ? (
+            // when sample array is empty, just return zero
+            result = 0;
+        ) : (
+            channelCount = FrameBuffer_channelCount;
+            index = channelCount * (frameIndex - 1) + channel - 1;
+            data = self[FrameBuffer__ATT_data];
+            result = data[index];
+        );
+
+        result
+    );
+
+    //--------------------
+    // element change
+    //--------------------
+
+    function FrameBuffer_handleSampleChange (self)
+        /** Reads data from all input channels into buffer <self> */
+        local (channel channelCount data index sample)
+    (
+        data = self[FrameBuffer__ATT_data];
+        channelCount = FrameBuffer_channelCount;
+        index = channelCount * (self[FrameBuffer__ATT_frameIndex] - 1);
+        channel = 1;
+
+        while (channel <= channelCount) (
+            sample = spl(channel - 1);
+            data[index] = sample;
+            channel += 1;
+            index   += 1;
+        );
+
+        self[FrameBuffer__ATT_frameIndex] =
+            modularIncrement(self[FrameBuffer__ATT_frameIndex],
+                             self[FrameBuffer__ATT_frameCount],
+                             true);
+        self[FrameBuffer__ATT_frameTime] +=
+            self[FrameBuffer__ATT_frameTimeDelta];
+    );
+
+    //--------------------
+    // measurement
+    //--------------------
+
+    function FrameBuffer_initialFrameTime (self)
+        /** Returns time of first recorded frame in buffer <self>;
+            this might be adjusted when recorded time exceeds buffer
+            length */
+        local (firstFrameTime)
+    (
+        // when recording has taken for some time, the frame window
+        // must be rolled to the right to "first frame time"
+        firstFrameTime =
+            (self[FrameBuffer__ATT_frameTime]
+             - (self[FrameBuffer__ATT_frameTimeDelta]
+                * self[FrameBuffer__ATT_frameCount]));
+        max(firstFrameTime, self[FrameBuffer__ATT_initialFrameTime]);
+    );
+
+    //--------------------
+
+    function FrameBuffer_toRange (self, frameIndex)
+        /** Returns <frameIndex> adjusted to correct range for
+            buffer <self> */
+        local (frameCount result)
+    (
+        frameCount = self[FrameBuffer__ATT_frameCount];
+
+        frameCount == 0 ? (
+            result = 1;
+        ) : (
+            result = 1 + mod(frameIndex - 1, frameCount);
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function FrameBuffer_frameIndexForTime (self, time)
+        /** Returns frame index for given <time> in seconds for buffer
+            <self>; if time is before first frame time or after the
+            current frame time, zero is returned */
+        local (firstFrameTime lastFrameTime offset relativeTime result)
+    (
+        firstFrameTime = FrameBuffer_initialFrameTime(self);
+        lastFrameTime  = self[FrameBuffer__ATT_frameTime];
+
+        !isInRange(time, firstFrameTime, lastFrameTime) ? (
+            result = 0;
+        ) : (
+            relativeTime = lastFrameTime - time;
+            offset = round(relativeTime
+                           / self[FrameBuffer__ATT_frameTimeDelta]);
+            result = self[FrameBuffer__ATT_frameIndex] - offset;
+            result = FrameBuffer_toRange(self, result);
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function FrameBuffer_timeIsInRange (self, time)
+        /** Tells whether <time> is in sampled time range for
+            buffer <self> */
+    (
+        (time < self[FrameBuffer__ATT_frameTime]
+         && FrameBuffer_initialFrameTime(self) <= time)
+    );
+
+    //--------------------
+    // resizing
+    //--------------------
+
+    function FrameBuffer_update (self, maximumTimeRange, time)
+        /** Handles changes in time range given as <maximumTimeRange>
+            and current time given as <time>; initializes or
+            reallocates sample array and pointers when time range has
+            changed */
+        local (data frameCount)
+    (
+        FrameBuffer__updateFrameTime(self, time);
+        frameCount = toInteger(Audio_timeToSamples(maximumTimeRange));
+
+        (self[FrameBuffer__ATT_sampleRate] != srate
+         || frameCount != self[FrameBuffer__ATT_frameCount]) ? (
+            self[FrameBuffer__ATT_sampleRate] = srate;
+            data = self[FrameBuffer__ATT_data];
+
+            data != null ? (
+                FixedArray_destroy(data);
+            );
+
+            data = FixedArray_make(frameCount * FrameBuffer_channelCount);
+            /* clear sample array */
+            FixedArray_clear(data);
+            self[FrameBuffer__ATT_data] = data;
+
+            self[FrameBuffer__ATT_frameIndex]     = 1;
+            self[FrameBuffer__ATT_frameCount]     = frameCount;
+            self[FrameBuffer__ATT_frameTimeDelta] = 1 / srate;
+         );
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function FrameBuffer_print (self, indentationLevel)
+        /** Prints string representation of <self> to debug output */
+        local (data)
+    (
+        Debug_printHdrIndented(indentationLevel, "FrmBuffer@%d", self);
+        indentationLevel += 1;
+
+        data = self[FrameBuffer__ATT_data];
+        Debug_printIndented(indentationLevel, "frmCnt=%d",
+                            self[FrameBuffer__ATT_frameCount]);
+        Debug_printIndented(indentationLevel, "data@%d,len=%d",
+                            data, FixedArray_length(data));
+        Debug_printIndented(indentationLevel, "frmIdx=%d",
+                            self[FrameBuffer__ATT_frameIndex]);
+        Debug_printIndented(indentationLevel, "t0    =%.3f",
+                            self[FrameBuffer__ATT_initialFrameTime]);
+        Debug_printIndented(indentationLevel, "t     =%.3f",
+                            self[FrameBuffer__ATT_frameTime]);
+        Debug_printIndented(indentationLevel, "delta =%e",
+                            self[FrameBuffer__ATT_frameTimeDelta]);
+        Debug_printIndented(indentationLevel, "smpRte=%d",
+                            self[FrameBuffer__ATT_sampleRate]);
+    );
+
+    //====================
+    // LaneWindow
+    //====================
+    // represents the lanes in the oscilloscope
+
+    LaneWindow__SIZE = 6;
+
+    /** count of displayed lanes */
+    LaneWindow__ATT_count                = STRUCT_INDEX(1);
+    /* the x-position of a lane window in pixels */
+    LaneWindow__ATT_x                    = STRUCT_INDEX(2);
+    /** the amplitude per lane in pixels (independent of lane) */
+    LaneWindow__ATT_maxAmplitude         = STRUCT_INDEX(3);
+    /* the width of a lane window in pixels */
+    LaneWindow__ATT_width                = STRUCT_INDEX(4);
+    /** the linear magnification factor in y-direction */
+    LaneWindow__ATT_yMagnificationFactor = STRUCT_INDEX(5);
+    /** the list of base lines (per lane) */
+    LaneWindow__ATT_originYList          = STRUCT_INDEX(6);
+
+    //--------------------
+    // PRIVATE FEATURES
+    //--------------------
+
+    /** color for the lane background */
+    LaneWindow__Color_laneBackground =
+        Graphics_color_make(0.05, 0.15, 0.05);
+
+    /** color for the space between the lanes */
+    LaneWindow__Color_laneSeparation = Graphics_color_makeGrey(0);
+
+    /** gap between lanes in percent of available height */
+    LaneWindow__interlaneGapPercentage = 2;
+
+    /** maximum count of lanes */
+    LaneWindow_maxCount = FrameBuffer_laneCount;
+
+    //--------------------
+    // EXPORTED ROUTINES
+    //--------------------
+
+    function LaneWindow_make ()
+        /** Returns a new lane window object */
+        local (self)
+    (
+        self = STRUCT_make(LaneWindow__SIZE);
+        self[LaneWindow__ATT_count]                = 0;
+        self[LaneWindow__ATT_x]                    = 0;
+        self[LaneWindow__ATT_maxAmplitude]         = 0;
+        self[LaneWindow__ATT_yMagnificationFactor] = 0;
+        self[LaneWindow__ATT_width]                = 0;
+        self[LaneWindow__ATT_originYList] =
+            FixedArray_make(LaneWindow_maxCount);
+
+        self
+    );
+
+    //--------------------
+
+    function LaneWindow_setup (self,
+                               displayedLaneCount,
+                               viewport, magnificationInDecibels)
+        /** Calculates amplitudes and origins for each lane of lane
+           window <self> from <displayedLaneCount>, and <viewport> */
+        local (height interLaneGapInPixels lane originOffset
+               originY originYList)
+    (
+        self[LaneWindow__ATT_count] = displayedLaneCount;
+        self[LaneWindow__ATT_x]     = GO_Rectangle_x(viewport);
+        self[LaneWindow__ATT_width] = GO_Rectangle_width(viewport);
+
+        height = GO_Rectangle_height(viewport);
+        interLaneGapInPixels =
+            round(height * LaneWindow__interlaneGapPercentage * 0.01);
+        self[LaneWindow__ATT_maxAmplitude] =
+            toInteger((height
+                       - (displayedLaneCount - 1) * interLaneGapInPixels)
+                      / (2 * displayedLaneCount));
+        self[LaneWindow__ATT_yMagnificationFactor] =
+            Audio_decibelsToLinear(magnificationInDecibels);
+
+        originYList = self[LaneWindow__ATT_originYList];
+        originY =
+            GO_Rectangle_y(viewport) + self[LaneWindow__ATT_maxAmplitude];
+        originOffset = (2 * self[LaneWindow__ATT_maxAmplitude]
+                        + interLaneGapInPixels);
+        lane = 1;
+
+        while (lane <= LaneWindow_maxCount) (
+            FixedArray_setAt(originYList, lane, originY);
+            originY += originOffset;
+            lane += 1;
+        );
+    );
+
+    //--------------------
+    // property access
+    //--------------------
+
+    function LaneWindow_count (self)
+        /** Returns the displayed count of lane windows from <self> */
+    (
+        self[LaneWindow__ATT_count]
+    );
+
+    //--------------------
+
+    function LaneWindow_originY (self, lane)
+        /** Returns the y-origin in device coordinates for <lane> in
+            lane window <self> */
+    (
+        FixedArray_getAt(self[LaneWindow__ATT_originYList], lane)
+    );
+
+    //--------------------
+
+    function LaneWindow_width (self)
+        /** Returns the width in device coordinates of lane window
+            <self> */
+    (
+        self[LaneWindow__ATT_width]
+    );
+
+    //--------------------
+    // measurement
+    //--------------------
+
+    function LaneWindow_decibelsToPixels (self, dBValue)
+        /** Returns pixel offset for decibels value <dBValue> in
+            lane window */
+    (
+        round(Audio_decibelsToLinear(dBValue)
+              * self[LaneWindow__ATT_maxAmplitude])
+    );
+
+    //--------------------
+    // drawing
+    //--------------------
+
+    function LaneWindow_drawBackground (self)
+        /** Draws background for lanes and separators */
+        local (amplitudeInPixels originY lane laneCount
+               laneHeight laneY separatorHeight separatorY)
+    (
+        amplitudeInPixels = self[LaneWindow__ATT_maxAmplitude];
+        laneHeight = 2 * amplitudeInPixels;
+        separatorHeight = (LaneWindow_originY(self, 2)
+                           - LaneWindow_originY(self, 1)
+                           - laneHeight);
+        lane = 1;
+        laneCount = self[LaneWindow__ATT_count];
+
+        while (lane <= laneCount) (
+            // draw previous lane separator
+            lane > 1 ? (
+                separatorY = laneY + laneHeight;
+                Graphics_Color_set(LaneWindow__Color_laneSeparation);
+                gfx_rect(0, separatorY, gfx_w, separatorHeight);
+            );
+
+            // draw lane background
+            originY = LaneWindow_originY(self, lane);
+            laneY = originY - amplitudeInPixels;
+            Graphics_Color_set(LaneWindow__Color_laneBackground);
+            gfx_rect(self[LaneWindow__ATT_x], laneY,
+                     self[LaneWindow__ATT_width], laneHeight);
+
+            lane += 1;
+        );
+    );
+
+    //--------------------
+
+    function LaneWindow_drawHLine (self, lane,
+                                   deviceX, deviceWidth, y)
+        /** Draws horizontal line in <lane> of lane window <self> from
+            <deviceX> (within lane window) with width <deviceWidth> at
+            y-coordinate given by untransformed <y> value; clipping is
+            done at the lane window boundary */
+        local (amplitudeInPixels originY deviceY
+               magnificationFactor threshold)
+    (
+        magnificationFactor = self[LaneWindow__ATT_yMagnificationFactor];
+        threshold = 1 / magnificationFactor;
+        amplitudeInPixels =
+            self[LaneWindow__ATT_maxAmplitude] * magnificationFactor;
+        originY = LaneWindow_originY(self, lane);
+        y = forceToRange(y, -threshold, +threshold, false);
+        deviceY = originY - amplitudeInPixels * y;
+        deviceX += self[LaneWindow__ATT_x];
+        gfx_line(deviceX, deviceY, deviceX + deviceWidth, deviceY);
+    );
+
+    //--------------------
+
+    function LaneWindow_drawRectangle (self, lane,
+                                       deviceX, deviceWidth, y1, y2)
+        /** Draws rectangle in <lane> of lane window <self> from
+            <deviceX> (within lane window) with width <deviceWidth>
+            and heights given by untransformed <y1> and <y2> values;
+            clipping is done at the lane window boundary */
+        local (amplitudeInPixels originY deviceY1 deviceY2
+               magnificationFactor threshold)
+    (
+        magnificationFactor = self[LaneWindow__ATT_yMagnificationFactor];
+        threshold = 1 / magnificationFactor;
+        amplitudeInPixels =
+            self[LaneWindow__ATT_maxAmplitude] * magnificationFactor;
+        originY = LaneWindow_originY(self, lane);
+        y1 = forceToRange(y1, -threshold, +threshold, false);
+        y2 = forceToRange(y2, -threshold, +threshold, false);
+        deviceY1 = originY - amplitudeInPixels * y1;
+        deviceY2 = originY - amplitudeInPixels * y2;
+        deviceX += self[LaneWindow__ATT_x];
+
+        deviceWidth == 1 ? (
+            // this is a vertical line
+            gfx_line(deviceX, deviceY1, deviceX, deviceY2);
+        ) : deviceY1 < deviceY2 ? (
+            gfx_rect(deviceX, deviceY1, deviceWidth, deviceY2 - deviceY1);
+        ) :  (
+            gfx_rect(deviceX, deviceY2, deviceWidth, deviceY1 - deviceY2);
+        );
+    );
+
+    //--------------------
+
+    function LaneWindow_drawRectangle (self, lane,
+                                       deviceX, deviceWidth, y)
+        /** Draws rectangle in <lane> of lane window <self> from
+            <deviceX> with width <deviceWidth> and height given by
+            untransformed <y> value; clipping is done at the lane
+            window boundary */
+    (
+        LaneWindow_drawRectangle(self, lane, deviceX, deviceWidth, 0, y);
+    );
+
+    //--------------------
+
+    function LaneWindow_drawVLine (self, lane,
+                                   deviceX, y1, y2)
+        /** Draws vertical line in <lane> of lane window <self> at
+            <deviceX> with height given by untransformed <y1> and <y2>
+            values; clipping is done at the lane window boundary */
+    (
+        LaneWindow_drawRectangle(self, lane, deviceX, 1, y1, y2);
+    );
+
+    //--------------------
+
+    function LaneWindow_drawVLine (self, lane, deviceX, y)
+        /** Draws vertical line in <lane> of lane window <self> at
+            <deviceX> with height given by untransformed <y> value;
+            clipping is done at the lane window boundary */
+    (
+        LaneWindow_drawVLine(self, lane, deviceX, 0, y);
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function LaneWindow_print (self, indentationLevel)
+        /** Prints string representation of <self> to debug output */
+    (
+        Debug_printHdrIndented(indentationLevel, "LaneWindow@%d", self);
+        indentationLevel += 1;
+
+        Debug_printIndented(indentationLevel, "cnt  =%d",
+                            self[LaneWindow__ATT_count]);
+        Debug_printIndented(indentationLevel, "x    =%d",
+                            self[LaneWindow__ATT_x]);
+        Debug_printIndented(indentationLevel, "ampl =%d",
+                            self[LaneWindow__ATT_maxAmplitude]);
+        Debug_printIndented(indentationLevel, "yMagF=%d",
+                            self[LaneWindow__ATT_yMagnificationFactor]);
+        Debug_printIndented(indentationLevel, "width=%d",
+                            self[LaneWindow__ATT_width]);
+        Debug_printListIndented(indentationLevel,
+                                self[LaneWindow__ATT_originYList],
+                                "origY@%d", "%d");
+    );
+
+    //====================
+    // MenuBar
+    //====================
+
+    MenuBar__SIZE = ButtonBar__SIZE + 1;
+    /** the index of the currently selected button */
+    MenuBar__ATT_selectedIndex = STRUCT_INDEX(ButtonBar__SIZE + 1);
+
+    //--------------------
+
+    /** MenuButton_Index enumeration type*/
+    MenuButton_Index_none       =  0;
+    MenuButton_Index_viewport   = 99;
+
+    MenuButton_Index__COUNT              = 4;
+    MenuButton_Index_laneCount           = 1;
+    MenuButton_Index_magnificationFactor = 2;
+    MenuButton_Index_timeRange           = 3;
+    MenuButton_Index_timeOffset          = 4;
+
+    //--------------------
+
+    /** maximum number of menu items in a value button menu */
+    MenuButton__maxMenuItemCount = 30;
+
+    //--------------------
+    // PRIVATE ROUTINES
+    //--------------------
+
+    function MenuBar__formatTimeMenuValue (value, isOffset, st)
+        /** Formats time <value> depending on <isOffset> into <st> */
+    (                
+        isOffset ? (
+            String_format(st, "%3.1fs", round(value, 1));
+        ) : value == 0 ? (
+            String_copy(st, "0s");
+        ) : 0.001 <= value && value < 1 ? (
+            String_format(st, "%3.0fms", round(value * 1000));
+        ) : value < 0.001 ? (
+            String_format(st, "%3.0fµs", round(value * 1000000));
+        ) : (
+            String_format(st, "%3.0fs", round(value));
+        );
+    );
+
+    //--------------------
+
+    function MenuBar__make (count)
+        /** Initializes a value button bar with <count> buttons */
+        local (buttonIndex buttonList self valueButton)
+    (
+        self = STRUCT_make(MenuBar__SIZE);
+        self[MenuBar__ATT_selectedIndex] = 0;
+        ButtonBar_makeAsParent(self, count, ValueButton__SIZE);
+
+        buttonList = self[ButtonBar__ATT_data];
+        buttonIndex = 1;
+
+        while (buttonIndex <= count) (
+            valueButton = STRUCTARRAY_ptr(buttonList, buttonIndex);
+            ValueButton_makeAt(valueButton);
+            buttonIndex += 1;
+        );
+
+        self
+    );
+
+    //--------------------
+
+    function MenuBar__configureButton (self,
+                                       buttonIndex,
+                                       defaultValue,
+                                       minValue, maxValue,
+                                       resolution, sensitivity)
+        /** Sets menu button in <self> given by <buttonIndex> as
+            ranging from <minValue> to <maxValue> with <resolution>
+            and either linear or logarithmic value changes depending
+            on <isLinear>; for a linear button, the resolution is an
+            integral divisor; <defaultValue> specifies the standard
+            value */
+        local (buttonList valueButton)
+    (
+        buttonList = self[ButtonBar__ATT_data];
+        valueButton = STRUCTARRAY_ptr(buttonList, buttonIndex);
+        ValueButton_configure(valueButton,
+                              slider(buttonIndex), defaultValue,
+                              minValue, maxValue,
+                              resolution, sensitivity);
+    );
+
+    //--------------------
+
+    function MenuBar__constructDBMenuString (button, factor, st)
+        /** Constructs menu string for <button> with decibels values
+            into <st> */
+        local (format isDone isFirst prefix menuValue
+               menuValueAsString separator value)
+    (
+        menuValueAsString = String_make();
+        ValueButton_initializeGenerator(button, factor);
+        value = ValueButton_value(button);
+        isFirst = true;
+        isDone = false;
+        String_clear(st);
+
+        while (!isDone) (
+            menuValue = ValueGenerator_value();
+
+            !isDone ? (
+                separator = (isFirst ? "" : "|");
+                prefix = (menuValue == value ? "!" : "");
+                format = (menuValue == 0
+                          ? "%s%s%s%ddB ------" : "%s%s%s%+ddB");
+                String_format(st, format,
+                              st, separator, prefix, menuValue);
+                isFirst = false;
+                isDone = ValueGenerator_advance();
+            );
+        );
+    );
+
+    //--------------------
+
+   function MenuBar__constructTimeMenuString (button, stepWidth, st)
+        /** Constructs menu string for <button> with time values into
+            <st> */
+        local (isDone isFirst isOffset menuValue menuValueAsString
+               prefix separator value)
+    (
+        menuValueAsString = String_make();
+        ValueButton_initializeGenerator(button, stepWidth);
+        value = ValueButton_value(button);
+
+        isOffset = (stepWidth > 1);
+        isFirst = true;
+        isDone = false;
+        String_clear(st);
+
+        while (!isDone) (
+            menuValue = ValueGenerator_value();
+
+            !isDone ? (
+                separator = (isFirst ? "" : "|");
+                prefix = (menuValue == value ? "!" : "");
+                MenuBar__formatTimeMenuValue(menuValue, isOffset,
+                                             menuValueAsString);
+                String_format(st, "%s%s%s%s",
+                              st, separator, prefix, menuValueAsString);
+                isFirst = false;
+                isDone = ValueGenerator_advance();
+            );
+        );
+
+        String_destroy(menuValueAsString);
+    );
+
+    //--------------------
+
+    function MenuBar__handleDoubleClick (self)
+        /** Handles double click for some value button;
+            sets it to default value */
+        local (button buttonList defaultValue hasChanged
+               selectedIndex value)
+    (
+        selectedIndex = self[MenuBar__ATT_selectedIndex];
+        buttonList    = self[ButtonBar__ATT_data];
+        hasChanged = false;
+
+        (selectedIndex != MenuButton_Index_none
+         && selectedIndex != MenuButton_Index_viewport) ? (
+            button = STRUCTARRAY_ptr(buttonList, selectedIndex);
+            defaultValue = ValueButton_defaultValue(button);
+            value = ValueButton_value(button);
+            hasChanged = (value != defaultValue);
+
+            hasChanged ? (
+                ValueButton_setToDefault(button);
+            );
+        );
+    );
+
+    //--------------------
+
+    function MenuBar__handleDrag (self)
+        /** Processes drag for some value button; returns whether
+            something has changed */
+        local (button buttonList dragDirection hasChanged
+               isViewportDrag selectedIndex shiftIsPressed timeRange)
+    (
+        selectedIndex = self[MenuBar__ATT_selectedIndex];
+        buttonList    = self[ButtonBar__ATT_data];
+        hasChanged = false;
+
+        isViewportDrag = (selectedIndex == MenuButton_Index_viewport);
+        dragDirection = Mouse_dragDirection();
+        shiftIsPressed = Mouse_shiftIsPressed();
+
+        ((isViewportDrag
+          && dragDirection == Mouse_DragDirection_vertical)
+         || selectedIndex == MenuButton_Index_magnificationFactor) ? (
+            selectedIndex = MenuButton_Index_magnificationFactor;
+            button = STRUCTARRAY_ptr(buttonList, selectedIndex);
+            ButtonBar_setSelected(self, button);
+            hasChanged = ValueButton_handleDragPrecise(button);
+        );
+
+        ((isViewportDrag
+          && dragDirection == Mouse_DragDirection_horizontal
+          && shiftIsPressed)
+         || selectedIndex == MenuButton_Index_timeRange) ? (
+            selectedIndex = MenuButton_Index_timeRange;
+            button = STRUCTARRAY_ptr(buttonList, selectedIndex);
+            ButtonBar_setSelected(self, button);
+            hasChanged = ValueButton_handleDragPrecise(button);
+        );
+
+        ((isViewportDrag
+          && dragDirection == Mouse_DragDirection_horizontal
+          && !shiftIsPressed)
+         || selectedIndex == MenuButton_Index_timeOffset) ? (
+            selectedIndex = MenuButton_Index_timeOffset;
+            button = STRUCTARRAY_ptr(buttonList, selectedIndex);
+            ButtonBar_setSelected(self, button);
+            hasChanged = ValueButton_handleDragPrecise(button);
+        );
+
+        hasChanged ? (
+            slider(selectedIndex) = ValueButton_value(button);
+        );
+
+        hasChanged
+    );
+
+    //--------------------
+
+    function MenuBar__handleMenu (self, button, buttonIndex)
+        /** Handles value selection in bar <self> by menu for
+            <button> */
+        local (hasChanged i index isDone newValue st value)
+    (
+        st = String_make();
+        hasChanged = false;
+
+        buttonIndex == MenuButton_Index_timeRange ? (
+            MenuBar__constructTimeMenuString(button, 1, st);
+        ) : buttonIndex == MenuButton_Index_timeOffset ? (
+            MenuBar__constructTimeMenuString(button, 500, st);
+        ) : buttonIndex == MenuButton_Index_magnificationFactor ? (
+            MenuBar__constructDBMenuString(button, 10, st);
+        ) : (
+            ValueButton_constructMenuString(button, st);
+        );
+
+        gfx_x = button[Button__ATT_x];
+        gfx_y = button[Button__ATT_y] + gfx_texth;
+        i = gfx_showmenu(st);
+
+        i > 0 ? (
+            // reuse last generator and extract value
+            ValueGenerator_reset();
+            index = 1;
+            isDone = false;
+            newValue = 0;
+
+            while (!isDone && index <= i) (
+                newValue = ValueGenerator_value();
+
+                !isDone ? (
+                    isDone = ValueGenerator_advance();
+                    index += 1;
+                );
+            );
+
+            value = ValueButton_value(button);
+
+            value != newValue ? (
+                ValueButton_setValue(button, newValue);
+                slider(buttonIndex) = newValue;
+                hasChanged = true;
+            );
+        );
+
+        String_destroy(st);
+
+        hasChanged
+    );
+
+    //--------------------
+
+    function MenuBar__hasMenu (self, button)
+        /** Tells whether the value selection in button can be done
+            via a context menu; this requires a small number of
+            values */
+    (
+        // all menu buttons have context menus
+        true
+    );
+
+    //--------------------
+
+    function MenuBar__handleMouse (self)
+        /** Handles left button press or mouse wheel events for
+            <self>; returns whether something has changed */
+        local (button buttonList clickHasHappened hasChanged
+               leftMouseButtonIsPressed mouseEventKind
+               rightMouseButtonIsPressed selectedIndex
+               somethingIsSelected viewportTopY)
+    (
+        selectedIndex = self[MenuBar__ATT_selectedIndex];
+        buttonList    = self[ButtonBar__ATT_data];
+        mouseEventKind = Mouse_process();
+        leftMouseButtonIsPressed = Mouse_leftButtonIsPressed();
+        rightMouseButtonIsPressed = Mouse_rightButtonIsPressed();
+        clickHasHappened =
+            (mouseEventKind == Mouse_EventKind_leftClick
+             || mouseEventKind == Mouse_EventKind_rightClick);
+        somethingIsSelected = (selectedIndex != MenuButton_Index_none);
+
+        hasChanged = false;
+
+        mouseEventKind == Mouse_EventKind_up ? (
+            ValueButton_resetDragging();
+
+            somethingIsSelected ? (
+                Debug_print("MB: LM up=>dsel");
+                self[MenuBar__ATT_selectedIndex] = MenuButton_Index_none;
+                ButtonBar_deselectAll(self);
+                hasChanged = true;
+            );
+        ) : !somethingIsSelected && clickHasHappened ? (
+            // a relevant mouse down has occured or the wheel is
+            // turned
+            hasChanged = true;
+            viewportTopY = 2 * ButtonBar_height(self);
+            selectedIndex = ButtonBar_checkForPress(self);
+            Debug_print("MB: clk-%d", selectedIndex);
+
+            selectedIndex != MenuButton_Index_none ? (
+                rightMouseButtonIsPressed ? (
+                    // find out whether button has a context menu and
+                    // execute it if available
+                    button = STRUCTARRAY_ptr(buttonList, selectedIndex);
+
+                    MenuBar__hasMenu(self, button) ? (
+                        hasChanged = MenuBar__handleMenu(self, button,
+                                                         selectedIndex);
+                    );
+                );
+            ) : mouse_y >= viewportTopY && leftMouseButtonIsPressed ? (
+                ButtonBar_deselectAll(self);
+                selectedIndex = MenuButton_Index_viewport;
+            );
+
+            self[MenuBar__ATT_selectedIndex] = selectedIndex;
+        ) : mouseEventKind == Mouse_EventKind_leftDoubleClick ? (
+            Debug_print("MB: dblClick");
+            MenuBar__handleDoubleClick(self);
+        ) : mouseEventKind == Mouse_EventKind_leftDrag ? (
+            // process drag by mouse
+            Debug_print("MB: drag %d", Mouse_dragDirection());
+            hasChanged = MenuBar__handleDrag(self);
+        ) : mouseEventKind == Mouse_EventKind_wheel ? (
+            Debug_print("MB: wheel");
+
+            selectedIndex != MenuButton_Index_viewport ? (
+                ButtonBar_deselectAll(self);
+                self[MenuBar__ATT_selectedIndex] =
+                    MenuButton_Index_viewport;
+            );
+
+            // process drag by mouse wheel
+            hasChanged = MenuBar__handleDrag(self);
+        );
+
+        hasChanged
+    );
+
+    //--------------------
+
+    function MenuBar__handleTimeRangeUpdate (self)
+        /** Updates time range length e.g. when sample rate has
+            changed */
+        local (slotsUsedByOtherVariables timeRangeLength)
+    (
+        // calculate time range length from the available memory and
+        // make it a multiple of five
+        slotsUsedByOtherVariables = 2000;
+        timeRangeLength =
+            ((__memtop() - slotsUsedByOtherVariables)
+             / (srate * FrameBuffer_channelCount));
+        timeRangeLength = floor(timeRangeLength / 5) * 5;
+
+        MenuBar__configureButton(self,
+                                 MenuButton_Index_timeRange,
+                                 20, 0.0001, timeRangeLength, 0, 1);
+        MenuBar__configureButton(self,
+                                 MenuButton_Index_timeOffset,
+                                 0, 0, timeRangeLength, 1000, 1);
+    );
+
+    //--------------------
+    // EXPORTED ROUTINES
+    //--------------------
+
+    //--------------------
+    // con-/destruction
+    //--------------------
+
+    function MenuBar_make ()
+        /** Makes value button bar */
+        local (self)
+    (
+        self = MenuBar__make(MenuButton_Index__COUNT);
+        MenuBar__configureButton(self,
+                                 MenuButton_Index_magnificationFactor,
+                                 0, -100, 100, 1, 2);
+        MenuBar__configureButton(self,
+                                 MenuButton_Index_laneCount,
+                                 1, 1, LaneWindow_maxCount, 1, 1);
+
+        MenuBar__handleTimeRangeUpdate(self);
+        self
+    );
+
+    //--------------------
+    // property access
+    //--------------------
+
+    function MenuBar_height (self)
+        /** Returns height of menu bar <self> */
+    (
+        ButtonBar_height(self);
+    );
+
+    //--------------------
+    // property change
+    //--------------------
+
+    function MenuBar_setLineCount (self, lineCount)
+        /** Sets count of menu bar lines to <lineCount> */
+    (
+        ButtonBar_setLineCount(self, lineCount);
+    );
+
+    //--------------------
+    // element access
+    //--------------------
+
+    function MenuBar_buttonValue (self, index)
+        /** Returns value of menu button with <index> in <self> */
+        local (buttonList)
+    (
+        buttonList = self[ButtonBar__ATT_data];
+        ValueButton_value(STRUCTARRAY_ptr(buttonList, index))
+    );
+
+    //--------------------
+
+    function MenuBar_buttonMaxValue (self, index)
+        /** Returns maximum value of menu button with <index> in
+         * <self> */
+        local (buttonList)
+    (
+        buttonList = self[ButtonBar__ATT_data];
+        ValueButton_maxValue(STRUCTARRAY_ptr(buttonList, index));
+    );
+
+    //--------------------
+    // element change
+    //--------------------
+
+    function MenuBar_setButtonLabel (self, index, st)
+        /** Sets label of menu button with <index> in <self> to <st> */
+        local (buttonList)
+    (
+        buttonList = self[ButtonBar__ATT_data];
+        Button_setLabel(STRUCTARRAY_ptr(buttonList, index), st);
+    );
+
+    //--------------------
+    // event handling
+    //--------------------
+
+    function MenuBar_handleMouse (self)
+        /** Handles left button press or mouse wheel events in
+            <self> */
+    (
+        MenuBar__handleMouse(self)
+    );
+
+    //--------------------
+
+    function MenuBar_handleTimeRangeUpdate (self)
+        /** Updates time range length of <self> e.g. when sample rate
+            has changed */
+    (
+        MenuBar__handleTimeRangeUpdate(self);
+    );
+
+    //--------------------
+    // drawing
+    //--------------------
+
+    function MenuBar_draw (self)
+        /** Draws value button bar <self> */
+    (
+        ButtonBar_draw(self);
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function MenuBar_print (self, indentationLevel)
+        /** Prints string representation of <self> to debug output */
+        local (buttonCount buttonIndex buttonList valueButton)
+    (
+        Debug_printHdrIndented(indentationLevel, "MenuBar@%d", self);
+        indentationLevel += 1;
+
+        Debug_printIndented(indentationLevel, "selIdx=%d",
+                            self[MenuBar__ATT_selectedIndex]);
+
+        buttonList = self[ButtonBar__ATT_data];
+        buttonCount = ButtonBar_count(self);
+        buttonIndex = 1;
+
+        while (buttonIndex <= buttonCount) (
+            valueButton = STRUCTARRAY_ptr(buttonList, buttonIndex);
+            ValueButton_print(valueButton, indentationLevel);
+            buttonIndex += 1;
+        );
+    );
+
+    //====================
+    // String
+    //====================
+
+    function String_formatTime (time, hasMicroseconds)
+    (
+        time == 0 ? (
+            "0.0s"
+        ) : abs(time) < 0.001 ? (
+            sprintf(#, "%3.0fµs", round(time * 1000000))
+        ) : abs(time) < 1 ? (
+            sprintf(#,
+                    (hasMicroseconds ? "%3.3fms" : "%3.0fms"),
+                    round(time * 1000, 3))
+        ) : (
+            sprintf(#,
+                    (hasMicroseconds ? "%4.4fs" : "%3.3fs"),
+                    round(time, 4))
+        )
+    );
+
+    //====================
+    /* Oscilloscope */
+    //====================
+
+    Oscilloscope__SIZE = 12;
+    /** the array of colors per channel */
+    Oscilloscope__ATT_sampleColorList           = STRUCT_INDEX(1);
+    /** the array of colors per lane for the vertical grid */
+    Oscilloscope__ATT_vGridColorList            = STRUCT_INDEX(2);
+    /** pixels in horizontal and vertical direction */
+    Oscilloscope__ATT_pixelsPerFrame            = STRUCT_INDEX(3);
+    /** maximum time range in scope in seconds */
+    Oscilloscope__ATT_maximumTimeRangeInSeconds = STRUCT_INDEX(4);
+    /** effective time range in scope in seconds (might be adjusted to
+        ensure an integer pixel count per sample for high resolution
+        display */
+    Oscilloscope__ATT_timeRangeInSeconds        = STRUCT_INDEX(5);
+    /** time offset shift applied to view range */
+    Oscilloscope__ATT_timeOffset                = STRUCT_INDEX(6);
+    /** the current play time in samples */
+    Oscilloscope__ATT_sampleTime                = STRUCT_INDEX(7);
+    /** the overall work area for the samples and the horizontal
+        grid */
+    Oscilloscope__ATT_viewport                  = STRUCT_INDEX(8);
+    /** the oscilloscope menu bar */
+    Oscilloscope__ATT_menuBar                   = STRUCT_INDEX(9);
+    /** the oscilloscope lane window */
+    Oscilloscope__ATT_laneWindow                = STRUCT_INDEX(10);
+    /** the oscilloscope frame buffer for the samples */
+    Oscilloscope__ATT_frameBuffer               = STRUCT_INDEX(11);
+    /** a list storing the previous display state of the
+        oscilloscope */
+    Oscilloscope__ATT_displayState              = STRUCT_INDEX(12);
+
+    /** the length of the state structure */
+    Oscilloscope_State_SIZE = 6;
+
+    //--------------------
+
+    Oscilloscope__Color_grid       = Graphics_color_grey;
+    Oscilloscope__Color_hGridLabel = Graphics_color_makeGrey(0.75);
+
+    /** transparency values for different graphics items */
+    Oscilloscope__alphaForGrid       = 0.5;
+    Oscilloscope__alphaForSamples    = 1.0;
+    Oscilloscope__alphaForSampleFill = 0.6;
+
+    /** font indices */
+    Oscilloscope__fontIndexMenuBar = 1;
+    Oscilloscope__fontIndexGrid    = 2;
+
+    //--------------------
+    /* PRIVATE FEATURES   */
+    //--------------------
+
+    function Oscilloscope__vGridColor (self, lane)
+        /** Returns stereo lane dependent grid color */
+        local (laneWindow vGridColorList)
+    (
+        laneWindow     = self[Oscilloscope__ATT_laneWindow];
+        vGridColorList = self[Oscilloscope__ATT_vGridColorList];
+
+        LaneWindow_count(laneWindow) == 1 ? (
+            Oscilloscope__Color_grid
+        ) : (
+            FixedArray_getAt(vGridColorList, lane)
+        )
+    );
+
+    //--------------------
+
+    function Oscilloscope__selectFont (self, fontIndex)
+        /** Selects font given by <fontIndex> */
+    (
+        fontIndex = (gfx_ext_retina > 1 ? fontIndex : 0);
+        gfx_setfont(fontIndex);
+    );
+
+    //--------------------
+
+    function Oscilloscope__collectPixelMinMaxValues (self,
+                                                     frameIndex,
+                                                     lastFrameIndex,
+                                                     minMaxValueList)
+        /** Collect samples for each channel from frames between
+            <frameIndex> and <lastFrameIndex> as delta into list of
+            min-max values <minMaxValueList>; when the sample count is
+            high, it is reduced by stepwidth */
+        local (channel effectiveChannel frameBuffer isFirst lane
+               laneCount laneWindow minValue maxValue mmIndex sample
+               stepWidth)
+    (
+        frameBuffer = self[Oscilloscope__ATT_frameBuffer];
+        laneWindow  = self[Oscilloscope__ATT_laneWindow];
+
+        FixedArray_clear(minMaxValueList);
+        isFirst = true;
+        stepWidth = max(1,
+                        toInteger((lastFrameIndex - frameIndex) * 0.01));
+        laneCount = LaneWindow_count(laneWindow);
+
+        while (frameIndex != 0 && frameIndex < lastFrameIndex) (
+            effectiveChannel = 1;
+            mmIndex = 0;
+            lane = 1;
+
+            while (lane <= laneCount) (
+                channel = 1;
+
+                while (channel <= 2) (
+                    sample = FrameBuffer_get(frameBuffer,
+                                             frameIndex,
+                                             effectiveChannel);
+
+                    isFirst ? (
+                        minValue = sample;
+                        maxValue = sample;
+                    ) : (
+                        minValue = minMaxValueList[mmIndex + 0];
+                        maxValue = minMaxValueList[mmIndex + 1];
+                        minValue = min(sample, minValue);
+                        maxValue = max(sample, maxValue);
+                    );
+
+                    minMaxValueList[mmIndex + 0] = minValue;
+                    minMaxValueList[mmIndex + 1] = maxValue;
+
+                    effectiveChannel += 1;
+                    mmIndex += 2;
+                    channel += 1;
+                );
+
+                lane += 1;
+            );
+
+            isFirst = false;
+            frameIndex += stepWidth;
+        );
+    );
+
+    //--------------------
+
+    function Oscilloscope__drawBackground (self)
+        /** Draws background rectangle */
+        local (laneWindow)
+    (
+        laneWindow = self[Oscilloscope__ATT_laneWindow];
+        Graphics_clear(Graphics__Color_black);
+        LaneWindow_drawBackground(laneWindow);
+    );
+
+    //--------------------
+
+    function Oscilloscope__drawHorizontalGrid (self)
+        /** Draws dynamically scaled horizontal grid */
+        local (a deltaX divisionCount frameBuffer framesPerPixel
+               lowerRightX lowerRightY pixelsPerFrame t textHeight
+               textWidth textXOffset textYOffset timeInSamples
+               timeOffset viewport viewportX viewportY x)
+    (
+        frameBuffer    = self[Oscilloscope__ATT_frameBuffer];
+        pixelsPerFrame = self[Oscilloscope__ATT_pixelsPerFrame];
+        timeOffset     = self[Oscilloscope__ATT_timeOffset];
+        viewport       = self[Oscilloscope__ATT_viewport];
+
+        textXOffset = 2;
+        textYOffset = 2;
+
+        gfx_a = Oscilloscope__alphaForGrid;
+        Oscilloscope__selectFont(self, Oscilloscope__fontIndexGrid);
+        gfx_measurestr("000.000ms", textWidth, textHeight);
+        divisionCount =
+            toInteger(GO_Rectangle_width(viewport) * 4
+                      / (5 * textWidth));
+        divisionCount = iif(isCompactMode, 2,
+                            divisionCount <  5,  2,
+                            divisionCount < 10,  5,
+                            divisionCount < 20, 10,
+                            20);
+
+        framesPerPixel = 1 / pixelsPerFrame;
+        t = FrameBuffer_initialFrameTime(frameBuffer) + timeOffset;
+        viewportX = GO_Rectangle_x(viewport);
+        viewportY = GO_Rectangle_y(viewport);
+        deltaX = GO_Rectangle_width(viewport) / divisionCount;
+        lowerRightX = viewportX + divisionCount * deltaX;
+        lowerRightY = viewportY + GO_Rectangle_height(viewport);
+
+        x = viewportX;
+
+        while (x < lowerRightX) (
+            Graphics_Color_set(Oscilloscope__Color_grid);
+            gfx_line(x, viewportY - textHeight,
+                     x, lowerRightY + textHeight);
+
+            timeInSamples = Audio_timeToSamples(t);
+
+            Graphics_Color_set(Oscilloscope__Color_hGridLabel);
+            gfx_x = x + textXOffset;
+            gfx_y = viewportY - textYOffset - textHeight;
+            gfx_drawstr(sprintf(#, "%d", round(timeInSamples)));
+
+            gfx_x = x + textXOffset;
+            gfx_y = lowerRightY + textYOffset;
+            gfx_drawstr(String_formatTime(t, true));
+
+            x += deltaX;
+            t = Audio_samplesToTime(timeInSamples
+                                    + deltaX * framesPerPixel);
+        );
+    );
+
+    //--------------------
+
+    function Oscilloscope__drawMenuBar (self)
+        /** Draws menu bar */
+        local (menuBar)
+    (
+        menuBar = self[Oscilloscope__ATT_menuBar];
+        Oscilloscope__selectFont(self,
+                                 Oscilloscope__fontIndexMenuBar);
+        MenuBar_draw(menuBar);
+    );
+
+    //--------------------
+
+    function Oscilloscope__drawPixelMinMaxValues (self,
+                                                  deviceX,
+                                                  minMaxValueList)
+        /** Draws data of list of min-max values <minMaxValueList> and
+            draws them in all lanes of lane window at <deviceX> */
+        local (alphaHigh alphaLow channel color lane laneCount
+               laneWindow minValue maxValue mmIndex sampleColorList)
+    (
+        laneWindow      = self[Oscilloscope__ATT_laneWindow];
+        sampleColorList = self[Oscilloscope__ATT_sampleColorList];
+
+        laneCount = LaneWindow_count(laneWindow);
+        alphaHigh = Oscilloscope__alphaForSampleFill;
+        alphaLow  = Oscilloscope__alphaForSampleFill / 2;
+
+        mmIndex = 0;
+        lane = 1;
+
+        while (lane <= laneCount) (
+            channel = 1;
+
+            while (channel <= 2) (
+                color = FixedArray_getAt(sampleColorList, channel);
+                minValue = minMaxValueList[mmIndex + 0];
+                maxValue = minMaxValueList[mmIndex + 1];
+
+                Graphics_color_set(color);
+
+                sign(maxValue) == sign(minValue) ? (
+                    // sample values on the same side
+                    gfx_a = alphaHigh;
+                    LaneWindow_drawVLine(laneWindow,
+                                         lane, deviceX, minValue);
+                    gfx_a = alphaLow;
+                    LaneWindow_drawVLine(laneWindow,
+                                         lane, deviceX, minValue, maxValue);
+                ) : (
+                    // sample values on opposite sides
+                    gfx_a = alphaLow;
+                    LaneWindow_drawVLine(laneWindow,
+                                         lane, deviceX, minValue, maxValue);
+                );
+
+                channel += 1;
+                mmIndex += 2;
+            );
+
+            lane += 1;
+        );
+    );
+
+    //--------------------
+
+    function Oscilloscope__drawSampleAreaMultiPixels (self,
+                                                      startTime)
+        /** Draws complete sample area when there are multiple pixels
+            per sample */
+        local (channel deviceX deviceXIncrement effectiveChannel
+               frameBuffer frameIndex isChannelA isBeforeRange lane
+               laneCount laneWindow lastX nextDeviceX pixelsPerFrame
+               sample sampleColor sampleColorList time x)
+    (
+        frameBuffer     = self[Oscilloscope__ATT_frameBuffer];
+        laneWindow      = self[Oscilloscope__ATT_laneWindow];
+        pixelsPerFrame  = self[Oscilloscope__ATT_pixelsPerFrame];
+        sampleColorList = self[Oscilloscope__ATT_sampleColorList];
+
+        lastX     = LaneWindow_width(laneWindow);
+        laneCount = LaneWindow_count(laneWindow);
+
+        x = 0;
+        deviceX = x;
+        time = startTime;
+        isBeforeRange = true;
+
+        while (x <= lastX) (
+            (isBeforeRange
+             && FrameBuffer_timeIsInRange(frameBuffer, time)) ? (
+                frameIndex =
+                    FrameBuffer_frameIndexForTime(frameBuffer, time);
+                isBeforeRange = false;
+            );
+
+            x += pixelsPerFrame;
+            nextDeviceX = round(x);
+            deviceXIncrement = nextDeviceX - deviceX;
+
+            lane = 1;
+            effectiveChannel = 1;
+
+            while (lane <= laneCount) (
+                channel = 1;
+
+                while (channel <= 2) (
+                    sample =
+                        (frameIndex > 0
+                         ? FrameBuffer_get(frameBuffer,
+                                           frameIndex,
+                                           effectiveChannel)
+                         : 0);
+
+                    isChannelA = (channel == 1);
+                    gfx_a =
+                        isChannelA ? (
+                            Oscilloscope__alphaForSampleFill;
+                        ) : (
+                            Oscilloscope__alphaForFill / 2;
+                        );
+
+                    sampleColor =
+                        FixedArray_getAt(sampleColorList, channel);
+                    Graphics_color_set(sampleColor);
+
+                    gfx_a = Oscilloscope__alphaForSampleFill;
+                    LaneWindow_drawRectangle(laneWindow,
+                                             lane, deviceX,
+                                             deviceXIncrement, sample);
+                    gfx_a = Oscilloscope__alphaForSamples;
+                    LaneWindow_drawHLine(laneWindow,
+                                         lane, deviceX,
+                                         deviceXIncrement, sample);
+
+                    channel += 1;
+                    effectiveChannel += 1;
+                );
+
+                lane += 1;
+            );
+
+            frameIndex > 0 ? (
+                frameIndex = FrameBuffer_toRange(frameBuffer,
+                                                 frameIndex + 1);
+            );
+
+            deviceX = nextDeviceX;
+            time += FrameBuffer_deltaTime(frameBuffer);
+
+            time > FrameBuffer_frameTime(frameBuffer) ? (
+                frameIndex = 0;
+            );
+        );
+    );
+
+    //--------------------
+
+    function Oscilloscope__drawSampleAreaMultiSamples (self,
+                                                       startTime)
+        /** Draws complete sample area when there are multiple samples
+            per pixel */
+        local (channel deltaTimePerPixel deviceX effectiveChannel
+               frameBuffer frameIndex lane laneCount laneWindow lastX
+               minMaxValueList mmIndex nextFrameIndex sample time
+               timeRangeInSeconds)
+    (
+        frameBuffer        = self[Oscilloscope__ATT_frameBuffer];
+        laneWindow         = self[Oscilloscope__ATT_laneWindow];
+        timeRangeInSeconds = self[Oscilloscope__ATT_timeRangeInSeconds];
+
+        minMaxValueList = FixedArray_make(4 * LaneWindow_maxCount);
+
+        deviceX = 0;
+        lastX   = LaneWindow_width(laneWindow);
+        deltaTimePerPixel = timeRangeInSeconds / lastX;
+        time = startTime;
+
+        nextFrameIndex = FrameBuffer_frameIndexForTime(frameBuffer, time);
+
+        while (deviceX <= lastX) (
+            frameIndex = nextFrameIndex;
+            time += deltaTimePerPixel;
+            nextFrameIndex =
+                FrameBuffer_frameIndexForTime(frameBuffer, time);
+
+            //collect the min max values per channel
+            Oscilloscope__collectPixelMinMaxValues(self,
+                                                   frameIndex,
+                                                   nextFrameIndex,
+                                                   minMaxValueList);
+
+            // draw the min max values per channel
+            Oscilloscope__drawPixelMinMaxValues(self,
+                                                deviceX,
+                                                minMaxValueList);
+
+            // step one pixel further
+            deviceX += 1;
+        );
+
+        FixedArray_destroy(minMaxValueList);
+    );
+
+    //--------------------
+
+    function Oscilloscope__drawSampleArea (self)
+        /** Draws complete sample area in lane window using data from
+            frame buffer */
+        local (frameBuffer frameIndex pixelsPerFrame startTime
+               timeOffset)
+    (
+        frameBuffer    = self[Oscilloscope__ATT_frameBuffer];
+        pixelsPerFrame = self[Oscilloscope__ATT_pixelsPerFrame];
+        timeOffset     = self[Oscilloscope__ATT_timeOffset];
+
+        startTime =
+            FrameBuffer_initialFrameTime(frameBuffer) + timeOffset;
+
+        pixelsPerFrame < 1 ? (
+            Oscilloscope__drawSampleAreaMultiSamples(self, startTime);
+        ) : (
+            Oscilloscope__drawSampleAreaMultiPixels(self, startTime);
+        );
+    );
+
+    //--------------------
+
+    function Oscilloscope__drawVerticalGrid (self, dbOffset)
+        /** Draws dynamically scaled vertical grid using properties of
+            lane window */
+        local (divisionFactor lane laneCount laneWindow
+               magnificationInDecibels originY pixelOffset
+               previousPixelOffset processingState State_atFirst
+               State_done State_generating st temp v vGridColor
+               yBottom yTop)
+    (
+        laneWindow = self[Oscilloscope__ATT_laneWindow];
+
+        // enumeration for the processing state
+        State_atFirst     = 0;
+        State_generating  = 1;
+        State_done        = 2;
+
+        st = String_make();
+
+        divisionFactor = 3;
+        gfx_a = Oscilloscope__alphaForGrid;
+        Oscilloscope__selectFont(self, Oscilloscope__fontIndexGrid);
+        lane = 1;
+        laneCount = LaneWindow_count(laneWindow);
+
+        while (lane <= laneCount) (
+            vGridColor = Oscilloscope__vGridColor(self, lane);
+            Graphics_Color_set(vGridColor);
+            originY = LaneWindow_originY(laneWindow, lane);
+            gfx_line(0, originY, gfx_w, originY);
+
+            processingState = State_atFirst;
+            magnificationInDecibels = 0;
+            previousPixelOffset = maximumInteger;
+
+            while (processingState != State_done) (
+                pixelOffset =
+                    LaneWindow_decibelsToPixels(laneWindow,
+                                                magnificationInDecibels);
+                previousPixelOffset - pixelOffset <= gfx_texth
+                    || pixelOffset == 0 ? (
+                    processingState = State_done;
+                ) : (
+                    yTop    = originY - pixelOffset;
+                    yBottom = originY + pixelOffset;
+                    gfx_line(0, yTop,    gfx_w, yTop);
+                    gfx_line(0, yBottom, gfx_w, yBottom);
+
+                    processingState == State_atFirst ? (
+                        // swap yTop and yBottom for the text labels
+                        temp = yTop; yTop = yBottom; yBottom = temp;
+                        processingState = State_generating;
+                    );
+
+                    processingState == State_generating ? (
+                        String_format(st, "%+.1fdB",
+                                      magnificationInDecibels + dBOffset);
+                        gfx_x = 0;
+                        gfx_y = yTop - 2 - gfx_texth;
+                        gfx_drawstr(st);
+                        gfx_x = 0;
+                        gfx_y = yBottom + 2;
+                        gfx_drawstr(st);
+                    );
+
+                    magnificationInDecibels =
+                        (floor(magnificationInDecibels / divisionFactor - 1)
+                         * divisionFactor);
+                    previousPixelOffset = pixelOffset;
+                );
+            );
+
+            lane += 1;
+        );
+
+        String_destroy(st);
+    );
+
+    //--------------------
+
+    function Oscilloscope__print (self, indentationLevel)
+        /** Prints string representation of <self> to debug output */
+        local (frameBuffer laneWindow maximumTimeRangeInSeconds
+               menuBar st viewport)
+    (
+        frameBuffer = self[Oscilloscope__ATT_frameBuffer];
+        laneWindow  = self[Oscilloscope__ATT_laneWindow];
+        menuBar     = self[Oscilloscope__ATT_menuBar];
+        viewport    = self[Oscilloscope__ATT_viewport];
+        maximumTimeRangeInSeconds =
+            self[Oscilloscope__ATT_maximumTimeRangeInSeconds];
+
+        st = String_make();
+
+        Debug_printHdrIndented(indentationLevel, "Oscilloscope");
+        indentationLevel += 1;
+
+        Debug_printIndented(indentationLevel, "pxlPF=%f",
+                            self[Oscilloscope__ATT_pixelsPerFrame]);
+        Debug_printIndented(indentationLevel, "tMax =%f",
+                            maximumTimeRangeInSeconds);
+        Debug_printIndented(indentationLevel, "t1   =%f",
+                            self[Oscilloscope__ATT_timeRangeInSeconds]);
+        Debug_printIndented(indentationLevel, "tOffs=%f",
+                            self[Oscilloscope__ATT_timeOffset]);
+        Debug_printIndented(indentationLevel, "tCurr=%f",
+                            self[Oscilloscope__ATT_sampleTime]);
+        Debug_printListIndented(indentationLevel,
+                                self[Oscilloscope__ATT_sampleColorList],
+                                "smpCol@%d", "%06X");
+        Debug_printListIndented(indentationLevel,
+                                self[Oscilloscope__ATT_vGridColorList],
+                                "vgrCol@%d", "%06X");
+        Debug_printListIndented(indentationLevel,
+                                self[Oscilloscope__ATT_displayState],
+                                "state@%d", "%f");
+
+        GO_Rectangle_toString(viewport, "vprt", "%d", st);
+        Debug_printSepStringIndented(indentationLevel, st);
+        LaneWindow_print(laneWindow, indentationLevel);
+        MenuBar_print(menuBar, indentationLevel);
+        FrameBuffer_print(frameBuffer, indentationLevel);
+
+        String_destroy(st);
+    );
+
+    //--------------------
+
+    function Oscilloscope__initializeFont (self)
+        /** Initializes font setting for oscilloscope <self> */
+    (
+        gfx_ext_retina > 1 ? (
+            gfx_setfont(Oscilloscope__fontIndexMenuBar,
+                        "Arial", 15 * gfx_ext_retina, 'b');
+            gfx_setfont(Oscilloscope__fontIndexGrid,
+                        "Arial", 12 * gfx_ext_retina, 'b');
+        ) : (
+            gfx_setfont(0);
+        );
+    );
+
+    //--------------------
+
+    function Oscilloscope__redraw (self)
+        /** Redraws complete oscilloscope area */
+        local (dbOffset drawBuffer menuBar)
+    (
+        Debug_currentMode == Debug_Mode_effect ? (
+            menuBar = self[Oscilloscope__ATT_menuBar];
+            dBOffset =
+                -MenuBar_buttonValue(menuBar,
+                                     MenuButton_Index_magnificationFactor);
+
+            drawBuffer = 1;
+            gfx_setimgdim(drawBuffer, gfx_w, gfx_h);
+            gfx_dest = drawBuffer;
+            Oscilloscope__initializeFont(self);
+            Oscilloscope__drawBackground(self);
+            Oscilloscope__drawVerticalGrid(self, dBOffset);
+            Oscilloscope__drawHorizontalGrid(self);
+            Oscilloscope__drawSampleArea(self);
+            Oscilloscope__drawMenuBar(self);
+            gfx_dest = -1;
+            gfx_a=1;
+            gfx_x = 0;  gfx_y = 0;
+            gfx_blit(drawBuffer, 1, 0);
+        );
+    );
+
+    //--------------------
+
+    function Oscilloscope__updateMenuBar (self)
+        /** Updates menu bar buttons */
+        local (buttonIndex menuBar st value)
+    (
+        st = String_make();
+
+        menuBar = self[Oscilloscope__ATT_menuBar];
+
+        // select font because of the dynamic resizing of the menu
+        // buttons
+        Oscilloscope__selectFont(self,
+                                 Oscilloscope__fontIndexMenuBar);
+
+        buttonIndex = MenuButton_Index_timeRange;
+        value = MenuBar_buttonValue(menuBar, buttonIndex);
+        String_format(st,
+                      iif(isInCompactMode, "Lngth:%s", "Length: %s"),
+                      String_formatTime(value, true));
+        MenuBar_setButtonLabel(menuBar, buttonIndex, st);
+
+        buttonIndex = MenuButton_Index_magnificationFactor;
+        value = MenuBar_buttonValue(menuBar, buttonIndex);
+        String_format(st,
+                      iif(isInCompactMode, "Zm:%+.0f", "Zoom: %+.0fdB"),
+                      value);
+        MenuBar_setButtonLabel(menuBar, buttonIndex, st);
+
+        buttonIndex = MenuButton_Index_laneCount;
+        value = MenuBar_buttonValue(menuBar, buttonIndex);
+        String_format(st,
+                      iif(isInCompactMode, "lc:%d", "LaneCount: %d"),
+                      round(value));
+        MenuBar_setButtonLabel(menuBar, buttonIndex, st);
+
+        buttonIndex = MenuButton_Index_timeOffset;
+        value = MenuBar_buttonValue(menuBar, buttonIndex);
+        String_format(st,
+                      iif(value == 0, "TimeOffset",
+                          isInCompactMode, "offs.:%s",
+                          "TimeOffset: %s"),
+                      String_formatTime(value, false));
+        MenuBar_setButtonLabel(menuBar, buttonIndex, st);
+
+        String_destroy(st);
+    );
+
+    //--------------------
+    // EXPORTED FEATURES
+    //--------------------
+
+    //--------------------
+    // con-/destruction
+    //--------------------
+
+    function Oscilloscope_make ()
+        /** Creates a new oscilloscope object */
+        local (displayState frameBuffer laneWindow menuBar
+               sampleColorList self viewport vGridColorList)
+    (
+        self = STRUCT_make(Oscilloscope__SIZE);
+
+        sampleColorList = FixedArray_make(2);
+        FixedArray_setAt(sampleColorList, 1, Graphics_color_cyan);
+        FixedArray_setAt(sampleColorList, 2, Graphics_color_yellow);
+        self[Oscilloscope__ATT_sampleColorList] = sampleColorList;
+
+        vGridColorList = FixedArray_make(FrameBuffer_laneCount);
+        FixedArray_setAt(vGridColorList, 1,
+                         Graphics_color_make(0.8, 0.5, 0.5));
+        FixedArray_setAt(vGridColorList, 2,
+                         Graphics_Color_make(0.5, 0.8, 0.5));
+        FixedArray_setAt(vGridColorList, 3,
+                         Graphics_Color_make(0.5, 0.5, 0.8));
+        FixedArray_setAt(vGridColorList, 4,
+                         Graphics_Color_make(0.8, 0.4, 0.6));
+
+        laneWindow   = LaneWindow_make();
+        menuBar      = MenuBar_make();
+        viewport     = GO_Rectangle_make();
+        displayState = FixedArray_make(Oscilloscope_State_SIZE);
+        frameBuffer  = FrameBuffer_make();
+
+        self[Oscilloscope__ATT_sampleColorList]           = sampleColorList;
+        self[Oscilloscope__ATT_vGridColorList]            = vGridColorList;
+        self[Oscilloscope__ATT_pixelsPerFrame]            = 0;
+        self[Oscilloscope__ATT_timeRangeInSeconds]        = 0;
+        self[Oscilloscope__ATT_timeOffset]                = 0;
+        self[Oscilloscope__ATT_sampleTime]                = 0;
+        self[Oscilloscope__ATT_viewport]                  = viewport;
+        self[Oscilloscope__ATT_menuBar]                   = menuBar;
+        self[Oscilloscope__ATT_laneWindow]                = laneWindow;
+        self[Oscilloscope__ATT_frameBuffer]               = frameBuffer;
+        self[Oscilloscope__ATT_displayState]              = displayState;
+        self[Oscilloscope__ATT_maximumTimeRangeInSeconds] =
+            MenuBar_buttonMaxValue(menuBar, MenuButton_Index_timeRange);
+
+        self
+    );
+
+    //--------------------
+
+    function Oscilloscope_setup (self,
+                                 displayedLaneCount,
+                                 expectedTimeRange,
+                                 timeOffset)
+        /** Sets up scope parameters based on <displayedLaneCount> and
+            specified <timeOffset> and <expectedTimeRange> where the
+            latter may be slightly adjusted to ensure an integer
+            amount of pixels per sample or samples per pixel */
+        local (hGridLabelHeight laneWindow magnificationInDecibels
+               menuBar menuBarHeight rectangle textHeight textWidth
+               timeRangeInSamples viewport viewportX viewportY)
+    (
+        laneWindow = self[Oscilloscope__ATT_laneWindow];
+        menuBar    = self[Oscilloscope__ATT_menuBar];
+        viewport   = self[Oscilloscope__ATT_viewport];
+
+        Oscilloscope__initializeFont(self);
+
+        /* calculate sizes for menu and status bar and left margin */
+        MenuBar_setLineCount(menuBar, (isInCompactMode ? 2 : 1));
+        menuBarHeight = MenuBar_height(menuBar);
+
+        Oscilloscope__selectFont(self, Oscilloscope__fontIndexGrid);
+        gfx_measurestr("-XXX.XdB  ", textWidth, textHeight);
+        viewportX = (gfx_w > 100 ? textWidth : 0);
+        hGridLabelHeight = 3/2 * gfx_texth;
+        viewportY = menuBarHeight + hGridLabelHeight;
+        GO_Rectangle_setPoint(viewport, viewportX, viewportY);
+        GO_Rectangle_setSize(viewport,
+                             gfx_w - viewportX,
+                             gfx_h - hGridLabelHeight - viewportY);
+
+        magnificationInDecibels =
+            MenuBar_buttonValue(menuBar,
+                                MenuButton_Index_magnificationFactor);
+
+        LaneWindow_setup(laneWindow,
+                         displayedLaneCount, viewport,
+                         magnificationInDecibels);
+
+        /* set all values for the horizontal time range  */
+        timeRangeInSamples =
+            toInteger(Audio_timeToSamples(expectedTimeRange));
+        self[Oscilloscope__ATT_timeOffset]         = timeOffset;
+        self[Oscilloscope__ATT_timeRangeInSeconds] = expectedTimeRange;
+        self[Oscilloscope__ATT_pixelsPerFrame] =
+            GO_Rectangle_width(viewport) / timeRangeInSamples;
+    );
+
+    //--------------------
+    // measurement
+    //--------------------
+
+    function Oscilloscope__stateHasChanged (self,
+                                            laneCount, timeRange,
+                                            magnificationFactor, timeOffset,
+                                            width, height)
+        /** Compares new values for <laneCount>, <timeRange>,
+            <magnificationFactor>, <timeOffset>, <width> and <height>
+            with previous values and updates those; returns comparison
+            result */
+        local (displayState hasChanged)
+    (
+        displayState = self[Oscilloscope__ATT_displayState];
+
+        hasChanged =
+            (displayState[0]    != laneCount
+             || displayState[1] != timeRange
+             || displayState[2] != timeOffset
+             || displayState[3] != magnificationFactor
+             || displayState[4] != width
+             || displayState[5] != height);
+
+        hasChanged ? (
+            displayState[0] = laneCount;
+            displayState[1] = timeRange;
+            displayState[2] = timeOffset;
+            displayState[3] = magnificationFactor;
+            displayState[4] = width;
+            displayState[5] = height;
+        );
+
+        hasChanged
+    );
+
+    //--------------------
+    // event handling
+    //--------------------
+
+    function Oscilloscope_handleKey (self, key)
+        local ()
+    (
+        key == previousKey ? (
+            pass;
+        ) : key == $'e' ? (
+            updateIsNecessary = true;
+        ) : key == $'x' ? (
+            Debug_clear();
+            Oscilloscope__print(self, 0);
+        );
+
+        key > 0 ? (
+            previousKey = key;
+        );
+    );
+
+    //--------------------
+
+    function Oscilloscope_handleMouse (self)
+        /** Processes any mouse or mouse wheel events */
+        local (menuBar)
+    (
+        menuBar = self[Oscilloscope__ATT_menuBar];
+        updateIsNecessary |= MenuBar_handleMouse(menuBar);
+    );
+
+    //--------------------
+
+    function Oscilloscope_handleSampleChange (self)
+        /** Reads current sample data into frame buffer and updates
+            current sample time */
+        local (frameBuffer)
+    (
+        frameBuffer = self[Oscilloscope__ATT_frameBuffer];
+        FrameBuffer_handleSampleChange(frameBuffer);
+        self[Oscilloscope__ATT_sampleTime] += 1 / srate;
+    );
+
+    //--------------------
+
+    function Oscilloscope_handleTimeEvents (self)
+        /** Updates frame buffer because of a new play position */
+        local (frameBuffer maximumTimeRangeInSeconds sampleTime)
+    (
+        frameBuffer = self[Oscilloscope__ATT_frameBuffer];
+        maximumTimeRangeInSeconds =
+            self[Oscilloscope__ATT_maximumTimeRangeInSeconds];
+        sampleTime = self[Oscilloscope__ATT_sampleTime];
+
+        FrameBuffer_update(frameBuffer,
+                           maximumTimeRangeInSeconds,
+                           sampleTime);
+    );
+
+    //--------------------
+
+    function Oscilloscope_handleTimeRangeUpdate (self)
+        /** Handle time range change caused by menu bar */
+        local (menuBar)
+    (
+        menuBar = self[Oscilloscope__ATT_menuBar];
+        MenuBar_handleTimeRangeUpdate(menuBar);
+    );
+
+    //--------------------
+
+    function Oscilloscope_setTimePosition (self, time)
+    /** Sets play time position of oscilloscope <self> to <time> */
+    (
+        self[Oscilloscope__ATT_sampleTime] = time;
+    );
+
+    //--------------------
+    // redraw
+    //--------------------
+
+    function Oscilloscope_redraw (self)
+        /** Redraws oscilloscope if something has changed */
+        local (laneCount magnificationFactor menuBar stateHasChanged
+               timeOffset timeRange)
+    (
+        menuBar = self[Oscilloscope__ATT_menuBar];
+        laneCount =
+            MenuBar_buttonValue(menuBar, MenuButton_Index_laneCount);
+        timeRange =
+            MenuBar_buttonValue(menuBar, MenuButton_Index_timeRange);
+        timeOffset =
+            MenuBar_buttonValue(menuBar, MenuButton_Index_timeOffset);
+        magnificationFactor =
+            MenuBar_buttonValue(menuBar,
+                                MenuButton_Index_magnificationFactor);
+
+        stateHasChanged =
+            Oscilloscope__stateHasChanged(self, laneCount, timeRange,
+                                          magnificationFactor,
+                                          timeOffset, gfx_w, gfx_h);
+
+        updateIsNecessary || stateHasChanged ? (
+            Oscilloscope_setup(self, laneCount, timeRange, timeOffset);
+            Oscilloscope__updateMenuBar(self);
+            Oscilloscope__redraw(self);
+            // Debug_clear();
+            // Oscilloscope__print(self, 0);
+            updateIsNecessary = false;
+        );
+    );
+
+    /*============================================================*/
+
+    gfx_ext_retina == 0 ? (
+        gfx_ext_retina = 1;
+    );
+
+    Graphics_clear(Graphics_Color_black);
+    oscilloscope = Oscilloscope_make();
+    Oscilloscope_handleTimeEvents(oscilloscope);
+    updateIsNecessary = true;
+
+//====================
+
+@serialize
+    // to prevent memory initialization
+
+//====================
+
+@block
+    Oscilloscope_setTimePosition(oscilloscope, play_position);
+
+    srate != FrameBuffer__sampleRate ? (
+        Oscilloscope_handleTimeRangeUpdate(oscilloscope);
+    );
+
+    Oscilloscope_handleTimeEvents(oscilloscope);
+
+//====================
+
+@sample
+    play_state == 1 ? (
+        Oscilloscope_handleSampleChange(oscilloscope);
+    );
+
+//====================
+
+@gfx 640 400
+    isInCompactMode = gfx_w < 450 || gfx_h < 100;
+    key = gfx_getchar();
+    key = Debug_handleKey(key);
+    Oscilloscope_handleKey(oscilloscope, key);
+    Oscilloscope_handleMouse(oscilloscope);
+
+    // always update when playing
+    updateIsNecessary |= (play_state == 1);
+
+    // redraw if something has changed
+    Oscilloscope_redraw(oscilloscope);

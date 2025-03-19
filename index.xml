@@ -1,139 +1,210 @@
 <?xml version="1.0" encoding="utf-8"?>
-<index version="1" name="DrTT-SoX_(JSFX)"
-       desc="JSFX Plugins Emulating SoX (by Dr. Thomas Tensi)">
+<index
+    version="1"
+    name="DrTT-SoX_(JSFX)"
+    desc="JSFX Plugins Emulating SoX (by Dr. Thomas Tensi)">
+  <category
+      name="Various">
+    <reapack
+	name="JSFXSoX"
+	type="effect"
+	desc="JSFX plugins for emulation of SoX audio processor">
+      <version
+	  name="0.96"
+	  author="Dr. Thomas Tensi"
+	  time="2025-03-18T00:00:00Z">
+        <changelog><![CDATA[Architectural Renovation and Addition of Multilane Oscilloscope
+
+Besides significant changes in the architecture and in the library locations form the plugins this release contains the following new scripts:
+
+  - Oscilloscope.jsfx
+    a multilane oscilloscope effect (based on Cockos gfxscope),
+
+  - SoX_ChorusAndEcho.jsfx
+    a combined effect for SoX chorus (a modulated multitap delay), SoX echo effect (a multitap delay) and the SoX echos effect (a sequential delay),
+
+The companders were combined into a single plugin with a band selection logic in the user interface.
+]]></changelog>
+        <source file="JSFXSoX-Plugins-Documentation.pdf">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/JSFXSoX-Plugins-Documentation.pdf</source>
+        <source file="_Audio/Audio_samplequeue.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/_Audio/Audio_samplequeue.jsfx-inc</source>
+        <source file="_Audio/Audio_waveform.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/_Audio/Audio_waveform.jsfx-inc</source>
+        <source file="_BaseModules/Base.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/_BaseModules/Base.jsfx-inc</source>
+        <source file="_BaseModules/Base_boundedarray.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/_BaseModules/Base_boundedarray.jsfx-inc</source>
+        <source file="_BaseModules/Base_button.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/_BaseModules/Base_button.jsfx-inc</source>
+        <source file="_BaseModules/Base_debug.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/_BaseModules/Base_debug.jsfx-inc</source>
+        <source file="_BaseModules/Base_fixedarray.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/_BaseModules/Base_fixedarray.jsfx-inc</source>
+        <source file="_BaseModules/Base_graphics.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/_BaseModules/Base_graphics.jsfx-inc</source>
+        <source file="_BaseModules/Base_memory.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/_BaseModules/Base_memory.jsfx-inc</source>
+        <source file="_BaseModules/Base_mouse.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/_BaseModules/Base_mouse.jsfx-inc</source>
+        <source file="_BaseModules/Base_naturalset.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/_BaseModules/Base_naturalset.jsfx-inc</source>
+        <source file="_BaseModules/Base_nodebug.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/_BaseModules/Base_nodebug.jsfx-inc</source>
+        <source file="_BaseModules/Base_string.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/_BaseModules/Base_string.jsfx-inc</source>
+        <source file="_BaseModules/Base_struct.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/_BaseModules/Base_struct.jsfx-inc</source>
+        <source file="SoX_(JSFX)/SoX__base.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX__base.jsfx-inc</source>
+        <source file="SoX_(JSFX)/SoX__biquadfilter.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX__biquadfilter.jsfx-inc</source>
+        <source file="SoX_(JSFX)/SoX__compand_transfer.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX__compand_transfer.jsfx-inc</source>
+        <source file="SoX_(JSFX)/SoX__compand_utility.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX__compand_utility.jsfx-inc</source>
+        <source file="SoX_(JSFX)/SoX__complexdelay.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX__complexdelay.jsfx-inc</source>
+        <source file="SoX_(JSFX)/SoX__iirfilter.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX__iirfilter.jsfx-inc</source>
+        <source file="SoX_(JSFX)/SoX__multipageslider.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX__multipageslider.jsfx-inc</source>
+        <source file="SoX_(JSFX)/SoX__reverb.jsfx-inc">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX__reverb.jsfx-inc</source>
+        <source file="SoX_(JSFX)/SoX_Allpass-Filter.jsfx">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX_Allpass-Filter.jsfx</source>
+        <source file="SoX_(JSFX)/SoX_Band-Filter.jsfx">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX_Band-Filter.jsfx</source>
+        <source file="SoX_(JSFX)/SoX_Biquad.jsfx">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX_Biquad.jsfx</source>
+        <source file="SoX_(JSFX)/SoX_BPBRJ-Filter.jsfx">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX_BPBRJ-Filter.jsfx</source>
+        <source file="SoX_(JSFX)/SoX_BSTRB-Filter.jsfx">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX_BSTRB-Filter.jsfx</source>
+        <source file="SoX_(JSFX)/SoX_ChorusAndEcho.jsfx">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX_ChorusAndEcho.jsfx</source>
+        <source file="SoX_(JSFX)/SoX_Compand.jsfx">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX_Compand.jsfx</source>
+        <source file="SoX_(JSFX)/SoX_EQU-Filter.jsfx">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX_EQU-Filter.jsfx</source>
+        <source file="SoX_(JSFX)/SoX_Gain.jsfx">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX_Gain.jsfx</source>
+        <source file="SoX_(JSFX)/SoX_LPHP-Filter.jsfx">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX_LPHP-Filter.jsfx</source>
+        <source file="SoX_(JSFX)/SoX_Overdrive.jsfx">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX_Overdrive.jsfx</source>
+        <source file="SoX_(JSFX)/SoX_Phaser.jsfx">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX_Phaser.jsfx</source>
+        <source file="SoX_(JSFX)/SoX_Reverb.jsfx">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX_Reverb.jsfx</source>
+        <source file="SoX_(JSFX)/SoX_Tremolo.jsfx">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/SoX_(JSFX)/SoX_Tremolo.jsfx</source>
+        <source file="Tools/oscilloscope.jsfx">https://raw.githubusercontent.com/prof-spock/JSFX-SOX-Plugins/master/Tools/oscilloscope.jsfx</source>
+      </version>
+      <version
+	  name="0.91"
+	  author="Dr. Thomas Tensi"
+	  time="2022-01-07T00:00:00Z">
+        <changelog><![CDATA[Minor corrections]]></changelog>
+        <source file="doc/JSFXSOX-Plugins-Documentation.pdf">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/JSFXSoX-Plugins-Documentation.pdf</source>
+        <source file="Base.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/Base.jsfx-inc</source>
+        <source file="Base_debug.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/Base_debug.jsfx-inc</source>
+        <source file="Base_display.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/Base_display.jsfx-inc</source>
+        <source file="Base_fixedarray.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/Base_fixedarray.jsfx-inc</source>
+        <source file="Base_naturalset.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/Base_naturalset.jsfx-inc</source>
+        <source file="Base_memory.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/Base_memory.jsfx-inc</source>
+        <source file="Base_nodebug.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/Base_nodebug.jsfx-inc</source>
+        <source file="Base_string.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/Base_string.jsfx-inc</source>
+        <source file="SOX__base.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX__base.jsfx-inc</source>
+        <source file="SOX__biquadfilter.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX__biquadfilter.jsfx-inc</source>
+        <source file="SOX__compand_transfer.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX__compand_transfer.jsfx-inc</source>
+        <source file="SOX__compand_utility.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX__compand_utility.jsfx-inc</source>
+        <source file="SOX__iirfilter.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX__iirfilter.jsfx-inc</source>
+        <source file="SOX__mcompand_utility.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX__mcompand_utility.jsfx-inc</source>
+        <source file="SOX__reverb.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX__reverb.jsfx-inc</source>
+        <source file="SOX__samplequeue.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX__samplequeue.jsfx-inc</source>
+        <source file="SOX__waveform.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX__waveform.jsfx-inc</source>
+        <source file="SOX_Allpass-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX_Allpass-Filter.jsfx</source>
+        <source file="SOX_Band-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX_Band-Filter.jsfx</source>
+        <source file="SOX_Biquad.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX_Biquad.jsfx</source>
+        <source file="SOX_BPBRJ-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX_BPBRJ-Filter.jsfx</source>
+        <source file="SOX_BSTRB-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX_BSTRB-Filter.jsfx</source>
+        <source file="SOX_Compand.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX_Compand.jsfx</source>
+        <source file="SOX_EQU-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX_EQU-Filter.jsfx</source>
+        <source file="SOX_Gain.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX_Gain.jsfx</source>
+        <source file="SOX_LPHP-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX_LPHP-Filter.jsfx</source>
+        <source file="SOX_MCompand2.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX_MCompand2.jsfx</source>
+        <source file="SOX_MCompand3.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX_MCompand3.jsfx</source>
+        <source file="SOX_MCompand4.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX_MCompand4.jsfx</source>
+        <source file="SOX_MCompand5.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX_MCompand5.jsfx</source>
+        <source file="SOX_Overdrive.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX_Overdrive.jsfx</source>
+        <source file="SOX_Phaser.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX_Phaser.jsfx</source>
+        <source file="SOX_Reverb.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX_Reverb.jsfx</source>
+        <source file="SOX_Tremolo.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SoX_Tremolo.jsfx</source>
+        <source file="test/makeTestFiles.bat">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/test/makeTestFiles.bat</source>
+        <source file="test/testJSFXSoxPlugins.RPP">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/test/testJSFXSoxPlugins.RPP</source>
+      </version>
+      <version
+	  name="0.9"
+	  author="Dr. Thomas Tensi"
+	  time="2019-09-03T00:00:00Z">
+        <changelog><![CDATA[Initial Release]]></changelog>
+        <source file="doc/JSFXSOX-Plugins-Documentation.pdf">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/JSFXSoX-Plugins-Documentation.pdf</source>
+        <source file="Base.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/Base.jsfx-inc</source>
+        <source file="Base_debug.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/Base_debug.jsfx-inc</source>
+        <source file="Base_display.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/Base_display.jsfx-inc</source>
+        <source file="Base_fixedarray.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/Base_fixedarray.jsfx-inc</source>
+        <source file="Base_naturalset.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/Base_naturalset.jsfx-inc</source>
+        <source file="Base_memory.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/Base_memory.jsfx-inc</source>
+        <source file="Base_nodebug.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/Base_nodebug.jsfx-inc</source>
+        <source file="Base_string.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/Base_string.jsfx-inc</source>
+        <source file="SOX__base.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX__base.jsfx-inc</source>
+        <source file="SOX__biquadfilter.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX__biquadfilter.jsfx-inc</source>
+        <source file="SOX__compand_transfer.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX__compand_transfer.jsfx-inc</source>
+        <source file="SOX__compand_utility.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX__compand_utility.jsfx-inc</source>
+        <source file="SOX__iirfilter.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX__iirfilter.jsfx-inc</source>
+        <source file="SOX__mcompand_utility.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX__mcompand_utility.jsfx-inc</source>
+        <source file="SOX__reverb.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX__reverb.jsfx-inc</source>
+        <source file="SOX__samplequeue.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX__samplequeue.jsfx-inc</source>
+        <source file="SOX__waveform.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX__waveform.jsfx-inc</source>
+        <source file="SOX_Allpass-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX_Allpass-Filter.jsfx</source>
+        <source file="SOX_Band-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX_Band-Filter.jsfx</source>
+        <source file="SOX_Biquad.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX_Biquad.jsfx</source>
+        <source file="SOX_BPBRJ-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX_BPBRJ-Filter.jsfx</source>
+        <source file="SOX_BSTRB-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX_BSTRB-Filter.jsfx</source>
+        <source file="SOX_Compand.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX_Compand.jsfx</source>
+        <source file="SOX_EQU-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX_EQU-Filter.jsfx</source>
+        <source file="SOX_Gain.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX_Gain.jsfx</source>
+        <source file="SOX_LPHP-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX_LPHP-Filter.jsfx</source>
+        <source file="SOX_MCompand2.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX_MCompand2.jsfx</source>
+        <source file="SOX_MCompand3.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX_MCompand3.jsfx</source>
+        <source file="SOX_MCompand4.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX_MCompand4.jsfx</source>
+        <source file="SOX_MCompand5.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX_MCompand5.jsfx</source>
+        <source file="SOX_Overdrive.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX_Overdrive.jsfx</source>
+        <source file="SOX_Phaser.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX_Phaser.jsfx</source>
+        <source file="SOX_Reverb.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX_Reverb.jsfx</source>
+        <source file="SOX_Tremolo.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SoX_Tremolo.jsfx</source>
+        <source file="test/makeTestFiles.bat">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/test/makeTestFiles.bat</source>
+        <source file="test/testSoxPlugins.RPP">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/test/testSoxPlugins.RPP</source>
+      </version>
+      <metadata>
+        <description><![CDATA[{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1031{\fonttbl{\f0\fnil\fcharset0 Times New Roman;}{\f1\fnil\fcharset2 Symbol;}}
+{\colortbl ;\red0\green0\blue255;}
+{\*\generator Riched20 10.0.18362}\viewkind4\uc1 
+\pard\sa200\sl276\slmult1\b\f0\fs28\lang7 JSFX SoX Plugins for Reaper DAW\par
+\b0\fs22 Dr. Thomas Tensi, 2019-2025\b\fs28\par
+\fs24 Overview\par
+\b0\fs22 The JSFX-SoX software package provides JSFX (Jesusonic) plugins for being used in the Reaper DAW; they implement some of the audio processing effects from SoX.\par
+\b SoX\b0  ({{\field{\*\fldinst{HYPERLINK http://sox.sourceforge.net/ }}{\fldrslt{http://sox.sourceforge.net/\ul0\cf0}}}}\f0\fs22 ) is a command line audio processing tool for Unix, Windows and Mac OS that transforms source audio files in several formats into other audio files.\par
+The effects provided here are a complete rewrite of the SoX algorithms for producing \i (bit-exact) identical\i0  renderings in the DAW.  This can easily be checked by rendering some audio externally with SoX and internally with the plugins and subtracting the results.  Apart from roundoff errors (SoX often uses 32bit integer processing, while JSFX always uses double floating point processing) the results cancel out with typically a residual noise of -140dBFS.\par
+The main motivation for this package is to be able to play around with effects in Reaper and be sure that the external rendering by SoX will produce exactly the same results. Although SoX does not always provide the "best" effects, it still is a reliable and well-defined audio tool.\par
+Because SoX has rich command line options for its effects, not every effect configuration from SoX can be transported into the slider oriented GUI for JSFX.  E.g. the compander of SoX allows the definition of a transfer function having multiple segments.  Although the internal engine of the JSFX compander implements exactly the same internal segment logic, the user interface only allows the typical definition of a threshold and a compression ratio (with three segments).\par
+Note also that a spiffy user interface is \b not at all\b0  a priority in this project.  \par
+The SoX effects have been rewritten and restructured for easier maintenance, because in the original source there is some redundancy and unnecessary complexity due to its several contributors.  Nevertheless the effects provided here faithfully model the SoX processing.\par
+\b\fs24 Available Effects\b0\fs22\par
+The following effects are available in this package:\par
+
+\pard{\pntext\f1\'B7\tab}{\*\pn\pnlvlblt\pnf1\pnindent0{\pntxtb\'B7}}\fi-360\li720\sa200\sl276\slmult1\b allpass:\b0  a biquad allpass filter two-poled with filter frequency and the filter bandwith (in several units),\par
+{\pntext\f1\'B7\tab}\b band:\b0  a biquad bandpass filter with center filter frequency and the filter bandwith (in several units) and an option for unpitched audio,\par
+{\pntext\f1\'B7\tab}\b bandpass/bandreject:\b0  a biquad filter for bandpass or bandreject with center filter frequency and the filter bandwith (in several units),\par
+{\pntext\f1\'B7\tab}\b bass/treble:\b0  a biquad filter for boosting or cutting bass or treble with a shelving characteristics with settings for filter frequency and the filter bandwith (in several units),\par
+{\pntext\f1\'B7\tab}\b biquad:\b0  a generic biquad (iir) filter with 6 coefficients b0, b1, b2, a0, a1 and a2,\par
+{\pntext\f1\'B7\tab}\b chorus:\b0 a chorus effect with multiple parallel echos modulated either by sine or triangle signals,\par
+{\pntext\f1\'B7\tab}\b compand/mcompand:\b0  a simple compander or multiband compander with attack, release, input gain shift, threshold and compression and soft knee per band and a Linkwitz-Riley crossover filter between the bands; this is a reduced version of SoX compand with only a simple transfer function,\par
+{\pntext\f1\'B7\tab}\b equalizer:\b0  a biquad filter for equalizing with settings for the pole count, the filter frequency and the filter bandwith (in several units),\par
+{\pntext\f1\'B7\tab}\b echo:\b0 a tapped delay with several absolute delay times and signal decays,\par
+{\pntext\f1\'B7\tab}\b echos:\b0 a sequential delay with delay stages with absolute delay times and signal decays fed with signals from the previous stages,\par
+{\pntext\f1\'B7\tab}\b gain:\b0  a volume changer by \i exact\i0  decibels...,\par
+{\pntext\f1\'B7\tab}\b lowpass/highpass:\b0  a biquad filter for either lowpass or highpass with settings for the pole count, the filter frequency and the filter bandwith (in several units),\par
+{\pntext\f1\'B7\tab}\b overdrive:\b0  a simple tanh distortion with gain and colour specification,\par
+{\pntext\f1\'B7\tab}\b phaser:\b0  a phaser effect with sine or triangle modulation,\par
+{\pntext\f1\'B7\tab}\b reverb:\b0  a reverb effect (based on Freeverb) with several parameters for the room (like size and HF damping) as well as a possible predelay, and\par
+{\pntext\f1\'B7\tab}\b tremolo:\b0  a tremolo effect with sine modulation using a double-sideband suppressed carrier modulation.\par
+
+As an analysis tool a \b multilane oscilloscope\b0  is also available.\par
+
+\pard\sa200\sl276\slmult1\b\fs24 Testing the Plugins\par
+\b0\fs22 If you want to run the test, you also have to have a SoX installation.  The test script "makeTestFiles.bat" in the Test directory assumes that sox is available in the program search path.\par
+The test script produces several sound and noise files and applies SoX audio effects to produces result audio files.\par
+The Reaper project file "testSoxPlugins.rpp" references those test and result files and applies the corresponding effect plugins. Ideally (because the result files have inverted phase), everything should cancel out.\par
+\b\fs24 Details\par
+\b0\fs22 The detailed user manual can be found at {{\field{\*\fldinst{HYPERLINK https://github.com/prof-spock/JSFX-SOX-Plugins/blob/master/JSFXSoX-Plugins-Documentation.pdf }}{\fldrslt{https://github.com/prof-spock/JSFX-SOX-Plugins/blob/master/JSFXSoX-Plugins-Documentation.pdf\ul0\cf0}}}}\f0\fs22\par
+}]]></description>
+        <link rel="website">https://github.com/prof-spock/JSFX-SOX-Plugins</link>
+      </metadata>
+    </reapack>
+  </category>
   <metadata>
     <description><![CDATA[{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1031{\fonttbl{\f0\fnil\fcharset0 Times New Roman;}{\f1\fnil\fcharset2 Symbol;}}
 {\colortbl ;\red0\green0\blue255;}
 {\*\generator Riched20 10.0.18362}\viewkind4\uc1 
 \pard\sa200\sl276\slmult1\b\f0\fs28\lang7 JSFX Plugins for Reaper DAW\par
-\b0\fs22 Dr. Thomas Tensi, 2019\b\fs28\par
+\b0\fs22 Dr. Thomas Tensi, 2019-2025\b\fs28\par
 \b\fs24 Available Packages\b0\fs22\par
-\pard{\pntext\f1\'B7\tab}{\*\pn\pnlvlblt\pnf1\pnindent0{\pntxtb\'B7}}\fi-360\li720\sa200\sl276\slmult1\b JSFXSOX:\b0  JSFX plugins for bit-exact emulation of the command-line SOX audio processor ({{\field{\*\fldinst{HYPERLINK http://sox.sourceforge.net/ }}{\fldrslt{http://sox.sourceforge.net/\ul0\cf0}}}}\f0\fs22 ); you can find the full documentation at {{\field{\*\fldinst{HYPERLINK https://github.com/prof-spock/JSFX-SOX-Plugins/blob/master/JSFXSOX-Plugins-Documentation.pdf }}{\fldrslt{https://github.com/prof-spock/JSFX-SOX-Plugins/blob/master/JSFXSOX-Plugins-Documentation.pdf\ul0\cf0}}}}\par
+\pard{\pntext\f1\'B7\tab}{\*\pn\pnlvlblt\pnf1\pnindent0{\pntxtb\'B7}}\fi-360\li720\sa200\sl276\slmult1\b JSFXSoX:\b0  JSFX plugins for bit-exact emulation of the command-line SoX audio processor ({{\field{\*\fldinst{HYPERLINK http://sox.sourceforge.net/ }}{\fldrslt{http://sox.sourceforge.net/\ul0\cf0}}}}\f0\fs22 ); you can find the full documentation at {{\field{\*\fldinst{HYPERLINK https://github.com/prof-spock/JSFX-SOX-Plugins/blob/master/JSFXSoX-Plugins-Documentation.pdf }}{\fldrslt{https://github.com/prof-spock/JSFX-SOX-Plugins/blob/master/JSFXSoX-Plugins-Documentation.pdf\ul0\cf0}}}}\par
 }]]></description>
   </metadata>
-  <category name="JSFXSOX">
-    <reapack name="JSFXSOX" type="effect" desc="JSFX plugins for emulation of SOX audio processor">
-      <metadata>
-        <description><![CDATA[{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1031{\fonttbl{\f0\fnil\fcharset0 Times New Roman;}{\f1\fnil\fcharset2 Symbol;}}
-{\colortbl ;\red0\green0\blue255;}
-{\*\generator Riched20 10.0.18362}\viewkind4\uc1 
-\pard\sa200\sl276\slmult1\b\f0\fs28\lang7 JSFX SOX Plugins for Reaper DAW\par
-\b0\fs22 Dr. Thomas Tensi, 2019\b\fs28\par
-\fs24 Overview\par
-\b0\fs22 The JSFX-SOX software package provides JSFX (Jesusonic) plugins for being used in the Reaper DAW; they implement some of the audio processing effects from SOX.\par
-\b SOX\b0  ({{\field{\*\fldinst{HYPERLINK http://sox.sourceforge.net/ }}{\fldrslt{http://sox.sourceforge.net/\ul0\cf0}}}}\f0\fs22 ) is a command line audio processing tool for Unix, Windows and Mac OS that transforms source audio files in several formats into other audio files.\par
-The effects provided here are a complete rewrite of the sox algorithms for producing \i (bit-exact) identical\i0  renderings in the DAW.  This can easily be checked by rendering some audio externally with SOX and internally with the plugins and subtracting the results.  Apart from roundoff errors (SOX often uses 32bit integer processing, while JSFX always uses double floating point processing) the results cancel out with typically a residual noise of -140dBFS.\par
-The main motivation for this package is to be able to play around with effects in Reaper and be sure that the external rendering by sox will produce exactly the same results. Although sox does not always provide the "best" effects, it still is a reliable and well-defined audio tool.\par
-Because sox has rich command line options for its effects, not every effect configuration from sox can be transported into the slider oriented GUI for JSFX.  E.g. the compander of sox allows the definition of a transfer function having multiple segments.  Although the internal engine of the JSFX compander implements exactly the same internal segment logic, the user interface only allows the typical definition of a threshold and a compression ratio (with three segments).\par
-Note also that a spiffy user interface is \b not at all\b0  a priority in this project.  \par
-The sox effects have been rewritten and restructured for easier maintenance, because in the original source there is some redundancy and unnecessary complexity due to its several contributors.  Nevertheless the effects provided here faithfully model the SOX processing.\par
-\b\fs24 Available Effects\b0\fs22\par
-The following effects are available in this package:\par
-
-\pard{\pntext\f1\'B7\tab}{\*\pn\pnlvlblt\pnf1\pnindent0{\pntxtb\'B7}}\fi-360\li720\sa200\sl276\slmult1\b allpass:\b0  a biquad allpass filter two-poled with filter frequency and the filter bandwith (in several units)\par
-{\pntext\f1\'B7\tab}\b band:\b0  a biquad bandpass filter with center filter frequency and the filter bandwith (in several units) and an option for unpitched audio\par
-{\pntext\f1\'B7\tab}\b bandpass/bandreject:\b0  a biquad filter for bandpass or bandreject with center filter frequency and the filter bandwith (in several units)\par
-{\pntext\f1\'B7\tab}\b bass/treble:\b0  a biquad filter for boosting or cutting bass or treble with a shelving characteristics with settings for filter frequency and the filter bandwith (in several units)\par
-{\pntext\f1\'B7\tab}\b biquad:\b0  a generic biquad (iir) filter with 6 coefficients b0, b1, b2, a0, a1 and a2\par
-{\pntext\f1\'B7\tab}\b compand:\b0  a compander with attack, release, input gain shift, threshold and compression and soft knee; this is a reduced version of SOX compand with only a simple transfer function\par
-{\pntext\f1\'B7\tab}\b equalizer:\b0  a biquad filter for equalizing with settings for the pole count, the filter frequency and the filter bandwith (in several units)\par
-{\pntext\f1\'B7\tab}\b gain:\b0  a volume changer by \i exact\i0  decibels...\par
-{\pntext\f1\'B7\tab}\b lowpass/highpass:\b0  a biquad filter for either lowpass or highpass with settings for the pole count, the filter frequency and the filter bandwith (in several units)\par
-{\pntext\f1\'B7\tab}\b mcompand:\b0  a multiband compander with a Linkwitz-Riley crossover filter and for each band a compander with attack, release, input gain shift, threshold and compression and soft knee; again the companders only allow a simple transfer function\par
-{\pntext\f1\'B7\tab}\b overdrive:\b0  a simple tanh distortion with gain and colour specification\par
-{\pntext\f1\'B7\tab}\b phaser:\b0  a phaser effect with sine or triangle modulation\par
-{\pntext\f1\'B7\tab}\b reverb:\b0  a reverb effect (based on Freeverb) with several parameters for the room (like size and HF damping) as well as a possible predelay\par
-{\pntext\f1\'B7\tab}\b tremolo:\b0  a tremolo effect with sine modulation using a double-sideband suppressed carrier modulation\par
-
-\pard\sa200\sl276\slmult1\b\fs24 Testing the Plugins\par
-\b0\fs22 If you want to run the test, you also have to have a sox installation.  The test script "makeTestFiles.bat" in the Test directory assumes that sox is available in the program search path.\par
-The test script produces several sound and noise files and applies SOX audio effects to produces result audio files.\par
-The Reaper project file "testSoxPlugins.rpp" references those test and result files and applies the corresponding effect plugins. Ideally (because the result files have inverted phase), everything should cancel out.\par
-\b\fs24 Details\par
-\b0\fs22 The detailed user manual can be found at {{\field{\*\fldinst{HYPERLINK https://github.com/prof-spock/JSFX-SOX-Plugins/blob/master/JSFXSOX-Plugins-Documentation.pdf }}{\fldrslt{https://github.com/prof-spock/JSFX-SOX-Plugins/blob/master/JSFXSOX-Plugins-Documentation.pdf\ul0\cf0}}}}\f0\fs22\par
-}]]></description>
-        <link rel="website">https://github.com/prof-spock/JSFX-SOX-Plugins</link>
-      </metadata>
-      <version name="0.9" author="Dr. Thomas Tensi" time="2019-09-03T00:00:00Z">
-        <changelog><![CDATA[Initial Release]]></changelog>
-        <source file="doc/JSFXSOX-Plugins-Documentation.pdf">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/JSFXSOX-Plugins-Documentation.pdf</source>
-        <source file="Base.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/Base.jsfx-inc</source>
-        <source file="Base_debug.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/Base_debug.jsfx-inc</source>
-        <source file="Base_display.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/Base_display.jsfx-inc</source>
-        <source file="Base_fixedarray.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/Base_fixedarray.jsfx-inc</source>
-        <source file="Base_integerset.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/Base_integerset.jsfx-inc</source>
-        <source file="Base_memory.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/Base_memory.jsfx-inc</source>
-        <source file="Base_nodebug.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/Base_nodebug.jsfx-inc</source>
-        <source file="Base_string.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/Base_string.jsfx-inc</source>
-        <source file="SOX__base.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX__base.jsfx-inc</source>
-        <source file="SOX__biquadfilter.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX__biquadfilter.jsfx-inc</source>
-        <source file="SOX__compand_transfer.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX__compand_transfer.jsfx-inc</source>
-        <source file="SOX__compand_utility.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX__compand_utility.jsfx-inc</source>
-        <source file="SOX__iirfilter.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX__iirfilter.jsfx-inc</source>
-        <source file="SOX__mcompand_utility.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX__mcompand_utility.jsfx-inc</source>
-        <source file="SOX__reverb.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX__reverb.jsfx-inc</source>
-        <source file="SOX__samplequeue.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX__samplequeue.jsfx-inc</source>
-        <source file="SOX__waveform.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX__waveform.jsfx-inc</source>
-        <source file="SOX_Allpass-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX_Allpass-Filter.jsfx</source>
-        <source file="SOX_Band-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX_Band-Filter.jsfx</source>
-        <source file="SOX_Biquad.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX_Biquad.jsfx</source>
-        <source file="SOX_BPBRJ-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX_BPBRJ-Filter.jsfx</source>
-        <source file="SOX_BSTRB-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX_BSTRB-Filter.jsfx</source>
-        <source file="SOX_Compand.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX_Compand.jsfx</source>
-        <source file="SOX_EQU-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX_EQU-Filter.jsfx</source>
-        <source file="SOX_Gain.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX_Gain.jsfx</source>
-        <source file="SOX_LPHP-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX_LPHP-Filter.jsfx</source>
-        <source file="SOX_MCompand2.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX_MCompand2.jsfx</source>
-        <source file="SOX_MCompand3.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX_MCompand3.jsfx</source>
-        <source file="SOX_MCompand4.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX_MCompand4.jsfx</source>
-        <source file="SOX_MCompand5.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX_MCompand5.jsfx</source>
-        <source file="SOX_Overdrive.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX_Overdrive.jsfx</source>
-        <source file="SOX_Phaser.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX_Phaser.jsfx</source>
-        <source file="SOX_Reverb.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX_Reverb.jsfx</source>
-        <source file="SOX_Tremolo.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/src/SOX_Tremolo.jsfx</source>
-        <source file="test/makeTestFiles.bat">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/test/makeTestFiles.bat</source>
-        <source file="test/testSoxPlugins.RPP">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/8f6e927ba65c2b8d13ecf96a6b822bda5f5c3722/test/testSoxPlugins.RPP</source>
-      </version>
-      <version name="0.91" author="Dr. Thomas Tensi" time="2022-01-07T00:00:00Z">
-        <changelog><![CDATA[Minor corrections]]></changelog>
-        <source file="doc/JSFXSOX-Plugins-Documentation.pdf">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/JSFXSOX-Plugins-Documentation.pdf</source>
-        <source file="Base.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/Base.jsfx-inc</source>
-        <source file="Base_debug.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/Base_debug.jsfx-inc</source>
-        <source file="Base_display.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/Base_display.jsfx-inc</source>
-        <source file="Base_fixedarray.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/Base_fixedarray.jsfx-inc</source>
-        <source file="Base_integerset.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/Base_integerset.jsfx-inc</source>
-        <source file="Base_memory.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/Base_memory.jsfx-inc</source>
-        <source file="Base_nodebug.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/Base_nodebug.jsfx-inc</source>
-        <source file="Base_string.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/Base_string.jsfx-inc</source>
-        <source file="SOX__base.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX__base.jsfx-inc</source>
-        <source file="SOX__biquadfilter.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX__biquadfilter.jsfx-inc</source>
-        <source file="SOX__compand_transfer.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX__compand_transfer.jsfx-inc</source>
-        <source file="SOX__compand_utility.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX__compand_utility.jsfx-inc</source>
-        <source file="SOX__iirfilter.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX__iirfilter.jsfx-inc</source>
-        <source file="SOX__mcompand_utility.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX__mcompand_utility.jsfx-inc</source>
-        <source file="SOX__reverb.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX__reverb.jsfx-inc</source>
-        <source file="SOX__samplequeue.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX__samplequeue.jsfx-inc</source>
-        <source file="SOX__waveform.jsfx-inc">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX__waveform.jsfx-inc</source>
-        <source file="SOX_Allpass-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX_Allpass-Filter.jsfx</source>
-        <source file="SOX_Band-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX_Band-Filter.jsfx</source>
-        <source file="SOX_Biquad.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX_Biquad.jsfx</source>
-        <source file="SOX_BPBRJ-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX_BPBRJ-Filter.jsfx</source>
-        <source file="SOX_BSTRB-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX_BSTRB-Filter.jsfx</source>
-        <source file="SOX_Compand.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX_Compand.jsfx</source>
-        <source file="SOX_EQU-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX_EQU-Filter.jsfx</source>
-        <source file="SOX_Gain.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX_Gain.jsfx</source>
-        <source file="SOX_LPHP-Filter.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX_LPHP-Filter.jsfx</source>
-        <source file="SOX_MCompand2.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX_MCompand2.jsfx</source>
-        <source file="SOX_MCompand3.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX_MCompand3.jsfx</source>
-        <source file="SOX_MCompand4.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX_MCompand4.jsfx</source>
-        <source file="SOX_MCompand5.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX_MCompand5.jsfx</source>
-        <source file="SOX_Overdrive.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX_Overdrive.jsfx</source>
-        <source file="SOX_Phaser.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX_Phaser.jsfx</source>
-        <source file="SOX_Reverb.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX_Reverb.jsfx</source>
-        <source file="SOX_Tremolo.jsfx">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/src/SOX_Tremolo.jsfx</source>
-        <source file="test/makeTestFiles.bat">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/test/makeTestFiles.bat</source>
-        <source file="test/testJSFXSoxPlugins.RPP">https://github.com/prof-spock/JSFX-SOX-Plugins/raw/ffd0e4b9fbdee461e05c6f4e6aa9382503b008ab/test/testJSFXSoxPlugins.RPP</source>
-      </version>
-    </reapack>
-  </category>
 </index>

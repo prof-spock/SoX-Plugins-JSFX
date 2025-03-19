@@ -1,0 +1,300 @@
+desc: SoX Phaser
+tags: utility gain
+author: Dr. Thomas Tensi, 2019
+
+//--------------------
+// IMPORTS
+//--------------------
+
+import ../_BaseModules/Base.jsfx-inc
+import ../_BaseModules/Base_memory.jsfx-inc
+import ../_BaseModules/Base_naturalset.jsfx-inc
+import ../_BaseModules/Base_string.jsfx-inc
+import ../_BaseModules/Base_fixedarray.jsfx-inc
+import ../_BaseModules/Base_struct.jsfx-inc
+import ../_BaseModules/Base_graphics.jsfx-inc
+import ../_BaseModules/Base_debug.jsfx-inc
+
+import ../_Audio/Audio_samplequeue.jsfx-inc
+import ../_Audio/Audio_waveform.jsfx-inc
+
+import SoX__base.jsfx-inc
+
+//--------------------
+// SLIDERS
+//--------------------
+
+slider1:SL_inGain=0.4<0,1,0.001>In Gain
+slider2:SL_outGain=0.74<0,1000,0.001>Out Gain
+slider3:SL_delay=3.0<0,5,0.001>Delay [ms]
+slider4:SL_decay=0.4<0,0.99,0.001>Decay
+slider5:SL_frequency=0.5<0.1,2.0,0.001>Modulation [Hz]
+slider6:SL_waveformKind=1<0,1,1{Sine,Triangle}>Waveform
+slider7:SL_timeOffset=0<-100000,100000,0.0001>Time Offset [s]
+
+//--------------------
+// INITIALIZATION
+//--------------------
+
+@init
+    //============================================================
+
+    SoXPhaser_defaultPhase = degreesToRadians(90);
+
+    //--------------------
+
+    SoXPhaser__SIZE = 9;
+    SoXPhaser__ATT_inGain          =  STRUCT_INDEX(1);
+    SoXPhaser__ATT_outGain         =  STRUCT_INDEX(2);
+    SoXPhaser__ATT_delay           =  STRUCT_INDEX(3);
+    SoXPhaser__ATT_decay           =  STRUCT_INDEX(4);
+    SoXPhaser__ATT_delayLineList   =  STRUCT_INDEX(5);
+    SoXPhaser__ATT_delayLineLength =  STRUCT_INDEX(6);
+    SoXPhaser__ATT_delayLineIndex  =  STRUCT_INDEX(7);
+    SoXPhaser__ATT_waveformKind    =  STRUCT_INDEX(8);
+    SoXPhaser__ATT_waveform        =  STRUCT_INDEX(9);
+
+    SoXPhaser_maximumDelay = 0.005;
+    SoXPhaser_minimumFrequency = 0.1;
+
+    //--------------------
+    // construction
+    //--------------------
+
+    function SoXPhaser_make ()
+        /** Constructs a new phaser */
+        local (delayLineAllocatedLength delayLineList self waveform
+               waveformAllocatedLength)
+    (
+        self = STRUCT_make(SoXPhaser__SIZE);
+
+        delayLineAllocatedLength = ceil(SoXPhaser_maximumDelay * srate);
+        delayLineList =
+            Audio_SampleQueueList_make(SoX_channelCount,
+                                       delayLineAllocatedLength, false);
+        self[SoXPhaser__ATT_delayLineList] = delayLineList;
+
+        waveformAllocatedLength = ceil(srate / SoXPhaser_minimumFrequency);
+        waveform = Audio_Waveform_make(waveformAllocatedLength);
+        self[SoXPhaser__ATT_waveform] = waveform;
+
+        self
+    );
+
+    //--------------------
+
+    function SoXPhaser_init (self, inGain, outGain, delay, decay,
+                             frequency, waveformKind, phase)
+        /** Sets parameters of phaser effect <self> to <inGain>,
+            <outGain>, <delay>, <decay>, <frequency> and
+            <waveformKind>; adjusts parameters if necessary */
+        local (delayLineList delayLineLength waveform
+               waveformLength)
+    (
+        // adjust parameter ranges
+        inGain    = forceToRange(inGain,  0,     1);
+        outGain   = forceToRange(outGain, 0,  1000);
+        decay     = forceToRange(decay,   0,  0.99);
+        delay     = forceToRange(delay, 0, SoXPhaser_maximumDelay);
+        frequency = forceToRange(frequency,
+                                 SoXPhaser_minimumFrequency, 2.0);
+
+        // calculate technical parameters
+        delayLineLength = round(delay * srate);
+        waveformLength  = round(srate / frequency);
+        
+        self[SoXPhaser__ATT_inGain]          = inGain;
+        self[SoXPhaser__ATT_outGain]         = outGain;
+        self[SoXPhaser__ATT_delay]           = delay;
+        self[SoXPhaser__ATT_decay]           = decay;
+        self[SoXPhaser__ATT_delayLineLength] = delayLineLength;
+        self[SoXPhaser__ATT_delayLineIndex]  = 1;
+        self[SoXPhaser__ATT_waveformKind]    = waveformKind;
+
+        delayLineList = self[SoXPhaser__ATT_delayLineList];
+        Audio_SampleQueueList_setEffectiveLength(delayLineList,
+                                                 delayLineLength);
+        Audio_SampleQueueList_setToZero(delayLineList);
+
+        waveform = self[SoXPhaser__ATT_waveform];
+        Audio_Waveform_set(waveform, waveformLength,
+                           waveformKind, 1, delayLineLength,
+                           phase, true);
+        Audio_Waveform_reset(waveform);
+    );
+
+    //--------------------
+
+    function SoXPhaser_apply (self, inputSampleList, outputSampleList)
+        /** Applies phaser <self> to input samples in
+            <inputSampleList> and writes output samples into
+            <outputSampleList> */
+        local (channel decay delayLine delayLineIndex delayLineLength
+               delayLineList inGain modulatedIndex nextDelayBufferIndex
+               outGain sample waveform waveformValue)
+    (
+        inGain          = self[SoXPhaser__ATT_inGain];
+        outGain         = self[SoXPhaser__ATT_outGain];
+        decay           = self[SoXPhaser__ATT_decay];
+        delayLineList   = self[SoXPhaser__ATT_delayLineList];
+        delayLineLength = self[SoXPhaser__ATT_delayLineLength];
+        delayLineIndex  = self[SoXPhaser__ATT_delayLineIndex];
+        waveform        = self[SoXPhaser__ATT_waveform];
+
+        waveformValue = Audio_Waveform_current(waveform);
+
+        modulatedIndex =
+            mod(delayLineIndex - 1 + waveformValue, delayLineLength) + 1;
+        nextDelayBufferIndex =
+            modularIncrement(delayLineIndex, delayLineLength, true);
+
+        channel = 1;
+
+        while (channel <= SoX_channelCount) (
+            delayLine = FixedArray_getAt(delayLineList, channel);
+            sample = FixedArray_getAt(inputSampleList, channel);
+            sample = (sample * inGain
+                      + (Audio_SampleQueue_getAt(delayLine,
+                                                 modulatedIndex)
+                         * decay));
+            Audio_SampleQueue_setAt(delayLine,
+                                    nextDelayBufferIndex, sample);
+            sample *= outGain;
+
+            FixedArray_setAt(outputSampleList, channel, sample);
+            channel += 1;
+        );
+
+        Audio_Waveform_advance(waveform);
+        self[SoXPhaser__ATT_delayLineIndex] = nextDelayBufferIndex;
+    );
+
+    //--------------------
+
+    function SoXPhaser_reset ()
+        /** Releases all resources for current phaser effect */
+    (
+        SoX_resetBaseLibraries();
+        Audio_Waveform_initialize();
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function SoXPhaser_print (self, indentationLevel)
+        /** Prints <self> to debugging output */
+        local (waveform waveformKindAsString)
+    (
+        Debug_printHdrIndented(indentationLevel, "SoXPhaser@%d", self);
+        indentationLevel += 1;
+
+        waveform = self[SoXPhaser__ATT_waveform];
+        waveformKindAsString =
+            Audio_WaveformKind_toString(self[SoXPhaser__ATT_waveformKind]);
+
+        Debug_printIndented(indentationLevel, "inGain=%f",
+                            self[SoXPhaser__ATT_inGain]);
+        Debug_printIndented(indentationLevel, "outGain=%f",
+                            self[SoXPhaser__ATT_outGain]);
+        Debug_printIndented(indentationLevel, "delay=%fs",
+                            self[SoXPhaser__ATT_delay]);
+        Debug_printIndented(indentationLevel, "decay=%f",
+                            self[SoXPhaser__ATT_decay]);
+        Debug_printIndented(indentationLevel, "delayLineIndex=%d",
+                            self[SoXPhaser__ATT_delayLineIndex]);
+        Debug_printIndented(indentationLevel, "waveformKind=%s",
+                            waveformKindAsString);
+
+        Audio_Waveform_print(self[SoXPhaser__ATT_waveform],
+                             indentationLevel);
+        Audio_SampleQueueList_print(self[SoXPhaser__ATT_delayLineList],
+                                    indentationLevel);
+    );
+
+    //--------------------
+
+    function SoXPhaser_handleKey (self, key)
+    (
+        Debug_currentMode == Debug_Mode_effect ? (
+            Graphics_clear(Graphics_Color_black);
+        );
+    );
+
+    //--------------------
+
+    function SoXPhaser_update (self)
+        /** Updates on change of play position */
+        local (deltaPhase effectivePhase effectiveWaveformKind)
+    (
+        effectiveWaveformKind =
+            iif(SL_waveformKind == 0, Audio_WaveformKind_sine,
+                Audio_WaveformKind_triangle);
+        deltaPhase = Audio_Waveform_adjustPhaseByTime(SL_frequency,
+                                                      SL_timeOffset,
+                                                      play_position);
+        effectivePhase = SoXPhaser_defaultPhase + deltaPhase;
+
+        SoXPhaser_init(self, SL_inGain, SL_outGain,
+                       SL_delay / 1000, SL_decay,
+                       SL_frequency, effectiveWaveformKind,
+                       effectivePhase);
+
+        Debug_clear();
+        SoXPhaser_print(self, 0);
+    );
+
+    //============================================================
+
+    phaser = SoXPhaser_make();
+
+//--------------------
+// BLOCK
+//--------------------
+
+
+//--------------------
+// BLOCK
+//--------------------
+
+@block
+    srate != SoXPhaser__previousSampleRate ? (
+        SoXPhaser_reset();
+        phaser = SoXPhaser_make();
+        SoXPhaser_update(phaser);
+        SoXPhaser__previousSampleRate = srate;
+    );
+
+    (play_position < SoXPhaser__previousPlayPosition
+     || play_position > SoXPhaser__previousPlayPosition + 0.1) ? (
+        SoXPhaser_update(phaser);
+    );
+
+    SoXPhaser__previousPlayPosition = play_position;
+
+//--------------------
+// SLIDER CHANGE
+//--------------------
+
+@slider
+    SoXPhaser__previousPlayPosition = maximumInteger;
+    SoXPhaser_update(phaser);
+
+//--------------------
+// SAMPLE
+//--------------------
+
+@sample
+    SoX_readInputSampleList();
+    SoXPhaser_apply(phaser, SoX_inputSampleList, SoX_outputSampleList);
+    SoX_writeOutputSampleList();
+    SoXPhaser__previousPlayPosition = play_position;
+
+//--------------------
+// GRAPHICS
+//--------------------
+
+@gfx
+    key = gfx_getchar();
+    key = Debug_handleKey(key);
+    SoXPhaser_handleKey(phaser, key);

@@ -1,0 +1,318 @@
+desc:JSFX string functions
+// provides utility functions for string handling
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+//requires Base_naturalset.jsfx-inc
+
+@init
+    //============================================================
+
+    /** error codes */
+    String__errFIRST    = 999960;
+    String__errBadIndex = String__errFIRST + 0;
+    String__errNullPtr  = String__errFIRST + 1;
+
+    //--------------------
+
+    String__maximumValue = 1023;
+    String__freeSlotsSet = null;
+
+    String_multiLineSeparator = $'#';
+
+    //====================
+    // PRIVATE FEATURES
+    //====================
+
+    function String__clear (self)
+        /** Clears string <self> */
+    (
+        self == 0 ? (
+            signalError(String__errNullPtr);
+        ) : (
+            strcpy(self, "");
+        );
+    );
+
+    //====================
+    // EXPORTED FEATURES
+    //====================
+
+    function String_make ()
+        /** Returns a new string */
+        local (self)
+    (
+        self = NaturalSet_lookup(String__freeSlotsSet);
+        NaturalSet_exclude(String__freeSlotsSet, self);
+        String__clear(self);
+        self
+    );
+
+    //--------------------
+
+    function String_initialize ()
+        /** Initializes all internal data of the string management */
+        local (dummy)
+    (
+        String__freeSlotsSet = NaturalSet_make(String__maximumValue);
+        NaturalSet_fill(String__freeSlotsSet);
+
+        // allocate a single string to always have nonzero objects
+        NaturalSet_exclude(String__freeSlotsSet, 0);
+    );
+
+    //--------------------
+
+    function String_destroy (self)
+        /** Destroys string <self> */
+    (
+        self == 0 ? (
+            signalError(String__errNullPtr);
+        ) : (
+            NaturalSet_include(String__freeSlotsSet, self);
+        );
+    );
+
+    //--------------------
+    //--------------------
+
+    function String_length (self)
+        /** Tells length of string <self> */
+        local (result)
+    (
+        self != 0 ? (
+            result = strlen(self);
+        ) : (
+            signalError(String__errNullPtr);
+            result = -infinity;
+        );
+    );
+
+    //--------------------
+
+    function String_isEqual (self, other)
+        /** Tells whether string <other> and <self> are equal */
+        local (result)
+    (
+        self != 0 && other != 0 ? (
+            result = (strcmp(self, other) == 0);
+        ) : (
+            signalError(String__errNullPtr);
+            result = -infinity;
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function String_append (self, other)
+        /** Appends string <other> to <self> */
+    (
+        self == 0 && other == 0 ? (
+            signalError(String__errNullPtr);
+        ) : (
+            strcat(self, other);
+        );
+    );
+
+    //--------------------
+
+    function String_appendChar (self, ch)
+        /** Appends character <ch> to <self> */
+        local (length)
+    (
+        self == 0 ? (
+            signalError(String__errNullPtr);
+        ) : (
+            length = strlen(self);
+            strcat(self, " ");
+            str_setchar(self, length, ch);
+        );
+    );
+
+    //--------------------
+
+    function String_copy (self, other)
+        /** Assigns string <other> to <self> */
+    (
+        self == 0 || other == 0 ? (
+            signalError(String__errNullPtr);
+        ) : (
+            strcpy(self, other);
+        );
+    );
+
+    //--------------------
+
+    function String_clear (self)
+        /** Clears string <self> */
+    (
+        String__clear(self);
+    );
+
+    //--------------------
+
+    function String_repeat (self, other, count)
+        /** Sets <self> to repetition of <other> by <count> */
+        local (i)
+    (
+        String_clear(self);
+        i = 1;
+
+        while (i <= count) (
+            String_append(self, other);
+            i += 1;
+        );
+    );
+
+    //------------------------------
+    // search function
+    //------------------------------
+
+    function String_findChar (self, ch, startPosition)
+        /** Returns one-based position of <ch> in <self> starting at
+            one-based <startPosition> */
+        local (i isFound length result strCh)
+    (
+        self == 0 ? (
+            signalError(String__errNullPtr);
+            result = infinity;
+        ) : (            
+            length = String_length(self);
+            isFound = false;
+            i = startPosition;
+
+            while (!isFound && i <= length) (
+                strCh = str_getchar(self, i - 1);
+                isFound = (strCh == ch);
+
+                !isFound ? (
+                    i += 1;
+                );
+            );
+
+            result = (isFound ? i : 0);
+        );
+
+        result
+    );
+
+    //------------------------------
+
+    function String_findChar (self, ch)
+        /** Returns one-based position of <ch> in <self> */
+    (
+        String_findChar(self, ch, 1)
+    );
+
+    //------------------------------
+    // overloaded substring function
+    //------------------------------
+
+    function String_substring (self, other, start, count)
+        /** Copies substring of <other> to <self> starting from
+            one-based <start> with <count> characters */
+    (
+        self == 0 || other == 0 ? (
+            signalError(String__errNullPtr);
+        ) : (
+            strcpy_substr(self, other, start - 1, count);
+        );
+    );
+
+    //--------------------
+
+    function String_substring (self, other, start)
+        /** Copies substring of <other> to <self> starting from
+         * one-based <start> */
+    (
+        String_substring(self, other, start, 1000000);
+    );
+
+    //---------------------------
+    // overloaded format function
+    //---------------------------
+
+    function String_format (self, template, x1, x2, x3, x4, x5, x6)
+        /** Formats <xi> to according to template to <self> */
+    (
+        self == 0 || template == 0 ? (
+            signalError(String__errNullPtr);
+        ) : (
+            sprintf(self, template, x1, x2, x3, x4, x5, x6);
+        );
+    );
+
+    //--------------------
+
+    function String_format (self, template, x1, x2, x3, x4, x5)
+        /** Formats <xi> to according to template to <self> */
+    (
+        String_format(self, template, x1, x2, x3, x4, x5, 0);
+    );
+
+    //--------------------
+
+    function String_format (self, template, x1, x2, x3, x4)
+        /** Formats <xi> to according to template to <self> */
+    (
+        String_format(self, template, x1, x2, x3, x4, 0);
+    );
+
+    //--------------------
+
+    function String_format (self, template, x1, x2, x3)
+        /** Formats <xi> to according to template to <self> */
+    (
+        String_format(self, template, x1, x2, x3, 0);
+    );
+
+    //--------------------
+
+    function String_format (self, template, x1, x2)
+        /** Formats <xi> to according to template to <self> */
+    (
+        String_format(self, template, x1, x2, 0);
+    );
+
+    //--------------------
+
+    function String_format (self, template, x1)
+        /** Formats <xi> to according to template to <self> */
+    (
+        String_format(self, template, x1, 0);
+    );
+
+    //--------------------
+
+    function String_fromBoolean (b)
+        /** Returns string for boolean <b> */
+    (
+        b ? "true" : "false"
+    );
+
+    //--------------------
+
+    function String_startsWith (self, other)
+        /** Tells whether <self> starts with <other> */
+        local (otherLength prefix result)
+    (
+        self == 0 || other == 0 ? (
+            signalError(String__errNullPtr);
+            result = false;
+        ) : (
+            prefix = String_make();
+            otherLength = String_length(other);
+            String_substring(prefix, self, 1, otherLength);
+            result = String_isEqual(prefix, other);
+            String_destroy(prefix);
+        );
+
+        result
+    );
+
+    //============================================================
+
+    String_initialize();
+    Memory_saveRestorePoint();

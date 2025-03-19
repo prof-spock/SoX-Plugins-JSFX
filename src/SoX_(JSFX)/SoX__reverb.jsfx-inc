@@ -1,0 +1,756 @@
+desc:SoX Reverb include file
+// provides utility functions for reverb effect of SoX implementing
+// the classical Freeverb
+tags: reverb
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+//requires Base_fixedarray.jsfx-inc
+//requires Base_debug.jsfx-inc
+//requires Audio_samplequeue.jsfx-inc
+
+@init
+    //============================================================
+
+    // configuration parameters
+    SoXReverb_maximumRoomScale   = 1.0;
+    SoXReverb_maximumStereoDepth = 1.0;
+    SoXReverb_maximumPredelay    = 0.5;
+
+    // Freeverb construction parameters
+    SoXReverb_lineCombFilterCount    = 8;
+    SoXReverb_lineAllpassFilterCount = 4;
+    SoXReverb_stereoSpread = 12;
+    SoXReverb_allpassFactor = 0.5;
+
+    //--------------------
+    // AllpassFilter
+    //--------------------
+    // a simple allpass filter with an associated sample queue as a
+    // delay line
+    //--------------------
+
+    SoXAllpassFilter__SIZE = 1;
+    SoXAllpassFilter__ATT_sampleQueue = STRUCT_INDEX(1);
+
+    //--------------------
+
+    function SoXAllpassFilter_make (sampleQueue)
+        /** Makes allpass filter with given <sampleQueue> and returns
+            it */
+        local (self)
+    (
+        self = STRUCT_make(SoXAllpassFilter__SIZE);
+        self[SoXAllpassFilter__ATT_sampleQueue] = sampleQueue;
+        self
+    );
+
+    //--------------------
+
+    function SoXAllpassFilter_apply (self, inputSample)
+        /** Applies allpass filter <self> to <inputSample> */
+        local (newSample outputSample sampleQueue)
+    (
+        sampleQueue = self[SoXAllpassFilter__ATT_sampleQueue];
+        outputSample = Audio_SampleQueue_first(sampleQueue);
+        newSample =
+            inputSample + outputSample * SoXReverb_allpassFactor;
+        Audio_SampleQueue_rotateLeft(sampleQueue, newSample);
+        outputSample - inputSample
+    );
+
+    //--------------------
+    // CombFilter
+    //--------------------
+    // a simple Schröder-Moorer comb filter with an associated sample
+    // queue as a delay line and a single stored sample
+    //--------------------
+
+    SoXCombFilter__SIZE = 2;
+    SoXCombFilter__ATT_sampleQueue  = STRUCT_INDEX(1);
+    SoXCombFilter__ATT_storedSample = STRUCT_INDEX(2);
+
+    //--------------------
+
+    function SoXCombFilter_make (sampleQueue)
+        /** Makes comb filter with given <sampleQueue> and returns it */
+        local (self)
+    (
+        self = STRUCT_make(SoXCombFilter__SIZE);
+        self[SoXCombFilter__ATT_sampleQueue]  = sampleQueue;
+        self[SoXCombFilter__ATT_storedSample] = 0;
+        self
+    );
+
+    //--------------------
+
+    function SoXCombFilter_apply (self, inputSample,
+                                  feedback, hfDamping)
+        /** Applies comb filter <self> to <inputSample> with
+            <feedback> and <hfDamping> */
+        local (outputSample sampleQueue storedSample)
+    (
+        sampleQueue  = self[SoXCombFilter__ATT_sampleQueue];
+        storedSample = self[SoXCombFilter__ATT_storedSample];
+
+        outputSample = Audio_SampleQueue_first(sampleQueue);
+        storedSample = (outputSample
+                        + (storedSample - outputSample) * hfDamping);
+        inputSample += storedSample * feedback;
+        Audio_SampleQueue_rotateLeft(sampleQueue, inputSample);
+        self[SoXCombFilter__ATT_storedSample] = storedSample;
+        outputSample
+    );
+
+    //--------------------
+    // ReverbLineDelays
+    //--------------------
+    // the sample queues of filters in a reverb line: those apply
+    // either to comb or allpass filters; the coefficients are the
+    // canonical values for Freeverb
+    //--------------------
+
+    SoXReverbLineDelays_allpassFilterLengthList = null;
+    SoXReverbLineDelays_combFilterLengthList    = null;
+
+    SoXReverbLineDelays_referenceSampleRate = 44100.0;
+
+    //--------------------
+
+    function SoXReverbLineDelays_initialize ()
+        /** Initializes length lists for comb and allpass filters
+            (independent of sample rate) */
+        local (r)
+    (
+        r = FixedArray_make(SoXReverb_lineCombFilterCount);
+        FixedArray_setAt(r, 1, 1116);
+        FixedArray_setAt(r, 2, 1188);
+        FixedArray_setAt(r, 3, 1277);
+        FixedArray_setAt(r, 4, 1356);
+        FixedArray_setAt(r, 5, 1422);
+        FixedArray_setAt(r, 6, 1491);
+        FixedArray_setAt(r, 7, 1557);
+        FixedArray_setAt(r, 8, 1617);
+        SoXReverbLineDelays_combFilterLengthList = r;
+
+        r = FixedArray_make(SoXReverb_lineAllpassFilterCount);
+        FixedArray_setAt(r, 1, 225);
+        FixedArray_setAt(r, 2, 341);
+        FixedArray_setAt(r, 3, 441);
+        FixedArray_setAt(r, 4, 556);
+        SoXReverbLineDelays_allpassFilterLengthList = r;
+    );
+
+     //--------------------
+
+     function SoXReverbLineDelays_length (isCreation, isCombFilter,
+                                          index, sampleRate,
+                                          roomScale, stereoDepth)
+        /** Returns length of filter delay line for given parameters;
+            if <isCreation> is set, the maximum length for those
+            parameters is returned */
+        local (adjustment factor length lengthList offset result)
+    (
+        roomScale = iif(isCreation, SoXReverb_maximumRoomScale,
+                        isCombFilter, roomScale, 1.0);
+        factor = (sampleRate
+                  / SoXReverbLineDelays_referenceSampleRate
+                  * roomScale);
+        offset = iif(isCreation, SoXReverb_maximumStereoDepth,
+                     stereoDepth * (-1) ^ (index - 1));
+        lengthList = iif(isCombFilter,
+                         SoXReverbLineDelays_combFilterLengthList,
+                         SoXReverbLineDelays_allpassFilterLengthList);
+        length = FixedArray_getAt(lengthList, index);
+        adjustment = SoXReverb_stereoSpread;
+        result = round(factor * (length + adjustment * offset));
+        result
+    );
+
+    //--------------------
+    //--------------------
+
+    function SoXReverbLineDelays_make (isCombFilter, index, sampleRate)
+        /** Makes filter delay line for given parameters with maximum
+            length */
+        local (queueLength self)
+    (
+        // calculate maximum queue length with arbitrary values for
+        // <channel>, <roomScale> and <stereoDepth>
+        queueLength =
+            SoXReverbLineDelays_length(true, isCombFilter,
+                                       index, sampleRate, 0, 0);
+        self = Audio_SampleQueue_make(queueLength);
+        self
+    );
+
+    //--------------------
+
+    function SoXReverbLineDelays_adjustLength (self, isCombFilter,
+                                               index, sampleRate,
+                                               roomScale, stereoDepth)
+        /** Adjusts lengths of filter queue <self> according to
+            parameters <isCombFilter>, <sampleRate>, <roomScale> and
+            <stereoDepth> to their effective length */
+        local (queueLength)
+    (
+        queueLength =
+            SoXReverbLineDelays_length(false, isCombFilter, index,
+                                       sampleRate, roomScale, stereoDepth);
+        Audio_SampleQueue_setEffectiveLength(self, queueLength);
+    );
+
+    //--------------------
+    // ReverbLine
+    //--------------------
+    // a list of filters with delay lines forming a single channel
+    // in Freeverb
+    //--------------------
+
+    SoXReverbLine__SIZE = 4;
+    SoXReverbLine__ATT_combFilterSampleQueueList    = STRUCT_INDEX(1);
+    SoXReverbLine__ATT_allpassFilterSampleQueueList = STRUCT_INDEX(2);
+    SoXReverbLine__ATT_combFilterList               = STRUCT_INDEX(3);
+    SoXReverbLine__ATT_allpassFilterList            = STRUCT_INDEX(4);
+
+    //--------------------
+
+    function SoXReverbLine_make (sampleRate)
+        /** Constructs a complete reverb line and all filters; creates
+            all sample queues with maximum length to be adapted by
+            later adjustments */
+        local (elementCount filter filterList filterSampleQueueList
+               i isCombFilter listIndex sampleQueue self)
+    (
+        self = STRUCT_make(SoXReverbLine__SIZE);
+
+        // make the filter delay lines
+        listIndex  = SoXReverbLine__ATT_combFilterSampleQueueList;
+        elementCount = SoXReverb_lineCombFilterCount;
+        isCombFilter = true;
+
+        while (listIndex <= SoXReverbLine__ATT_allpassFilterSampleQueueList) (
+            filterSampleQueueList = FixedArray_make(elementCount);
+            self[listIndex] = filterSampleQueueList;
+            i = 1;
+
+            while (i <= elementCount) (
+                sampleQueue =
+                    SoXReverbLineDelays_make(isCombFilter, i, sampleRate);
+                FixedArray_setAt(filterSampleQueueList, i, sampleQueue);
+                i += 1;
+            );
+
+            isCombFilter = !isCombFilter;
+            elementCount = SoXReverb_lineAllpassFilterCount;
+            listIndex += 1;
+        );
+
+        // make the filters and assign the preconstructed delay lines
+        listIndex = SoXReverbLine__ATT_combFilterList;
+        elementCount = SoXReverb_lineCombFilterCount;
+
+        while (listIndex <= SoXReverbLine__ATT_allpassFilterList) (
+            filterList = FixedArray_make(elementCount);
+            self[listIndex] = filterList;
+            filterSampleQueueList = self[listIndex - 2];
+            i = 1;
+
+            while (i <= elementCount) (
+                sampleQueue = FixedArray_getAt(filterSampleQueueList, i);
+
+                isCombFilter ? (
+                    filter = SoXCombFilter_make(sampleQueue)
+                ) : (
+                    filter = SoXAllpassFilter_make(sampleQueue)
+                );
+
+                FixedArray_setAt(filterList, i, filter);
+                i += 1;
+            );
+
+            isCombFilter = !isCombFilter;
+            elementCount = SoXReverb_lineAllpassFilterCount;
+            listIndex += 1;
+        );
+
+        self
+    );
+
+    //--------------------
+    //--------------------
+
+    function SoXReverbLine_adjustQueueLengths (self, sampleRate,
+                                               roomScale, stereoDepth)
+        /** Adjusts lengths of all filter queues in reverb line <self>
+            according to parameters <sampleRate>, <roomScale> and
+            <stereoDepth> to their effective length */
+        local (filterSampleQueueList i isCombFilter
+               queueCount queueLength queueListIndex sampleQueue)
+    (
+        // adapt lengths of filter delay lines
+        queueListIndex = SoXReverbLine__ATT_combFilterSampleQueueList;
+        isCombFilter = true;
+
+        while (queueListIndex
+               <= SoXReverbLine__ATT_allpassFilterSampleQueueList) (
+            filterSampleQueueList = self[queueListIndex];
+            queueCount = FixedArray_length(filterSampleQueueList);
+            i = 1;
+
+            while (i <= queueCount) (
+                sampleQueue = FixedArray_getAt(filterSampleQueueList, i);
+                SoXReverbLineDelays_adjustLength(sampleQueue,
+                                                 isCombFilter, i, sampleRate,
+                                                 roomScale, stereoDepth);
+                i += 1;
+            );
+
+            queueListIndex += 1;
+            isCombFilter = false;
+        );
+    );
+
+    //--------------------
+
+    function SoXReverbLine_apply (self, inputSample,
+                                  feedback, hfDamping, gain)
+        /** Applies reverb line <self> to <inputSample> and returns
+            output sample with parameters <feedback>, <hfDamping> and
+            <gain>; the comb filters are applied to the input in
+            parallel, the allpass filters in series */
+        local (filter filterList i outputSample)
+    (
+        // route input sample through the filters
+        outputSample = 0;
+
+        // process comb filters in parallel
+        i = SoXReverb_lineCombFilterCount;
+        filterList = self[SoXReverbLine__ATT_combFilterList];
+
+        while (i >= 1) (
+            filter = FixedArray_getAt(filterList, i);
+            outputSample += SoXCombFilter_apply(filter, inputSample,
+                                                feedback, hfDamping);
+            i -= 1;
+        );
+
+        // process allpass filters in series
+        i = SoXReverb_lineAllpassFilterCount;
+        filterList = self[SoXReverbLine__ATT_allpassFilterList];
+
+        while (i >= 1) (
+            filter = FixedArray_getAt(filterList, i);
+            outputSample = SoXAllpassFilter_apply(filter, outputSample);
+            i -= 1;
+        );
+
+        outputSample *= gain;
+        outputSample
+    );
+
+    //--------------------
+
+    function SoXReverbLine_print (self, indentationLevel)
+        /** Prints a representation of reverb line <self> to debug
+            output */
+        local (filter filterList filterListCount i isCombFilter
+               listIndex queueIndex sampleQueue st template)
+    (
+        st = String_make();
+
+        Debug_printHdrIndented(indentationLevel, "ReverbLine@%d", self);
+        indentationLevel += 1;
+
+        listIndex = SoXReverbLine__ATT_combFilterList;
+        isCombFilter = true;
+
+        while (listIndex <= SoXReverbLine__ATT_allpassFilterList) (
+            template = iif(isCombFilter, "cf(%d)", "af(%d)");
+            filterList = self[listIndex];
+            filterListCount = FixedArray_length(filterList);
+            i = 1;
+
+            while (i <= filterListCount) (
+                filter = FixedArray_getAt(filterList, i);
+                queueIndex = iif(isCombFilter,
+                                 SoXCombFilter__ATT_sampleQueue,
+                                 SoXAllpassFilter__ATT_sampleQueue);
+                sampleQueue = filter[queueIndex];
+
+                String_format(st, template, i);
+                Debug_printIndented(indentationLevel, "%s@%d,sq@%d",
+                                    st, filter, sampleQueue);
+                Debug_printIndented(indentationLevel, "len=%d,alloc=%d",
+                                    Audio_SampleQueue_length(sampleQueue),
+                                    sampleQueue[0]);
+                i += 1;
+            );
+
+            listIndex += 1;
+            isCombFilter = false;
+        );
+
+        String_destroy(st);
+    );
+
+    //--------------------
+    // Reverb Channel
+    //--------------------
+    // a reverb channel processes a single stereo channel via either
+    // one or two reverb lines (depending on whether stereo depth is
+    // greater than 0 or not); also there is a delay of the input
+    // sample via a channel delay line (when predelay is non-zero)
+    //--------------------
+
+    SoXReverbChannel__SIZE = 3;
+    SoXReverbChannel__ATT_inputSampleQueue = STRUCT_INDEX(1);
+    SoXReverbChannel__ATT_reverbLineCount  = STRUCT_INDEX(2);
+    SoXReverbChannel__ATT_reverbLineList   = STRUCT_INDEX(3);
+
+    //--------------------
+    //--------------------
+
+    function SoXReverbChannel_make (sampleRate)
+        /** Constructs a complete reverb line with predelay line and
+            all filters for one channel; creates all sample queues
+            with maximum length to be adapted by later adjustments */
+        local (i inputSampleQueue maximumPredelayInSamples
+               reverbLine reverbLineCount reverbLineList self)
+    (
+        self = STRUCT_make(SoXReverbChannel__SIZE);
+
+        // make delay line for input (predelay)
+        maximumPredelayInSamples = round(sampleRate
+                                         * SoXReverb_maximumPredelay);
+        inputSampleQueue = Audio_SampleQueue_make(maximumPredelayInSamples);
+        self[SoXReverbChannel__ATT_inputSampleQueue] = inputSampleQueue;
+
+        reverbLineCount = 2;
+        self[SoXReverbChannel__ATT_reverbLineCount] = reverbLineCount;
+
+        // make two reverb lines for possible stereo processing
+        reverbLineList = FixedArray_make(2);
+        self[SoXReverbChannel__ATT_reverbLineList] = reverbLineList;
+        i = 1;
+
+        while (i <= reverbLineCount) (
+            reverbLine = SoXReverbLine_make(sampleRate);
+            FixedArray_setAt(reverbLineList, i, reverbLine);
+            i += 1;
+        );
+
+        self
+    );
+
+    //--------------------
+
+    function SoXReverbChannel_adjustQueueLengths (self, sampleRate,
+                                                  predelay, roomScale,
+                                                  stereoDepth)
+        /** Adjusts lengths of all filter queues in reverb channel
+            <self> according to parameters <sampleRate>, <roomScale>
+            and <stereoDepth> to their effective length; adjusts input
+            queue to length <predelay> */
+        local (effectiveStereoDepth i inputSampleQueue queueLength
+               reverbLine reverbLineCount reverbLineList)
+    (
+        // adapt length of predelay line
+        inputSampleQueue = self[SoXReverbChannel__ATT_inputSampleQueue];
+        queueLength = round(predelay * sampleRate);
+        Audio_SampleQueue_setEffectiveLength(inputSampleQueue, queueLength);
+
+        // adapt lengths of reverb lines; when stereo depth is zero,
+        // only a single reverb line is used per channel
+        reverbLineCount = (stereoDepth == 0 ? 1 : 2);
+        reverbLineList = self[SoXReverbChannel__ATT_reverbLineList];
+        i = 1;
+
+        while (i <= reverbLineCount) (
+            reverbLine = FixedArray_getAt(reverbLineList, i);
+            effectiveStereoDepth = (i == 1 ? 0 : stereoDepth);
+            SoXReverbLine_adjustQueueLengths(reverbLine, sampleRate,
+                                             roomScale,
+                                             effectiveStereoDepth);
+            i += 1;
+        );
+
+        self[SoXReverbChannel__ATT_reverbLineCount] = reverbLineCount;
+    );
+
+    //--------------------
+
+    function SoXReverbChannel_apply (self, inputSample,
+                                     feedback, hfDamping, gain,
+                                     outputSampleList)
+        /** Applies reverb channel <self> to <inputSample> and returns
+            output samples with parameters <feedback>, <hfDamping> and
+            <gain> in <outputSampleList> */
+        local (firstSample i outputSample inputSampleQueue
+               reverbLine reverbLineCount reverbLineList)
+    (
+        // check and process predelay
+        inputSampleQueue = self[SoXReverbChannel__ATT_inputSampleQueue];
+
+        Audio_SampleQueue_length(inputSampleQueue) > 0 ? (
+            firstSample = Audio_SampleQueue_first(inputSampleQueue);
+            Audio_SampleQueue_rotateLeft(inputSampleQueue, inputSample);
+            inputSample = firstSample;
+        );
+
+        // process all reverb lines for this channel and store their
+        // results in output sample list
+        reverbLineCount = self[SoXReverbChannel__ATT_reverbLineCount];
+        reverbLineList  = self[SoXReverbChannel__ATT_reverbLineList];
+
+        i = 1;
+
+        while (i <= reverbLineCount) (
+            reverbLine = FixedArray_getAt(reverbLineList, i);
+            outputSample = SoXReverbLine_apply(reverbLine, inputSample,
+                                               feedback, hfDamping, gain);
+            FixedArray_setAt(outputSampleList, i, outputSample);
+            i += 1;
+        );
+    );
+
+    //--------------------
+
+    function SoXReverbChannel_print (self, indentationLevel)
+        /** Prints a representation of reverb channel <self> to debug
+            output */
+        local (i inputSampleQueue reverbLine reverbLineCount
+               reverbLineList)
+    (
+        Debug_printHdrIndented(indentationLevel, "ReverbChannel@%d",
+                               self);
+        indentationLevel += 1;
+
+        // print information about predelay queue
+        inputSampleQueue = self[SoXReverbChannel__ATT_inputSampleQueue];
+        Debug_printIndented(indentationLevel, "inpSmpQueue@%d",
+                            inputSampleQueue);
+        Debug_printIndented(indentationLevel, "predelay=%d",
+                            Audio_SampleQueue_length(inputSampleQueue));
+
+        // print information about reverb lines
+        reverbLineCount = self[SoXReverbChannel__ATT_reverbLineCount];
+        reverbLineList  = self[SoXReverbChannel__ATT_reverbLineList];
+        i = 1;
+
+        while (i <= reverbLineCount) (
+            reverbLine = FixedArray_getAt(reverbLineList, i);
+            SoXReverbLine_print(reverbLine, indentationLevel);
+            i += 1;
+        );
+    );
+
+    //--------------------
+    // Reverb
+    // stores global reverb parameters
+    //--------------------
+
+    SoXReverb__SIZE = 8;
+    SoXReverb__ATT_isWetOnly         = STRUCT_INDEX(1);
+    SoXReverb__ATT_feedback          = STRUCT_INDEX(2);
+    SoXReverb__ATT_hfDamping         = STRUCT_INDEX(3);
+    SoXReverb__ATT_predelay          = STRUCT_INDEX(4);
+    SoXReverb__ATT_stereoDepth       = STRUCT_INDEX(5);
+    SoXReverb__ATT_wetGain           = STRUCT_INDEX(6);
+    SoXReverb__ATT_roomScale         = STRUCT_INDEX(7);
+    SoXReverb__ATT_reverbChannelList = STRUCT_INDEX(8);
+
+    //--------------------
+
+    function SoXReverb_make ()
+        /** Constructs a new SoX reverb */
+        local (channel reverbChannel reverbChannelList self)
+    (
+        self = STRUCT_make(SoXReverb__SIZE);
+        reverbChannelList = FixedArray_make(SoX_channelCount);
+        self[SoXReverb__ATT_reverbChannelList] = reverbChannelList;
+        channel = 1;
+
+        while (channel <= SoX_channelCount) (
+            reverbChannel = SoXReverbChannel_make(srate);
+            FixedArray_setAt(reverbChannelList, channel, reverbChannel);
+            channel += 1;
+        );
+
+        self
+    );
+
+    //--------------------
+
+    SoXReverb_wetSamplePairList = null;
+
+    //--------------------
+
+    function SoXReverb_apply (self, inputSampleList, outputSampleList)
+        /** Applies reverb <self> to samples for all channels in
+            <inputSampleList> and writes result in
+            <outputSampleList> */
+        local (channel feedback hfDamping inputSample isWetOnly
+               hasMultipleLines outputSample otherWetSample
+               otherWetSamplePair reverbChannel reverbChannelList
+               stereoDepth wetGain wetSample wetSamplePair
+               wetSamplePairList)
+    (
+        feedback    = self[SoXReverb__ATT_feedback];
+        hfDamping   = self[SoXReverb__ATT_hfDamping];
+        isWetOnly   = self[SoXReverb__ATT_isWetOnly];
+        stereoDepth = self[SoXReverb__ATT_stereoDepth];
+        wetGain     = self[SoXReverb__ATT_wetGain];
+
+        reverbChannelList = self[SoXReverb__ATT_reverbChannelList];
+        wetSamplePairList = SoXReverb_wetSamplePairList;
+
+        // collect all wet sample pairs
+        channel = 1;
+
+        while (channel <= SoX_channelCount) (
+            wetSamplePair = FixedArray_getAt(wetSamplePairList, channel);
+            reverbChannel = FixedArray_getAt(reverbChannelList, channel);
+            inputSample   = FixedArray_getAt(inputSampleList, channel);
+
+            SoXReverbChannel_apply(reverbChannel, inputSample,
+                                   feedback, hfDamping, wetGain,
+                                   wetSamplePair);
+            channel += 1;
+        );
+
+        // combine wet sample pairs with input samples
+        hasMultipleLines = (stereoDepth > 0);
+        channel = 1;
+
+        while (channel <= SoX_channelCount) (
+            wetSamplePair = FixedArray_getAt(wetSamplePairList, channel);
+            wetSample = FixedArray_getAt(wetSamplePair, channel);
+
+            !hasMultipleLines ? (
+                outputSample = wetSample;
+            ):(
+                otherWetSamplePair =
+                    FixedArray_getAt(wetSamplePairList, 3 - channel);
+                otherWetSample = FixedArray_getAt(otherWetSamplePair, channel);
+                outputSample = (wetSample + otherWetSample) / 2;
+            );
+
+            inputSample  = FixedArray_getAt(inputSampleList, channel);
+            outputSample += isWetOnly ? 0 : inputSample;
+            FixedArray_setAt(outputSampleList, channel, outputSample);
+
+            channel += 1;
+        );
+    );
+
+    //--------------------
+
+    function SoXReverb_init (self, isWetOnly, reverberanceInPercent,
+                             hfDampingInPercent, roomScaleInPercent,
+                             stereoDepthInPercent, predelay, wetDbGain)
+        /** Initializes reverb <self> with <isWetOnly>,
+            <reverberanceInPercent>, <hfDampingInPercent>,
+            <roomScaleInPercent>, <stereoDepthInPercent>, <predelay>
+            and <wetDbGain> */
+        local (channel feedback hfDamping maximumFeedback minimumFeedback
+               queueLength reverbChannel reverbChannelList roomScale
+               stereoDepth wetGain)
+    (
+        // adjust parameter value ranges
+        reverberanceInPercent =
+            forceToPercentage(reverberanceInPercent);
+        hfDampingInPercent = forceToPercentage(hfDampingInPercent);
+        roomScaleInPercent = forceToPercentage(roomScaleInPercent);
+        stereoDepthInPercent = forceToPercentage(stereoDepthInPercent);
+        predelay = forceToRange(predelay, 0, SoXReverb_maximumPredelay);
+        wetDbGain = forceToRange(wetDbGain, -10, 10);
+
+        // calculate technical parameters
+        minimumFeedback =  -1 / ln(1 - 0.3);
+        maximumFeedback = 100 / (ln(1 - 0.98) * minimumFeedback + 1);
+        feedback = 1 - exp((reverberanceInPercent - maximumFeedback)
+                           / (minimumFeedback * maximumFeedback));
+        hfDamping = hfDampingInPercent / 100 * 0.3 + 0.2;
+        stereoDepth = stereoDepthInPercent / 100;
+        roomScale = roomScaleInPercent / 100 * 0.9 + 0.1;
+        wetGain = SoX_dBToLinear(wetDbGain) * 0.015;
+
+        self[SoXReverb__ATT_isWetOnly]   = isWetOnly;
+        self[SoXReverb__ATT_feedback]    = feedback;
+        self[SoXReverb__ATT_hfDamping]   = hfDamping;
+        self[SoXReverb__ATT_predelay]    = predelay;
+        self[SoXReverb__ATT_stereoDepth] = stereoDepth;
+        self[SoXReverb__ATT_wetGain]     = wetGain;
+        self[SoXReverb__ATT_roomScale]   = roomScale;
+
+        reverbChannelList = self[SoXReverb__ATT_reverbChannelList];
+        channel = 1;
+
+        while (channel <= SoX_channelCount) (
+            reverbChannel = FixedArray_getAt(reverbChannelList, channel);
+            SoXReverbChannel_adjustQueueLengths(reverbChannel, srate,
+                                                predelay, roomScale,
+                                                stereoDepth);
+            channel += 1;
+        );
+    );
+
+    //--------------------
+
+    function SoXReverb_print (self, indentationLevel)
+        /** Prints a representation of reverb <self> to debug
+            output */
+        local (i reverbChannelCount reverbChannel reverbChannelList)
+    (
+        Debug_printHdrIndented(indentationLevel, "SoXReverb@%d", self);
+        indentationLevel += 1;
+        Debug_printIndented(indentationLevel, "isWetOnly=%d",
+                            self[SoXReverb__ATT_isWetOnly]);
+        Debug_printIndented(indentationLevel, "feedback=%f",
+                            self[SoXReverb__ATT_feedback]);
+        Debug_printIndented(indentationLevel, "hfDamping=%f",
+                            self[SoXReverb__ATT_hfDamping]);
+        Debug_printIndented(indentationLevel, "predelay=%f",
+                            self[SoXReverb__ATT_predelay]);
+        Debug_printIndented(indentationLevel, "stereoDepth=%f",
+                            self[SoXReverb__ATT_stereoDepth]);
+        Debug_printIndented(indentationLevel, "wetGain=%f",
+                            self[SoXReverb__ATT_wetGain]);
+        Debug_printIndented(indentationLevel, "roomScale=%f",
+                            self[SoXReverb__ATT_roomScale]);
+
+        reverbChannelList = self[SoXReverb__ATT_reverbChannelList];
+        reverbChannelCount = FixedArray_length(reverbChannelList);
+        i = 1;
+
+        while (i <= reverbChannelCount) (
+            reverbChannel = FixedArray_getAt(reverbChannelList, i);
+            SoXReverbChannel_print(reverbChannel, indentationLevel);
+            i += 1;
+        );
+    );
+
+    //--------------------
+    //--------------------
+
+    function SoXReverb_initialize ()
+        /** Initializes supporting data structures */
+        local (channel pair)
+    (
+        SoXReverbLineDelays_initialize();
+
+        // when stereo depth is non-zero for a reverb, each reverb
+        // channel produces a pair of output samples to be stored in a
+        // list of wet result pairs
+        SoXReverb_wetSamplePairList = FixedArray_make(SoX_channelCount);
+        channel = 1;
+
+        while (channel <= SoX_channelCount) (
+            pair = FixedArray_make(2);
+            FixedArray_setAt(SoXReverb_wetSamplePairList, channel, pair);
+            channel += 1;
+        );
+    );
+
+    //============================================================

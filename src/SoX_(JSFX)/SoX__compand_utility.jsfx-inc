@@ -1,0 +1,1017 @@
+desc:SoX compand utilities
+// common utility functions for SoX compand and mcompand
+//tags: compressor
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+//requires Base_fixedarray.jsfx-inc
+//requires Base_struct.jsfx-inc
+//requires SoX__base.jsfx-inc
+//requires SoX__compand_transfer.jsfx-inc
+
+@init
+
+    /** tells whether filter bands are written to channels
+        3..(bandCount+1)*2 for debugging */
+    SoXMCompand__bandsAreWritten = false;
+
+    //======================
+    // Linkwitz-Riley Filter
+    //======================
+    // a fourth-order filter
+
+    SoXLR4Filter_order = 5;
+
+    //--------------------
+    // con-/destruction
+    //--------------------
+
+    function SoXLR4Filter_make ()
+        /** Constructs a 4th order Linkwitz-Riley filter as an IIR
+            filter */
+    (
+        SoXIIRFilter_make(SoXLR4Filter_order)
+    );
+
+    //--------------------
+
+    function SoXLR4Filter_destroy (self)
+        /** Destroys Linkwitz-Riley filter as an IIR filter */
+    (
+        SoXIIRFilter_destroy(self);
+    );
+
+    //--------------------
+
+    function SoXLR4Filter_init (self, coefficientListA, coefficientListB)
+        /** Sets up Linkwitz-Riley filter <self> by using plain
+            coefficients from <coefficientListA> and
+            <coefficientListB> */
+        local (cList i j)
+    (
+        j = 1;
+        i = 1;
+
+        while (j <= 2) (
+            j == 1 ? (
+                cList = coefficientListA;
+            ) : (
+                cList = coefficientListB;
+            );
+
+            FixedArray_setAt(self, i + 0, sqr(cList[0]));
+            FixedArray_setAt(self, i + 1, 2 * cList[0] * cList[1]);
+            FixedArray_setAt(self, i + 2,
+                             2 * cList[0] * cList[2] + sqr(cList[1]));
+            FixedArray_setAt(self, i + 3, 2 * cList[1] * cList[2]);
+            FixedArray_setAt(self, i + 4, sqr(cList[2]));
+            i += SoXLR4Filter_order;
+            j += 1;
+        );
+    );
+
+    //-----------------------
+    // functional application
+    //-----------------------
+
+    function SoXLR4Filter_apply (self, inputQueue, outputQueue)
+        /** Applies LR4 filter <self> to <inputQueue> and
+            <outputQueue>; assumes that first entry in input queue is
+            current sample and writes result sample into top of output
+            queue */
+    (
+        SoXIIRFilter_apply(self, inputQueue, outputQueue);
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function SoXLR4Filter_print (self, indentationLevel)
+        /** Prints the parameters of a Linkwitz-Riley filter <self> */
+    (
+        SoXIIRFilter_print(self, indentationLevel);
+    );
+
+    //==============================================
+    // Crossover Filter (Linkwitz - Riley 4th order)
+    //==============================================
+    // a combination of two filters used for crossover filtering
+
+    SoXLRCrossoverFilter__SIZE = 2;
+    SoXLRCrossoverFilter__ATT_lowpass  = STRUCT_INDEX(1);
+    SoXLRCrossoverFilter__ATT_highpass = STRUCT_INDEX(2);
+
+    SoXLRCrossoverFilter_coefficientCount = 9;
+    SoXLRCrossoverFilter_coefficientList =
+        FixedArray_make(SoXLRCrossoverFilter_coefficientCount);
+
+    //--------------------
+    // private functions
+    //--------------------
+
+    function SoXLRCrossoverFilter__setSpecial (self,
+                                               highValue, lowValue)
+        /** Sets crossover filter <self> to special values <highValue>
+            for the highpass and <lowValue> for the lowpass */
+        local (lrFilter)
+    (
+        lrFilter = self[SoXLRCrossoverFilter__ATT_lowpass];
+        SoXIIRFilter_setSpecial(lrFilter,  lowValue);
+        lrFilter = self[SoXLRCrossoverFilter__ATT_highpass];
+        SoXIIRFilter_setSpecial(lrFilter, highValue);
+    );
+
+    //--------------------
+    // con-/destruction
+    //--------------------
+
+    function SoXLRCrossoverFilter_make ()
+        /** Makes a Linkwitz-Riley 4th order crossover filter */
+        local (lrFilter result)
+    (
+        result = STRUCT_make(SoXLRCrossoverFilter__SIZE);
+        lrFilter = SoXLR4Filter_make();
+        result[SoXLRCrossoverFilter__ATT_lowpass]  = lrFilter;
+        lrFilter = SoXLR4Filter_make();
+        result[SoXLRCrossoverFilter__ATT_highpass] = lrFilter;
+        result
+    );
+
+    //--------------------
+
+    function SoXLRCrossoverFilter_destroy (self)
+        /** Destroys a Linkwitz-Riley 4th order crossover filter */
+        local (lrFilter)
+    (
+        lrFilter = self[SoXLRCrossoverFilter__ATT_highpass];
+        SoXLR4Filter_destroy(lrFilter);
+        lrFilter = self[SoXLRCrossoverFilter__ATT_lowpass];
+        SoXLR4Filter_destroy(lrFilter);
+        STRUCT_destroy(self);
+    );
+
+    //--------------------
+
+    function SoXLRCrossoverFilter_init (self, frequency, sampleRate)
+        /** Initializes a Linkwitz-Riley 4th order crossover filter at
+            <frequency> consisting of a lowpass, highpass and allpass
+            into <self> using <sampleRate> */
+        local (alpha coefficientList filterQuality i
+               lrFilter reference w0 value)
+    (
+        w0 = twoPi * frequency / sampleRate;
+        filterQuality = sqrt(0.5);
+        alpha = sin(w0) / (2 * filterQuality);
+        coefficientList = SoXLRCrossoverFilter_coefficientList;
+
+        // biquad lowpass filter numerator
+        FixedArray_setAt(coefficientList, 1, (1 - cos(w0)) / 2);
+        FixedArray_setAt(coefficientList, 2,  1 - cos(w0));
+        FixedArray_setAt(coefficientList, 3,
+                         FixedArray_getAt(coefficientList, 1));
+        
+        // biquad highpass filter numerator
+        FixedArray_setAt(coefficientList, 4, (1 + cos(w0)) / 2);
+        FixedArray_setAt(coefficientList, 5, -1 - cos(w0));
+        FixedArray_setAt(coefficientList, 6,
+                         FixedArray_getAt(coefficientList, 4));
+
+        // biquad LP/HP filter denominator
+        FixedArray_setAt(coefficientList, 7, 1 + alpha);
+        FixedArray_setAt(coefficientList, 8, -2 * cos(w0));
+        FixedArray_setAt(coefficientList, 9, 1 - alpha);
+
+        // normalize coefficients
+        reference = FixedArray_getAt(coefficientList, 7);
+        i = 1;
+
+        while (i <= SoXLRCrossoverFilter_coefficientCount) (
+            value = FixedArray_getAt(coefficientList, i);
+            FixedArray_setAt(coefficientList, i, value / reference);
+            i += 1;
+        );
+
+        lrFilter = self[SoXLRCrossoverFilter__ATT_lowpass];
+        SoXLR4Filter_init(lrFilter,
+                          FixedArray_address(coefficientList, 1),
+                          FixedArray_address(coefficientList, 7));
+        lrFilter = self[SoXLRCrossoverFilter__ATT_highpass];
+        SoXLR4Filter_init(lrFilter,
+                          FixedArray_address(coefficientList, 4),
+                          FixedArray_address(coefficientList, 7));
+    );
+
+    //--------------------
+
+    function SoXLRCrossoverFilter_setToIdentity (self)
+        /** Sets crossover filter <self> to identity lowpass
+            and rejecting highpass */
+    (
+        SoXLRCrossoverFilter__setSpecial(self, 0, 1);
+    );
+
+    //--------------------
+
+    function SoXLRCrossoverFilter_setToZero (self)
+        /** Sets crossover filter <self> to rejecting lowpass and
+            highpass */
+    (
+        SoXLRCrossoverFilter__setSpecial(self, 0, 0);
+    );
+
+    //-----------------------
+    // functional application
+    //-----------------------
+
+    function SoXLR4CrossoverFilter_apply (self,
+                                          inputQueue,
+                                          outputQueueLow,
+                                          outputQueueHigh)
+        /** Applies LR4 crossover filter <self> to <inputQueue> and
+            <outputQueueLow> and <outputQueueHigh>; assumes that first
+            entry in input queue is current sample and writes results
+            sample into top of output queues */
+        local (lrFilter)
+    (
+        lrFilter = self[SoXLRCrossoverFilter__ATT_lowpass];
+        SoXLR4Filter_apply(lrFilter, inputQueue, outputQueueLow);
+        lrFilter = self[SoXLRCrossoverFilter__ATT_highpass];
+        SoXLR4Filter_apply(lrFilter, inputQueue, outputQueueHigh);
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function SoXLRCrossoverFilter_print (self, indentationLevel)
+        /** Prints the parameters of a Linkwitz-Riley crossover
+            filter <self> */
+        local (lrFilter)
+    (
+        Debug_printHdrIndented(indentationLevel, "LowpassIIR");
+        lrFilter = self[SoXLRCrossoverFilter__ATT_lowpass];
+        SoXIIRFilter_printRaw(lrFilter, indentationLevel + 1);
+        Debug_printHdrIndented(indentationLevel, "HighpassIIR");
+        lrFilter = self[SoXLRCrossoverFilter__ATT_highpass];
+        SoXIIRFilter_printRaw(lrFilter, indentationLevel + 1);
+    );
+
+    //==========================
+    // SoXMCompanderSampleBuffer
+    //
+    // contains the queues for input, low and high output samples for
+    // each channel and each crossover band; note that the first input
+    // queue contain the input samples, the following bands use the
+    // high output of the previous crossover band
+    //
+    // crossover calculation is done on an input queue resulting in
+    // low output and high output (for the next band), companding is
+    // done on the input queue only
+    //
+    // altogether there are (channelCount * (2 * bandCount + 1))
+    // queues and each band covers a window of three entries
+    // overlapping in one entry
+    //
+    // additionally for debugging there is one total output queue for
+    // each channel, hence we have (channelCount * (2 * bandCount +
+    // 2)) queues
+
+    //========================
+
+    // enumeration type for the streams in a compander band
+    SoXMCompanderStream__COUNT = 3;
+    SoXMCompanderStream_input      = 1;
+    SoXMCompanderStream_lowOutput  = 2;
+    SoXMCompanderStream_highOutput = 3;
+
+    //--------------------
+    // con-/destruction
+    //--------------------
+
+    function SoXMCompanderSampleBuffer_make (bandCount)
+        /** Makes a new sample buffer */
+        local (i result streamKind totalCount)
+    (
+        totalCount = (SoX_channelCount
+                      * ((SoXMCompanderStream__COUNT - 1) * bandCount + 2));
+        result = FixedArray_make(totalCount);
+        i = 1;
+
+        while (i <= totalCount) (
+            FixedArray_setAt(result, i,
+                             Audio_SampleQueue_make(SoXLR4Filter_order));
+            i += 1;
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function SoXMCompanderSampleBuffer_destroy (self)
+        /** Destroys sample buffer <self> */
+        local (i sampleQueue totalCount)
+    (
+        totalCount = FixedArray_length(self);
+
+        i = 1;
+
+        while (i <= totalCount) (
+            sampleQueue = FixedArray_getAt(self, i);
+            Audio_SampleQueue_destroy(sampleQueue);
+            i += 1;
+        );
+
+        FixedArray_destroy(self);
+    );
+
+    //--------------------
+    // property access
+    //--------------------
+
+    function SoXMCompanderSampleBuffer_outputQueue (self, channel)
+        /** Returns output queue for <self> and <channel> */
+        local (offset)
+    (
+        offset = FixedArray_length(self) - SoX_channelCount;
+        FixedArray_getAt(self, channel + offset)
+    );
+
+    //--------------------
+    // complex change
+    //--------------------
+
+    function SoXMCompanderSampleBuffer_shift (self)
+        /** Shifts data in <self> by one time unit */
+        local (i length queue)
+    (
+        length = FixedArray_length(self);
+        i = 1;
+
+        while (i <= length) (
+            queue = FixedArray_getAt(self, i);
+            Audio_SampleQueue_rotateRight(queue, 0);
+            i += 1;
+        );
+    );
+
+    //==========================
+    // SoXMCompanderBandBuffer
+    //
+    // this per band buffer points into the global
+    // SoXMCompanderSampleBuffer; the high output buffer of one band
+    // forms the input buffer of the following band
+
+    function SoXMCompanderBandBuffer_make ()
+        /** Makes an empty compander band sample buffer */
+    (
+        FixedArray_make(SoX_channelCount * SoXMCompanderStream__COUNT);
+    );
+
+    //--------------------
+
+    function SoXMCompanderBandBuffer_init (self, sampleBuffer, bandIndex)
+        local (channel index sampleQueue stream targetIndex)
+    (
+        stream = 1;
+        index = 1;
+        targetIndex =
+            (SoX_channelCount *
+             (SoXMCompanderStream__COUNT - 1) * (bandIndex - 1) + 1);
+
+        while (stream <= SoXMCompanderStream__COUNT) (
+            channel = 1;
+
+            while (channel <= SoX_channelCount) (
+                sampleQueue = FixedArray_getAt(sampleBuffer, targetIndex);
+                FixedArray_setAt(self, index, sampleQueue);
+                channel += 1;
+                index += 1;
+                targetIndex += 1;
+            );
+       
+            stream += 1;
+        );
+    );
+
+    //--------------------
+
+    function SoXMCompanderBandBuffer_destroy (self)
+        /** Destroys compander band buffer <self> */
+    (
+        FixedArray_destroy(self);
+    );
+
+    //--------------------
+    // element access
+    //--------------------
+
+    function SoXMCompanderBandBuffer_getQueue (self, channel, stream)
+        /** Returns stream queue for band compander <self> for
+            <channel> and <stream> */
+        local (offset)
+    (
+        offset = SoX_channelCount * (stream - 1) + channel - 1;
+        self[offset]
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function SoXMCompanderBandBuffer_print (self, indentationLevel)
+        /** Prints compander buffer pointers <self> */
+        local (buffer channel sampleQueue stream)
+    (
+        Debug_printHdrIndented(indentationLevel, "Buffer@%d", self);
+        indentationLevel += 1;
+        channel = 1;
+
+        while (channel <= SoX_channelCount) (
+            stream = SoXMCompanderStream_input;
+
+            while (stream <= SoXMCompanderStream_highOutput) (
+                sampleQueue =
+                    SoXMCompanderBandBuffer_getQueue(self, channel, stream);
+                Debug_printIndented(indentationLevel,
+                                    "[c%d/s%d]@%d,len=%d",
+                                    channel, stream,
+                                    sampleQueue,
+                                    Audio_SampleQueue_length(sampleQueue));
+                stream += 1;
+            );
+
+            channel += 1;
+        );
+    );
+
+    //=========================================
+    // SoXMCompanderBand
+    //=========================================
+    // represents a single compander or a band within a multiband
+    // compander
+
+    SoXMCompanderBand__SIZE = 8;
+    SoXMCompanderBand__ATT_transferFunction      = STRUCT_INDEX(1);
+    SoXMCompanderBand__ATT_channelsAreAggregated = STRUCT_INDEX(2);
+    SoXMCompanderBand__ATT_attackTimeList        = STRUCT_INDEX(3);
+    SoXMCompanderBand__ATT_decayTimeList         = STRUCT_INDEX(4);
+    SoXMCompanderBand__ATT_volumeList            = STRUCT_INDEX(5);
+    SoXMCompanderBand__ATT_topFrequency          = STRUCT_INDEX(6);
+    // the following are only used for a compander in multiband
+    // configuration: crossover filter and sample buffer
+    SoXMCompanderBand__ATT_filter                = STRUCT_INDEX(7);
+    SoXMCompanderBand__ATT_buffer                = STRUCT_INDEX(8);
+
+    //--------------------
+    // private functions
+    //--------------------
+
+    function SoXMCompanderBand__adaptEnvelopeTime (t, sampleRate)
+        /** Adapts envelope time <t> in seconds into a delta value
+            relative to <sampleRate> */
+    (
+        min(1, 1 - exp(-1 / (sampleRate * t)))
+    );
+
+    //--------------------
+
+    function SoXMCompanderBand__integrateVolume (self,
+                                                 channel, inputVolume)
+        /** Adapts current volume of <self> within attack-decay
+            curve from <inputVolume> by some integration */
+        local (channelsAreAggregated delta increment timeList
+               timeListKind volume)
+    (
+        channelsAreAggregated =
+            self[SoXMCompanderBand__ATT_channelsAreAggregated];
+        volumeList = self[SoXMCompanderBand__ATT_volumeList];
+
+        volume = FixedArray_getAt(volumeList, channel); 
+        delta = inputVolume - volume;
+        timeListKind = (delta > 0
+                        ? SoXMCompanderBand__ATT_attackTimeList
+                        : SoXMCompanderBand__ATT_decayTimeList);
+        timeList = self[timeListKind];
+        increment = FixedArray_getAt(timeList, channel);
+        volume += (delta * increment);
+
+        channelsAreAggregated ? (
+            // a single volume represents all channels
+            FixedArray_fill(volumeList, volume);
+        ): (
+            FixedArray_setAt(volumeList, channel, volume);
+        );
+    );
+
+    //--------------------
+
+    function SoXMCompanderBand__maximumAbsoluteSample (sampleList)
+        /** Finds and returns maximum absolute sample among all input
+            channels */
+        local (channel result)
+    (
+        result = 0;
+        channel = 1;
+
+        while (channel <= SoX_channelCount) (
+            result = max(result,
+                         abs(FixedArray_getAt(sampleList, channel)));
+            channel += 1;
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function SoXMCompanderBand__updateInputList (self, inputSampleList)
+        /** Updates input sample list for compander band <self> from
+            queues */
+        local (buffer channel inputSample outputQueueLow)
+    (
+        buffer = self[SoXMCompanderBand__ATT_buffer];
+        channel = 1;
+
+        while (channel <= SoX_channelCount) (
+            stream = SoXMCompanderStream_lowOutput;
+            outputQueueLow =
+                SoXMCompanderBandBuffer_getQueue(buffer, channel, stream);
+            inputSample = Audio_SampleQueue_first(outputQueueLow);
+            FixedArray_setAt(inputSampleList, channel, inputSample);
+            channel += 1;
+        );
+    );
+
+    //--------------------
+    // con-/destruction
+    //--------------------
+
+    function SoXMCompanderBand_init (self,
+                                     isLastBand,
+                                     attack, decay,
+                                     dBKnee, dBThreshold, ratio,
+                                     dBGain, topFrequency)
+        /** Sets up band <self> using standard compander parameters;
+            <topFrequency> defines the crossover frequency for this
+            band */
+        local (attackTime crossoverFilter decayTime transferFunction)
+    (
+        transferFunction = self[SoXMCompanderBand__ATT_transferFunction];
+        SoXTransferFunction_adapt(transferFunction,
+                                  dBKnee, dBThreshold, ratio, dBGain);
+        self[SoXMCompanderBand__ATT_topFrequency] = topFrequency;
+
+        // use only a single integration line for the compander
+        self[SoXMCompanderBand__ATT_channelsAreAggregated] = true;
+
+        attackTime = SoXMCompanderBand__adaptEnvelopeTime(attack, srate);
+        decayTime  = SoXMCompanderBand__adaptEnvelopeTime(decay, srate);
+
+        FixedArray_fill(self[SoXMCompanderBand__ATT_attackTimeList],
+                        attackTime);
+        FixedArray_fill(self[SoXMCompanderBand__ATT_decayTimeList],
+                        decayTime);
+        FixedArray_fill(self[SoXMCompanderBand__ATT_volumeList],
+                        1.0);
+
+        crossoverFilter = self[SoXMCompanderBand__ATT_filter];
+
+        isLastBand ? (
+            SoXLRCrossoverFilter_setToIdentity(crossoverFilter);
+        ) : (
+            SoXLRCrossoverFilter_init(crossoverFilter,
+                                      topFrequency, srate);
+        );
+    );
+
+    //-----------------------
+
+    function SoXMCompanderBand_make ()
+        /** Creates a new single line compander */
+        local (self transferFunction)
+    (
+        self = STRUCT_make(SoXMCompanderBand__SIZE);
+
+        transferFunction = SoXTransferFunction_make();
+        self[SoXMCompanderBand__ATT_transferFunction] = transferFunction;
+
+        self[SoXMCompanderBand__ATT_attackTimeList] =
+            FixedArray_make(SoX_maximumChannelCount);
+        self[SoXMCompanderBand__ATT_decayTimeList] =
+            FixedArray_make(SoX_maximumChannelCount);
+        self[SoXMCompanderBand__ATT_volumeList] =
+            FixedArray_make(SoX_maximumChannelCount);
+
+        self[SoXMCompanderBand__ATT_topFrequency] = 0;
+
+        self[SoXMCompanderBand__ATT_filter] = SoXLRCrossoverFilter_make();
+        self[SoXMCompanderBand__ATT_buffer] = SoXMCompanderBandBuffer_make();
+
+        SoXMCompanderBand_init(self, false,
+                               0, 0, 0, -100, 1, 0, maximumInteger);
+        self
+    );
+
+    //--------------------
+
+    function SoXMCompanderBand_destroy (self)
+        /** Destroy single line compander <self> */
+        local (transferFunction)
+    (
+        FixedArray_destroy(self[SoXMCompanderBand__ATT_volumeList]);
+        FixedArray_destroy(self[SoXMCompanderBand__ATT_decayTimeList]);
+        FixedArray_destroy(self[SoXMCompanderBand__ATT_attackTimeList]);
+
+        transferFunction = self[SoXMCompanderBand__ATT_transferFunction];
+        SoXTransferFunction_destroy(transferFunction);
+
+        STRUCT_destroy(self);
+    );
+
+    //--------------------
+    // clearing
+    //--------------------
+
+    function SoXMCompanderBand_clear (self)
+        /** Sets compander band <self> to zero values */
+        local (transferFunction)
+    (
+        self[SoXMCompanderBand__ATT_channelsAreAggregated] = 0;
+        self[SoXMCompanderBand__ATT_topFrequency]          = 0;
+
+        transferFunction = self[SoXMCompanderBand__ATT_transferFunction];
+        SoXTransferFunction_clear(transferFunction);
+
+        FixedArray_clear(self[SoXMCompanderBand__ATT_volumeList]);
+        FixedArray_clear(self[SoXMCompanderBand__ATT_decayTimeList]);
+        FixedArray_clear(self[SoXMCompanderBand__ATT_attackTimeList]);
+
+        SoXLRCrossoverFilter_setToZero(self[SoXMCompanderBand__ATT_filter]);
+    );
+
+    //-----------------------
+    // functional application
+    //-----------------------
+
+    function SoXMCompanderBand_apply (self,
+                                      inputSampleList, outputSampleList)
+        /** Applies compander band <self> to all channels based on
+            samples from <inputSampleList> and returns them in
+            <outputSampleList>; if <outputValuesAreSummed> is set, the
+            output samples are summed up into <outputSampleList> */
+        local (amplificationFactor channel channelsAreAggregated
+               currentVolume inputSample maximumSample outputSample
+               outputValuesAreSummed transferFunction volumeList)
+    (
+        SoXMCompanderBand__updateInputList(self, inputSampleList);
+
+        outputValuesAreSummed = true;
+        channelsAreAggregated =
+            self[SoXMCompanderBand__ATT_channelsAreAggregated];
+
+        channelsAreAggregated ? (
+            // use settings of channel 1 to represent all channels
+            channel = 1;
+            maximumSample =
+                SoXMCompanderBand__maximumAbsoluteSample(inputSampleList);
+            SoXMCompanderBand__integrateVolume(self, channel, maximumSample);
+        ) : (
+            channel = 1;
+
+            while (channel <= SoX_channelCount) (
+                inputSample = FixedArray_getAt(inputSampleList, channel);
+                SoXMCompanderBand__integrateVolume(self, channel, inputSample);
+                channel += 1;
+            );
+        );
+
+        volumeList = self[SoXMCompanderBand__ATT_volumeList];
+        transferFunction = self[SoXMCompanderBand__ATT_transferFunction];
+        channel = 1;
+
+        while (channel <= SoX_channelCount) (
+            inputSample   = FixedArray_getAt(inputSampleList, channel);
+            currentVolume = FixedArray_getAt(volumeList, channel);
+            amplificationFactor =
+                SoXTransferFunction_apply(transferFunction,
+                                          currentVolume);
+            outputSample = inputSample * amplificationFactor;
+
+            outputValuesAreSummed ? (
+                outputSample += FixedArray_getAt(outputSampleList, channel);
+            );
+ 
+            FixedArray_setAt(outputSampleList, channel, outputSample);
+            channel += 1;
+        );
+    );
+
+    //--------------------
+    // measurement
+    //--------------------
+
+    function SoXMCompanderBand_calculateCrossover (self)
+        /** Processes samples from input for band compander <self>;
+            updates associated sample buffers for low and high output
+            of this band */
+        local (buffer channel crossoverFilter inputQueue
+               outputQueueHigh outputQueueLow stream)
+    (
+        crossoverFilter = self[SoXMCompanderBand__ATT_filter];
+        buffer          = self[SoXMCompanderBand__ATT_buffer];
+        channel = 1;
+
+        while (channel <= SoX_channelCount) (
+            stream = SoXMCompanderStream_input;
+            inputQueue =
+                SoXMCompanderBandBuffer_getQueue(buffer, channel, stream);
+            stream = SoXMCompanderStream_lowOutput;
+            outputQueueLow =
+                SoXMCompanderBandBuffer_getQueue(buffer, channel, stream);
+            stream = SoXMCompanderStream_highOutput;
+            outputQueueHigh =
+                SoXMCompanderBandBuffer_getQueue(buffer, channel, stream);
+            SoXLR4CrossoverFilter_apply(crossoverFilter, inputQueue,
+                                        outputQueueLow, outputQueueHigh);
+            channel += 1;
+        )
+    );
+
+    //--------------------
+ 
+    function SoXMCompanderBand_writeFilterData (self, bandIndex,
+                                                outputSampleList)
+        /** Writes crossover filter output for band <self> with index
+            <bandIndex> to appropriate position in
+            <outputSampleList> */
+        local (buffer channel offset outputQueueLow sample stream)
+    (
+        buffer = self[SoXMCompanderBand__ATT_buffer];
+        channel = 1;
+
+        while (channel <= SoX_channelCount) (
+            stream = SoXMCompanderStream_lowOutput;
+            outputQueueLow =
+                SoXMCompanderBandBuffer_getQueue(buffer, channel, stream);
+            sample = Audio_SampleQueue_first(outputQueueLow);
+            offset = channel + bandIndex * SoX_channelCount;
+            FixedArray_setAt(outputSampleList, offset, sample);
+            channel += 1;
+        )
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function SoXMCompanderBand_print (self, index,
+                                      isLastBand, indentationLevel)
+        /** Prints compander band <self> having <index> in multiband
+            compander */
+        local (buffer crossoverFilter format)
+    (
+        buffer           = self[SoXMCompanderBand__ATT_buffer];
+        crossoverFilter  = self[SoXMCompanderBand__ATT_filter];
+
+        Debug_printHdrIndented(indentationLevel, "Compander%d@%d",
+                               index, self);
+
+        indentationLevel += 1;
+        format = (isLastBand ? "fTop=+inf." : "fTop=%.0fHz");
+
+        Debug_printIndented(indentationLevel, "aggreg=%d",
+                            self[SoXMCompanderBand__ATT_channelsAreAggregated]);
+        Debug_printListIndented(indentationLevel,
+                                self[SoXMCompanderBand__ATT_attackTimeList],
+                                "attackList@%d", "%+f");
+        Debug_printListIndented(indentationLevel,
+                                self[SoXMCompanderBand__ATT_decayTimeList],
+                                "decayList@%d", "%+f");
+        Debug_printListIndented(indentationLevel,
+                                self[SoXMCompanderBand__ATT_volumeList],
+                                "volumeList@%d", "%+f");
+        Debug_printIndented(indentationLevel, format,
+                            self[SoXMCompanderBand__ATT_topFrequency]);
+        SoXTransferFunction_print(self[SoXMCompanderBand__ATT_transferFunction],
+                                  indentationLevel);
+        SoXLRCrossoverFilter_print(crossoverFilter, indentationLevel);
+        SoXMCompanderBandBuffer_print(buffer, indentationLevel);
+    );
+
+    //====================
+    // SoXMCompander
+    // the complete mcompander with several compander bands
+    //====================
+
+    SoXMCompander__maximumBandCount = 10;
+    SoXMCompander__maxTopFrequency = srate / 2.1;
+
+    SoXMCompander_outputSampleList = 
+        FixedArray_make((SoXMCompander__maximumBandCount + 1)
+                        * SoX_channelCount);
+
+    //--------------------
+
+    SoXMCompander__SIZE = 3;
+    SoXMCompander__ATT_bandCount     = STRUCT_INDEX(1);
+    SoXMCompander__ATT_companderList = STRUCT_INDEX(2);
+    SoXMCompander__ATT_sampleBuffer  = STRUCT_INDEX(3);
+
+    //--------------------
+    // con-/destruction
+    //--------------------
+
+    function SoXMCompander_make ()
+        /** Sets up MCompander with maximum count of bands */
+        local (bandCount bandIndex buffer companderBand companderList
+               sampleBuffer self)
+    (
+        self = STRUCT_make(SoXMCompander__SIZE);
+
+        bandCount = SoXMCompander__maximumBandCount;
+        companderList = FixedArray_make(bandCount);
+        sampleBuffer  = SoXMCompanderSampleBuffer_make(bandCount);
+
+        self[SoXMCompander__ATT_companderList] = companderList;
+        self[SoXMCompander__ATT_sampleBuffer]  = sampleBuffer;
+        self[SoXMCompander__ATT_bandCount]     = bandCount;
+ 
+        bandIndex = 1;
+
+        while (bandIndex <= bandCount) (
+            companderBand = SoXMCompanderBand_make();
+            buffer = companderBand[SoXMCompanderBand__ATT_buffer];
+            SoXMCompanderBandBuffer_init(buffer, sampleBuffer, bandIndex);
+            FixedArray_setAt(companderList, bandIndex, companderBand);
+            bandIndex += 1;
+        );
+        
+        self
+    );
+
+    //--------------------
+
+    function SoXMCompander_destroy (self)
+        /** Frees all internal resources for <self> */
+        local (bandCount bandIndex buffer companderList filter
+               sampleBuffer)
+    (
+        sampleBuffer  = self[SoXMCompander__ATT_sampleBuffer];
+        companderList = self[SoXMCompander__ATT_companderList];
+
+        bandCount = FixedArray_length(companderList);
+        bandIndex = 1;
+
+        while (bandIndex <= bandCount) (
+            compander = FixedArray_getAt(companderList, bandIndex);
+            buffer = FixedArray_getAt(sampleBuffer, bandIndex);
+            SoXMCompanderBandBuffer_destroy(buffer);
+            filter = compander[SoXMCompanderBand__ATT_filter];
+            SoXLRCrossoverFilter_destroy(filter);
+            SoXMCompanderBand_destroy(compander);
+            bandIndex += 1;
+        );
+
+        FixedArray_destroy(companderList);
+        SoXMCompanderSampleBuffer_destroy(sampleBuffer);
+        STRUCT_destroy(self);
+    );
+
+    //--------------------
+    // property access    
+    //--------------------
+
+    function SoXMCompander_band (self, bandIndex)
+        /** Returns band in <self> with <bandIndex> */
+        local (companderList result)
+    (
+        !isInRange(bandIndex, 1, SoXMCompander__maximumBandCount) ? (
+            result = null;
+        ) : (
+            companderList = self[SoXMCompander__ATT_companderList];
+            result = FixedArray_getAt(companderList, bandIndex);
+        );
+
+        result
+    );
+
+    //--------------------
+    // property change    
+    //--------------------
+
+    function SoXMCompander_setBandCount (self, count)
+        /** Sets band count of <self> to <count> */
+    (
+        (isInRange(count, 1, SoXMCompander__maximumBandCount)
+         && count == toInteger(count)) ? (
+            self[SoXMCompander__ATT_bandCount] = count;
+        );
+    );
+
+    //-----------------------
+    // functional application
+    //-----------------------
+
+    function SoXMCompander_apply (self,
+                                  inputSampleList, outputSampleList)
+        /** Processes samples from <inputSampleList> by <self> and
+            returns output in <outputSampleList>; updates internal
+            buffers for low and high output of each band and sums up
+            to output */
+        local (bandIndex bandCount channel compander companderList
+               i inputQueue inputSample outputQueue outputSample
+               sampleBuffer totalChannelCount)
+    (
+        bandCount     = self[SoXMCompander__ATT_bandCount];
+        companderList = self[SoXMCompander__ATT_companderList];
+        sampleBuffer  = self[SoXMCompander__ATT_sampleBuffer];
+
+        FixedArray_clear(outputSampleList);
+        totalChannelCount = SoX_channelCount;
+        totalChannelCount *= (SoXMCompand__bandsAreWritten
+                              ? bandCount + 1 : 1);
+
+        SoXMCompanderSampleBuffer_shift(sampleBuffer);
+        channel = 1;
+
+        while (channel <= SoX_channelCount) (
+            // setup sample buffer for processing
+            inputQueue = FixedArray_getAt(sampleBuffer, channel);
+            inputSample = FixedArray_getAt(inputSampleList, channel);
+            Audio_SampleQueue_setFirst(inputQueue, inputSample);
+            channel += 1;
+        );
+
+        // calculate crossover filtering from input queues into
+        // low and high outputs
+        bandIndex = 1;
+
+        while (bandIndex <= bandCount) (
+            compander = FixedArray_getAt(companderList, bandIndex);
+            SoXMCompanderBand_calculateCrossover(compander);
+
+            SoXMCompand__bandsAreWritten ? (
+                SoXMCompanderBand_writeFilterData(compander, bandIndex,
+                                                  outputSampleList);
+            );
+
+            bandIndex += 1;
+        );
+
+        // do compression across all bands
+        bandIndex = 1;
+
+        while (bandIndex <= bandCount) (
+            compander = FixedArray_getAt(companderList, bandIndex);
+            SoXMCompanderBand_apply(compander,
+                                    inputSampleList, outputSampleList);
+            bandIndex += 1;
+        );
+
+        // write all output channel samples
+        channel = 1;
+
+        while (channel <= SoX_channelCount) (
+            outputSample = FixedArray_getAt(outputSampleList, channel);
+            outputQueue =
+                SoXMCompanderSampleBuffer_outputQueue(sampleBuffer,
+                                                      channel);
+            Audio_SampleQueue_setFirst(outputQueue, outputSample);
+            channel += 1;
+        );
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function SoXMCompander_print (self, indentationLevel)
+        /** Prints compander <self> */
+        local (bandCount bandIndex compander companderList isLastBand)
+    (
+        Debug_printHdrIndented(indentationLevel, "MCompander");
+
+        bandCount     = self[SoXMCompander__ATT_bandCount];
+        companderList = self[SoXMCompander__ATT_companderList];
+
+        indentationLevel += 1;
+        bandIndex = 1;
+
+        while (bandIndex <= bandCount) (
+            isLastBand = (bandIndex == bandCount);
+            compander = FixedArray_getAt(companderList, bandIndex);
+            SoXMCompanderBand_print(compander, bandIndex,
+                                    isLastBand, indentationLevel);
+            bandIndex += 1;
+        );
+    );
+
+    //--------------------
+
+    function SoXMCompander_print (self)
+        /** Prints compander <self> */
+    (
+        SoXMCompander_print(self, 0);
+    );

@@ -1,18 +1,26 @@
 @ECHO OFF
 REM generate SOX test files for cancellation test
 
+SETLOCAL ENABLEDELAYEDEXPANSION
+SET scriptDirectory=%~dp0.
+
 REM --- sox command path ---
 SET sox=sox
 
 REM --- internal configuration ---
 SET soxFileType=.flac
 SET soxFileSettings=-b 24 -r 44100
-SET durationInSecondsBy4=4
 SET durationInSeconds=16
+SET /A durationInSecondsBy4="%durationInSeconds% / 4"
+SET pulseLength=0.04
+SET pulseFrequency=400
+SET durationInSecondsBy4MinusPLMinus1=2.96
 
 REM ==========================
 REM === prepare test files ===
 REM ==========================
+
+PUSHD %scriptDirectory%
 
 ECHO === preparing test files ===
 SET soxCommandsSuffix=fade 0.1 -0 pad 1 1
@@ -31,6 +39,14 @@ SET soxCommands=synth %durationInSeconds% sine 100-5000 gain -6 remix 1 1
 
 SET soxCommands=synth %durationInSeconds% sine 500 remix 1 1
 %sox% -n %soxFileSettings% sine-500Hz%soxFileType% %soxCommands% %soxCommandsSuffix%
+
+REM -- four triangle bursts
+SET soxCommands=synth %pulseLength% triangle %pulseFrequency% gain -6 remix 1 1
+%sox% -n %soxFileSettings% onePulse%soxFileType% %soxCommands% pad 0.05 1
+
+SET soxCommands=%soxCommands% pad 1 %durationInSecondsBy4MinusPLMinus1%
+SET soxCommands=%soxCommands% repeat 3
+%sox% -n %soxFileSettings% pulse%soxFileType% %soxCommands% %soxCommandsSuffix%
 
 REM =====================
 REM === perform tests ===
@@ -54,8 +70,18 @@ CALL :performTest sine-sweep bass
 SET soxCommands=biquad 0.3 -0.5 0.3 2 -0.4 0.1
 CALL :performTest noise biquad
 
-SET soxCommands=compand 0.02,0.15 -4:-60,0,-20 +4.5
+SET stageList=50 0.75 1.25 1 -s  75 0.5 2.5 2 -t  100 0.25 5 4 -s
+SET soxCommands=chorus 1.0 0.5 %stageList%
+CALL :performTest pulse chorus
+
+SET soxCommands=compand 0.02,0.15 4:-60,0,-20 +4.5
 CALL :performTest noise compander
+
+SET soxCommands=echo 0.9 0.6 200 0.75 400 0.5 800 0.25
+CALL :performTest pulse echo
+
+SET soxCommands=echos 0.9 0.6 300 0.75 600 0.5 1200 0.25
+CALL :performTest pulse echos
 
 SET soxCommands=equalizer 520 2o -3
 CALL :performTest sine-sweep equalizer
@@ -69,14 +95,14 @@ CALL :performTest sine-sweep highpass
 SET soxCommands=lowpass -2 250 2o
 CALL :performTest noise lowpass
 
-SET soxCommands=overdrive 3 40
-CALL :performTest noise overdrive
-
 SET soxCommands=mcompand "0.02,0.15 4:-60,0,-20 +4.5" 1000
 SET soxCommands=%soxCommands% "0.15,0.4 -20,0,-10 -2"
 CALL :performTest noise mcompander
 
-SET soxCommands=phaser 0.6 0.66 3 0.6 0.5 -t
+SET soxCommands=overdrive 3 40
+CALL :performTest noise overdrive
+
+SET soxCommands=phaser 0.6 0.66 3 0.6 0.5 -s
 CALL :performTest noise phaser
 CALL :performTest sine-sweep phaser
 
@@ -89,6 +115,8 @@ CALL :performTest noise treble
 SET soxCommands=tremolo 0.395 94.67
 CALL :performTest sine-sweep tremolo
 
+POPD
+ENDLOCAL
 GOTO :EOF
 
 REM ============================================================
@@ -104,7 +132,7 @@ REM ============================================================
 
     IF "%isChannelB%"=="true" GOTO ELSE1
         SET fileList=-v 0.2 part%soxFileType% -v 0.6 part%soxFileType%
-	GOTO ENDIF1
+        GOTO ENDIF1
     :ELSE1
         SET fileList=-v 0.6 part%soxFileType% -v 0.2 part%soxFileType%
     :ENDIF1

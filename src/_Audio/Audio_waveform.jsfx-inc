@@ -1,0 +1,374 @@
+desc: audio wave form routines
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+//requires Base_fixedarray.jsfx-inc
+//requires Base_debug.jsfx-inc
+
+@init
+    //========================================
+
+    //====================
+    // waveform kind
+    //====================
+
+    Audio_WaveformKind_sine     = 0;
+    Audio_WaveformKind_triangle = 1;
+
+    //--------------------
+
+    function Audio_WaveformKind_toString (kind)
+    (
+        iif(kind == Audio_WaveformKind_sine, "sine", "triangle")
+    );
+
+    //====================
+    // wave tables
+    //====================
+
+    function Audio_WaveTable__make (kind, length)
+        /** Constructs waveTable of <kind> having <length> base
+            points, the range is [0, +1] for all wave forms */
+        local (delta i quadrant result y)
+    (
+        result = FixedArray_make(length);
+        delta = twoPi / length;
+        i = 0;
+
+        while (i < length) (
+            kind == Audio_WaveformKind_sine ? (
+                y = (sin(i * delta) + 1) / 2;
+            ) : (
+                quadrant = floor(i * 4 / length);
+                y = 2 * i / length;
+                y = (quadrant == 0 ? y + 0.5
+                     : (quadrant == 3 ? y - 1.5 : 1.5 - y));
+            );
+
+            i += 1;
+            FixedArray_setAt(result, i, y);
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function Audio_WaveTable__valueLinear (self, position)
+        /** Returns wave form value of <self> at current position by
+            doing a linear interpolation */
+        local (fPart indexA indexB result valueA valueB
+               waveTableLength)
+    (
+        waveTableLength = FixedArray_length(self);
+        indexA = mod(toInteger(position), waveTableLength);
+        indexB = mod(indexA + 1, waveTableLength);
+        valueA = self[indexA];
+        valueB = self[indexB];
+        fPart = fractionalPart(position);
+        result = valueA * (1 - fPart) + valueB * fPart;
+        result
+    );
+
+    //--------------------
+
+    function Audio_WaveTable__valueQuadratic (self, position)
+        /** Returns wave form value of <self> at current position by
+            doing a quadratic interpolation */
+        local (factorA factorB factorC fPart indexA indexB indexC
+               result valueA valueB valueC waveTableLength)
+    (
+        waveTableLength = FixedArray_length(self);
+        indexB = mod(toInteger(position), waveTableLength);
+        indexC = mod(indexB + 1, waveTableLength);
+        indexA = mod(indexB - 1, waveTableLength);
+        valueA = self[indexA];
+        valueB = self[indexB];
+        valueC = self[indexC];
+        fPart = fractionalPart(position);
+
+        factorA = (fPart - 1) * fPart / 2;
+        factorB = (1 - fPart) * (1 + fPart);
+        factorC = fPart * (1 + fPart) / 2;
+        result = valueA * factorA + valueB * factorB + valueC * factorC;
+
+        result
+    );
+
+    //--------------------
+
+    /** number of base points for a sine wave (using quadratic
+        interpolation) */
+    Audio_WaveTable__sineLength = 1000;
+
+    /** number of base points for a triangle wave(four is enough!) */
+    Audio_WaveTable__triangleLength = 4;
+
+    /** the reference table for a sine wave */
+    Audio_WaveTable__sine = null;
+
+    /** the reference table for a triangle wave */
+    Audio_WaveTable__triangle = null;
+
+    //====================
+    // waveform type
+    //====================
+
+    Audio_Waveform__SIZE = 9;
+
+    /** the kind of waveform (sine or triangle) */
+    Audio_Waveform__ATT_kind             = STRUCT_INDEX(1);
+    /** the increment for stepping in the waveform */
+    Audio_Waveform__ATT_increment        = STRUCT_INDEX(2);
+    /** the first x-position in the waveform */
+    Audio_Waveform__ATT_firstPosition    = STRUCT_INDEX(3);
+    /** the number of steps in the waveform so far */
+    Audio_Waveform__ATT_stepCount        = STRUCT_INDEX(4);
+    /** the current (cursor) x-position in the waveform */
+    Audio_Waveform__ATT_position         = STRUCT_INDEX(5);
+    /** the minimum value in the waveform */
+    Audio_Waveform__ATT_minimumValue     = STRUCT_INDEX(6);
+    /** the maximum value in the waveform */
+    Audio_Waveform__ATT_maximumValue     = STRUCT_INDEX(7);
+    /** the information whether only integer values may be used */
+    Audio_Waveform__ATT_hasIntegerValues = STRUCT_INDEX(8);
+    /** the underlying wave table */
+    Audio_Waveform__ATT_waveTable        = STRUCT_INDEX(9);
+
+    //--------------------
+    // LOCAL ROUTINES
+    //--------------------
+
+    function Audio_Waveform__getValue (self)
+        /** Returns wave form value of <self> at current position by
+            doing a linear or quadratic interpolation */
+        local (kind position waveTable)
+    (
+        kind      = self[Audio_Waveform__ATT_kind];
+        waveTable = self[Audio_Waveform__ATT_waveTable];
+        position  = self[Audio_Waveform__ATT_position];
+
+        kind == Audio_WaveformKind_triangle ? (
+            Audio_WaveTable__valueLinear(waveTable, position)
+        ) : (
+            Audio_WaveTable__valueQuadratic(waveTable, position)
+        )
+    );
+
+    //--------------------
+
+    function Audio_Waveform__updatePosition (self)
+        /** Updates <self> after an increment */
+        local (firstPosition increment p stepCount waveTable
+               waveTableLength)
+    (
+        firstPosition   = self[Audio_Waveform__ATT_firstPosition];
+        increment       = self[Audio_Waveform__ATT_increment];
+        stepCount       = self[Audio_Waveform__ATT_stepCount];
+        waveTable       = self[Audio_Waveform__ATT_waveTable];
+
+        waveTableLength = FixedArray_length(waveTable);
+        p = firstPosition + stepCount * increment;
+        p = modulo(p, waveTableLength);
+        self[Audio_Waveform__ATT_position] = p;
+    );
+
+    //--------------------
+    // EXPORTED ROUTINES
+    //--------------------
+
+    function Audio_Waveform_initialize ()
+        /** Initializes the internal wave tables */
+    (
+        Audio_WaveTable__sine =
+            Audio_WaveTable__make(Audio_WaveformKind_sine,
+                                  Audio_WaveTable__sineLength);
+        Audio_WaveTable__triangle =
+            Audio_WaveTable__make(Audio_WaveformKind_triangle,
+                                  Audio_WaveTable__triangleLength);
+    );
+
+    //--------------------
+    // creation/setup
+    //--------------------
+
+    function Audio_Waveform_make ()
+        /** Creates a waveform */
+        local (self)
+    (
+        self = STRUCT_make(Audio_Waveform__SIZE);
+        self[Audio_Waveform__ATT_kind]             = Audio_WaveformKind_sine;
+        self[Audio_Waveform__ATT_increment]        = 0.1;
+        self[Audio_Waveform__ATT_firstPosition]    = 0;
+        self[Audio_Waveform__ATT_stepCount]        = 0;
+        self[Audio_Waveform__ATT_position]         = 0;
+        self[Audio_Waveform__ATT_minimumValue]     = 0;
+        self[Audio_Waveform__ATT_maximumValue]     = 1;
+        self[Audio_Waveform__ATT_hasIntegerValues] = false;
+        self[Audio_Waveform__ATT_waveTable]        = Audio_WaveTable__sine;
+
+        self
+    );
+
+    //--------------------
+
+    function Audio_Waveform_set (self,
+                                 length, kind,
+                                 minimumValue, maximumValue,
+                                 phase, hasIntegerValues)
+        /** Updates waveform <self> to <length> base points with a
+            wave form given by <kind>; wave form has <minimumValue>
+            and <maximumValue> as bounds; <phase> specifies the offset
+            in the waveform (in radians) and <hasIntegerValues>
+            tells whether data has to be rounded to integer; note that
+            the length is real, that means, albeit the internal
+            representation is an array of samples, the advance
+            operation takes care of the accumulated indexing error and
+            corrects is as soon as it exceeds one sample position */
+        local (firstPosition waveTable waveTableLength)
+    (
+        waveTable = (kind == Audio_WaveformKind_sine
+                     ? Audio_WaveTable__sine : Audio_WaveTable__triangle);
+        waveTableLength = FixedArray_length(waveTable);
+        firstPosition = modulo(waveTableLength * phase / twoPi,
+                               waveTableLength);
+
+        self[Audio_Waveform__ATT_kind]             = kind;
+        self[Audio_Waveform__ATT_increment]        = waveTableLength / length;
+        self[Audio_Waveform__ATT_firstPosition]    = firstPosition;
+        self[Audio_Waveform__ATT_stepCount]        = 0;
+        self[Audio_Waveform__ATT_position]         = firstPosition;
+        self[Audio_Waveform__ATT_minimumValue]     = minimumValue;
+        self[Audio_Waveform__ATT_maximumValue]     = maximumValue;
+        self[Audio_Waveform__ATT_hasIntegerValues] = hasIntegerValues;
+        self[Audio_Waveform__ATT_waveTable]        = waveTable;
+    );
+
+    //--------------------
+    // destruction
+    //--------------------
+
+    function Audio_Waveform_destroy (self)
+        /** Destroys waveform structure <self> */
+    (
+        STRUCT_destroy(self);
+    );
+
+    //--------------------
+    // property access
+    //--------------------
+
+    function Audio_Waveform_current (self)
+        /** Returns the current waveform value */
+        local (hasIntegerValues maximumValue minimumValue result
+               scalingFactor)
+    (
+        minimumValue     = self[Audio_Waveform__ATT_minimumValue];
+        maximumValue     = self[Audio_Waveform__ATT_maximumValue];
+        hasIntegerValues = self[Audio_Waveform__ATT_hasIntegerValues];
+        scalingFactor = maximumValue - minimumValue;
+        result = Audio_Waveform__getValue(self);
+        result = minimumValue + result * scalingFactor;
+        result = (hasIntegerValues ? round(result) : result);
+        result
+    );
+
+    //--------------------
+    // change
+    //--------------------
+
+    function Audio_Waveform_advance (self)
+        /** Advances the waveform index */
+    (
+        self[Audio_Waveform__ATT_stepCount] += 1;
+        Audio_Waveform__updatePosition(self);
+    );
+
+    //--------------------
+
+    function Audio_Waveform_reset (self)
+        /** Resets waveform <self> to its initial position */
+        local (firstPosition)
+    (
+        firstPosition = self[Audio_Waveform__ATT_firstPosition];
+        self[Audio_Waveform__ATT_stepCount] = 0;
+        self[Audio_Waveform__ATT_position] = firstPosition;
+    );
+
+    //-----------------------
+    // state query and change
+    //-----------------------
+
+    function Audio_Waveform_state (self)
+        /** Returns current state of waveform <self> */
+    (
+        self[Audio_Waveform__ATT_stepCount]
+    );
+
+    //-----------------------
+
+    function Audio_Waveform_setState (self, state)
+        /** Sets state of waveform <self> to <state> */
+    (
+        self[Audio_Waveform__ATT_stepCount] = state;
+        Audio_Waveform__updatePosition(self);
+    );
+
+    //--------------------
+
+
+    //--------------------
+    // support routines
+    //--------------------
+
+    function Audio_Waveform_adjustPhaseByTime (frequency, timeOffset,
+                                               currentTime)
+         /** Calculates time locked delta phase for position
+             <currentTime> from <timeOffset> and <frequency> */
+        local (deltaTime result)
+    (
+        deltaTime = currentTime - timeOffset;
+        result = fractionalPart(deltaTime * frequency) * twoPi;
+        result = modulo(result, twoPi);
+        result
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function Audio_Waveform_print (self, indentationLevel)
+         /** Prints representation of <self> to debug output */
+        local (hasIntegerValues kind waveTable)
+    (
+        Debug_printHdrIndented(indentationLevel, "Waveform@%d", self);
+        indentationLevel += 1;
+
+        kind             = self[Audio_Waveform__ATT_kind];
+        waveTable        = self[Audio_Waveform__ATT_waveTable];
+        hasIntegerValues = self[Audio_Waveform__ATT_hasIntegerValues];
+
+        Debug_printIndented(indentationLevel, "kind=%s",
+                            Audio_WaveformKind_toString(kind));
+        Debug_printIndented(indentationLevel, "frstP=%f",
+                            self[Audio_Waveform__ATT_firstPosition]);
+        Debug_printIndented(indentationLevel, "incr=%e",
+                            self[Audio_Waveform__ATT_increment]);
+        Debug_printIndented(indentationLevel, "stpCnt=%d",
+                            self[Audio_Waveform__ATT_stepCount]);
+        Debug_printIndented(indentationLevel, "pos=%f",
+                            self[Audio_Waveform__ATT_position]);
+        Debug_printIndented(indentationLevel, "minV=%f",
+                            self[Audio_Waveform__ATT_minimumValue]);
+        Debug_printIndented(indentationLevel, "maxV=%f",
+                            self[Audio_Waveform__ATT_maximumValue]);
+        Debug_printIndented(indentationLevel, "isInt=%s",
+                            String_fromBoolean(hasIntegerValues));
+        Debug_printIndented(indentationLevel, "wveT@%d,len=%d",
+                            waveTable, FixedArray_length(waveTable));
+                            
+    );
+
+    //========================================
+
+    Audio_Waveform_initialize();

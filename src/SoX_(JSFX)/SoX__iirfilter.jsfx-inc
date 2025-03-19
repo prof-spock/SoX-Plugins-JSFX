@@ -1,0 +1,237 @@
+desc:SoX IIR Filter Utilities
+// provides utility functions for infinite impulse response filters
+tags: filter
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+//requires Base_fixedarray.jsfx-inc
+//requires Base_string.jsfx-inc
+//requires Audio_samplequeue.jsfx-inc
+//requires SoX__base.jsfx-inc
+
+@init
+    //============================================================
+
+    //--------------------
+    // LOCAL ROUTINES
+    //--------------------
+
+    function SoXIIRFilter_applyCHECKED (self, inputQueue, outputQueue)
+        /** Applies IIR filter <self> to <inputQueue> and
+            <outputQueue>; assumes that first entry in input queue is
+            current sample and writes result sample into top of output
+            queue (with bounds checking) */
+        local (filterOrder i j outputValue)
+    (
+        filterOrder = FixedArray_length(self) / 2;
+        outputValue = (FixedArray_getAt(self, 1)
+                       * Audio_SampleQueue_first(inputQueue));
+        i = 2;
+        j = i + filterOrder;
+
+        while (i <= filterOrder) (
+            outputValue += ((FixedArray_getAt(self, i)
+                             * Audio_SampleQueue_getAt(inputQueue, i))
+                            - (FixedArray_getAt(self, j)
+                               * Audio_SampleQueue_getAt(outputQueue, i)));
+            i += 1;
+            j += 1;
+        );
+
+        Audio_SampleQueue_setFirst(outputQueue, outputValue);
+    );
+
+    //--------------------
+
+    function SoXIIRFilter_applyFAST (self, inputQueue, outputQueue)
+        /** Applies IIR filter <self> to <inputQueue> and
+            <outputQueue>; assumes that first entry in input queue is
+            current sample and writes result sample into top of output
+            queue (without bounds checking, assumes synchronous
+            queues!) */
+        local (filterOrder firstQueueIndex i j k offset outputValue
+               queueLength)
+    (
+        queueLength     = inputQueue[Audio_SampleQueueHeader__ATT_length];
+        firstQueueIndex = inputQueue[Audio_SampleQueueHeader__ATT_firstIndex];
+        offset = Audio_SampleQueueHeader__SIZE;
+
+        filterOrder = self[-1] / 2;
+        i = 1;
+        j = i + filterOrder;
+        k = firstQueueIndex;
+        outputValue = self[0] * inputQueue[k];
+
+        while (i < filterOrder) (
+            k = mod(k + 1 - offset, queueLength) + offset;
+            outputValue += (  self[i] * inputQueue[k]
+                            - self[j] * outputQueue[k]);
+            i += 1;
+            j += 1;
+        );
+
+        outputQueue[firstQueueIndex] = outputValue;
+    );
+
+    //--------------------
+
+    function SoXIIRFilter_normalize (self)
+        /** Normalizes coefficients of <self> */
+        local (filterOrder i length oldValue referenceValue)
+    (
+        length = FixedArray_length(self);
+        filterOrder = length / 2;
+        referenceValue = FixedArray_getAt(self, filterOrder + 1);
+
+        i = 1;
+
+        while (i <= length) (
+            oldValue = FixedArray_getAt(self, i);
+            FixedArray_setAt(self, i, oldValue / referenceValue);
+            i += 1;
+        );
+    );
+
+    //--------------------
+    // EXPORTED ROUTINES
+    //--------------------
+
+    function SoXIIRFilter_make (order)
+        /** Makes an IIR filter with <order> coefficients for each
+            input and output; assumes identical feedback and
+            feedforward order */
+        local (self)
+    (
+        self = FixedArray_make(2 * order);
+        self
+    );
+
+    //--------------------
+
+    function SoXIIRFilter_destroy (self)
+        /** Destroys an IIR filter <self> */
+    (
+        FixedArray_destroy(self);
+    );
+
+    //--------------------
+
+    function SoXIIRFilter_apply (self, inputQueue, outputQueue)
+        /** Applies IIR filter <self> to <inputQueue> and
+            <outputQueue>; assumes that first entry in input queue is
+            current sample and writes result sample into top of output
+            queue */
+    (
+        isCheckedMode ? (
+            SoXIIRFilter_applyCHECKED(self, inputQueue, outputQueue);
+        ) : (
+            SoXIIRFilter_applyFAST(self, inputQueue, outputQueue);
+        );
+    );
+
+    //--------------------
+
+    function SoXIIRFilter_setSpecial (self, b0)
+        /** Sets IIR filter <self> to all zero except for the <b0>
+            value; b0 = 1 is an identity filter, b0 = 0 a null filter */
+        local (i length)
+    (
+        length = FixedArray_length(self);
+        FixedArray_setAt(self, 1, b0);
+        i = 2;
+        
+        while (i <= length) (
+            FixedArray_setAt(self, i, 0);
+            i += 1;
+        );
+    );
+
+    //--------------------
+
+    function SoXIIRFilter_init3 (self, b0, b1, b2, a0, a1, a2)
+        /** Sets the parameters of a SoX iir filter <self>
+            of length 3 */
+        local (filterOrder i j k st template)
+    (
+        filterOrder = FixedArray_length(self) / 2;
+
+        filterOrder == 3 ? (
+            FixedArray_setAt(self, 1, b0);
+            FixedArray_setAt(self, 2, b1);
+            FixedArray_setAt(self, 3, b2);
+            FixedArray_setAt(self, 4, a0);
+            FixedArray_setAt(self, 5, a1);
+            FixedArray_setAt(self, 6, a2);
+            SoXIIRFilter_normalize(self);
+        );
+    );
+
+    //--------------------
+
+    function SoXIIRFilter_init5 (self, b0, b1, b2, b3, b4,
+                                       a0, a1, a2, a3, a4)
+        /** Sets the parameters of a SoX iir filter <self>
+            of length 5 */
+        local (filterOrder i j k st template)
+    (
+        filterOrder = FixedArray_length(self) / 2;
+
+        filterOrder == 5 ? (
+            FixedArray_setAt(self,  1, b0);
+            FixedArray_setAt(self,  2, b1);
+            FixedArray_setAt(self,  3, b2);
+            FixedArray_setAt(self,  4, b3);
+            FixedArray_setAt(self,  5, b4);
+            FixedArray_setAt(self,  6, a0);
+            FixedArray_setAt(self,  7, a1);
+            FixedArray_setAt(self,  8, a2);
+            FixedArray_setAt(self,  9, a3);
+            FixedArray_setAt(self, 10, a4);
+            SoXIIRFilter_normalize(self);
+        );
+    );
+
+    //--------------------
+
+    function SoXIIRFilter_printRaw (self, indentationLevel)
+        /** Prints the parameters of a SoX iir filter <self> without
+            heading */
+        local (filterOrder i j k st template)
+    (
+        template = String_make();
+        st       = String_make();
+        filterOrder = FixedArray_length(self) / 2;
+        i = 1;
+        j = 1;
+
+        while (j <= 2) (
+            String_copy(template, (j == 1 ? "b%d" : "a%d"));
+            k = 0;
+
+            while (k < filterOrder) (
+                String_format(st, template, k);
+                Debug_printIndented(indentationLevel, "%s=%+f",
+                                    st, FixedArray_getAt(self, i));
+                i += 1;
+                k += 1;
+            );
+
+            j += 1;
+        );
+
+        String_destroy(st);
+        String_destroy(template);
+    );
+
+    //--------------------
+
+    function SoXIIRFilter_print (self, indentationLevel)
+        /** Prints the parameters of a SoX iir filter <self> */
+    (
+        Debug_printHdrIndented(indentationLevel,
+                               "SoXIIRFilter@%d", self);
+        SoXIIRFilter_printRaw(self, indentationLevel + 1);
+    );
+
+    //========================================
+

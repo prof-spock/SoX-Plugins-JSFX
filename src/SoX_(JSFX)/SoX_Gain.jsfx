@@ -1,0 +1,123 @@
+desc: SoX Gain
+tags: utility gain
+author: Dr. Thomas Tensi, 2019
+
+//--------------------
+// IMPORTS
+//--------------------
+
+import ../_BaseModules/Base.jsfx-inc
+import ../_BaseModules/Base_memory.jsfx-inc
+import ../_BaseModules/Base_naturalset.jsfx-inc
+import ../_BaseModules/Base_string.jsfx-inc
+import ../_BaseModules/Base_fixedarray.jsfx-inc
+import ../_BaseModules/Base_struct.jsfx-inc
+import ../_BaseModules/Base_graphics.jsfx-inc
+import ../_BaseModules/Base_debug.jsfx-inc
+
+import SoX__base.jsfx-inc
+
+//--------------------
+// SLIDERS
+//--------------------
+
+slider1:SL_dBGain=0<-150,150,1>Gain [dB]
+
+//--------------------
+// INITIALIZATION
+//--------------------
+
+@init
+
+    //============================================================
+
+    SoXGain__SIZE = 1;
+    SoXGain__ATT_gainFactor = STRUCT_INDEX(1);
+
+    //--------------------
+
+    function SoXGain_setFactor (self, linearGainFactor)
+        /** Sets gain factor of <self> to <linearGainFactor> */
+    (
+        self[SoXGain__ATT_gainFactor] = linearGainFactor;
+    );
+
+    //--------------------
+
+    function SoXGain_make ()
+        /** Makes a new gain effect */
+        local (self)
+    (
+        self = STRUCT_make(SoXGain__SIZE);
+        SoXGain_setFactor(self, 1.0);
+        self
+    );
+
+    //--------------------
+
+    function SoXGain_apply (self, inputSampleList, outputSampleList)
+        /** Applies gain effect <self> to <inputSampleList> providing
+            <outputSampleList> */
+        local (channel gainFactor inputSample outputSample)
+    (
+        gainFactor = self[SoXGain__ATT_gainFactor];
+        channel = 1;
+
+        while (channel <= SoX_channelCount) (
+            inputSample = FixedArray_getAt(inputSampleList, channel);
+            outputSample = inputSample * gainFactor;
+            FixedArray_setAt(outputSampleList, channel, outputSample);
+            channel += 1;
+        );
+    );
+
+    //--------------------
+
+    function SoXGain_handleKey (key)
+    (
+        Debug_currentMode == Debug_Mode_effect ? (
+            Graphics_clear(Graphics_Color_black);
+        );
+    );
+
+    //--------------------
+
+    function SoXGain_print (self, indentationLevel)
+        /** Prints gain effect <self> to debug output */
+    (
+        Debug_printHdrIndented(indentationLevel,
+                               "SoXGain@%d", self);
+        Debug_printIndented(indentationLevel + 1, "gain=%f",
+                            self[SoXGain__ATT_gainFactor]);
+    );
+
+    //============================================================
+
+    effect = SoXGain_make();
+
+//--------------------
+// SLIDER CHANGE
+//--------------------
+
+@slider
+    SoXGain_setFactor(effect, SoX_dbToLinear(SL_dBGain));
+    Debug_clear();
+    SoXGain_print(effect, 0);
+
+//--------------------
+// SAMPLE
+//--------------------
+
+@sample
+    SoX_readInputSampleList();
+    SoXGain_apply(effect, SoX_inputSampleList, SoX_outputSampleList);
+    SoX_writeOutputSampleList();
+
+//--------------------
+// GRAPHICS
+//--------------------
+
+@gfx
+    key = gfx_getchar();
+    key = Debug_handleKey(key);
+    SoXGain_handleKey(key);

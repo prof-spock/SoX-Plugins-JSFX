@@ -1,0 +1,580 @@
+desc: SoX compander transfer function routines
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+//requires Base_struct.jsfx-inc
+
+@init
+    //========================================
+    // 2D Point Type
+    //========================================
+
+    Point__SIZE = 2;
+    Point__ATT_x = STRUCT_INDEX(1);
+    Point__ATT_y = STRUCT_INDEX(2);
+
+    //--------------------
+
+    function Point_make ()
+        /** Returns a new point */
+    (
+        STRUCT_make(Point__SIZE);
+    );
+
+    //--------------------
+
+    function Point_destroy (self)
+        /** Destroys <self> */
+    (
+        STRUCT_destroy(self);
+    );
+
+    //--------------------
+    //--------------------
+
+    function Point_add (self, otherPoint)
+        /** Adds <otherPoint> to <self> */
+    (
+        self[Point__ATT_x] += otherPoint[Point__ATT_x];
+        self[Point__ATT_y] += otherPoint[Point__ATT_y];
+    );
+
+    //--------------------
+
+    function Point_clear (self)
+        /** Sets <self> to (0, 0) */
+    (
+        self[Point__ATT_x] = 0;
+        self[Point__ATT_y] = 0;
+    );
+
+    //--------------------
+
+    function Point_copy (self, otherPoint)
+        /** Copies <otherPoint> to <self> */
+    (
+        Memory_copy(self, otherPoint, Point__SIZE);
+    );
+
+    //--------------------
+
+    function Point_distance (self, otherPoint)
+        /** Returns the euclidian distance between <self> and
+            <otherPoint> */
+    (
+        sqrt(sqr(self[Point__ATT_x] - otherPoint[Point__ATT_x])
+             + sqr(self[Point__ATT_y] - otherPoint[Point__ATT_y]))
+    );
+
+    //--------------------
+
+    function Point_scale (self, factor)
+        /** Scales <self> by <factor> */
+    (
+        self[Point__ATT_x] *= factor;
+        self[Point__ATT_y] *= factor;
+    );
+
+    //--------------------
+
+    function Point_subtract (self, otherPoint)
+        /** Subtracts <otherPoint> from <point> */
+    (
+        self[Point__ATT_x] -= otherPoint[Point__ATT_x];
+        self[Point__ATT_y] -= otherPoint[Point__ATT_y];
+    );
+
+    //========================================
+    // Segment Type (of Transfer Function)
+    //========================================
+
+    SoXTfSegment__SIZE = 7;
+    SoXTfSegment__ATT_isStraightLine = STRUCT_INDEX(1);
+    SoXTfSegment__ATT_startX         = STRUCT_INDEX(2);
+    SoXTfSegment__ATT_startY         = STRUCT_INDEX(3);
+    SoXTfSegment__ATT_endX           = STRUCT_INDEX(4);
+    SoXTfSegment__ATT_endY           = STRUCT_INDEX(5);
+    SoXTfSegment__ATT_a1             = STRUCT_INDEX(6);
+    SoXTfSegment__ATT_a2             = STRUCT_INDEX(7);
+
+    SoXTfSegment__ATT_start = SoXTfSegment__ATT_startX;
+    SoXTfSegment__ATT_end   = SoXTfSegment__ATT_endX;
+
+    //--------------------
+    // clearing
+    //--------------------
+
+    function SoXTfSegment_clear (self)
+    (
+        Memory_set(self, SoXTfSegment__SIZE, 0);
+    );
+
+    //--------------------
+    // measurement
+    //--------------------
+
+    function SoXTfSegment_contains (self, x)
+        /** Tells whether <x> lies in <self> */
+    (
+        isInRange(x,
+                  self[SoXTfSegment__ATT_startX],
+                  self[SoXTfSegment__ATT_endX])
+    );
+
+    //--------------------
+
+    function SoXTfSegment_gradient (self)
+        /** Returns gradient of <self> */
+    (
+        (self[SoXTfSegment__ATT_endY] - self[SoXTfSegment__ATT_startY])
+        / (self[SoXTfSegment__ATT_endX] - self[SoXTfSegment__ATT_startX])
+    );
+
+    //--------------------
+
+    function SoXTfSegment_length (self)
+        /** Returns the length of <self> */
+    (
+        Point_distance(STRUCT_ptr(self, SoXTfSegment__ATT_start),
+                       STRUCT_ptr(self, SoXTfSegment__ATT_end))
+    );
+
+    //--------------------
+    // property change
+    //--------------------
+
+    function SoXTfSegment_adaptCoefficients (self, point)
+        /** Adapts coefficients of <self> such that <point> as well as
+            start and end points are covered by a quadratic function
+            x² + a1*x + a2 = y */
+        local (a1 a2 inA inB outA outB)
+    (
+        SoXTfSegment_length(self) == 0 ? (
+            a1 = 0;
+            a2 = 0;
+        ) : (
+            inA  = point[Point__ATT_x] - self[SoXTfSegment__ATT_startX];
+            outA = point[Point__ATT_y] - self[SoXTfSegment__ATT_startY];
+            inB  = (self[SoXTfSegment__ATT_endX]
+                    - self[SoXTfSegment__ATT_startX]);
+            outB = (self[SoXTfSegment__ATT_endY]
+                    - self[SoXTfSegment__ATT_startY]);
+            a2 = (outB / inB - outA / inA) / (inB - inA);
+            a1 = outA / inA - a2 * inA;
+        );
+
+        self[SoXTfSegment__ATT_a1] = a1;
+        self[SoXTfSegment__ATT_a2] = a2;
+    );
+
+    //--------------------
+
+    function SoXTfSegment_interpolate (self, position, point)
+        /** Sets <point> to intermediate point at <position> along
+            line within <self> */
+        local (length relativePosition segmentStartPoint)
+    (
+        length = SoXTfSegment_length(self);
+
+        length == 0 ? (
+            relativePosition = 0;
+        ) : (
+            relativePosition = position / length;
+        );
+
+        segmentStartPoint = STRUCT_ptr(self, SoXTfSegment__ATT_start);
+        Point_copy(point, STRUCT_ptr(self, SoXTfSegment__ATT_end));
+        Point_subtract(point, segmentStartPoint);
+        Point_scale(point, relativePosition);
+        Point_add(point, segmentStartPoint);
+    );
+
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function SoXTfSegment_printRaw (self, indentationLevel)
+        /** Prints <self> data to debug output without any heading */
+        local (isStraightLine)
+    (
+        isStraightLine = self[SoXTfSegment__ATT_isStraightLine];
+        Debug_printIndented(indentationLevel, "isLine=%s",
+                            String_fromBoolean(isStraightLine));
+        Debug_printIndented(indentationLevel, "startX=%+f",
+                            self[SoXTfSegment__ATT_startX]);
+        Debug_printIndented(indentationLevel, "startY=%+f",
+                            self[SoXTfSegment__ATT_startY]);
+        Debug_printIndented(indentationLevel, "endX  =%+f",
+                            self[SoXTfSegment__ATT_endX]);
+        Debug_printIndented(indentationLevel, "endY  =%+f",
+                            self[SoXTfSegment__ATT_endY]);
+        Debug_printIndented(indentationLevel, "a2    =%+f",
+                            self[SoXTfSegment__ATT_a2]);
+        Debug_printIndented(indentationLevel, "a1    =%+f",
+                            self[SoXTfSegment__ATT_a1]);
+    );
+
+    //========================================
+    // Transfer Function Type
+    //========================================
+
+    /** maximum segment count in a transfer function */
+    SoXTransferFunction__maxSegmentCount = 10;
+
+    /** initial offset of first segment relative to threshold point */
+    SoXTransferFunction__leftDbOffset = 10;
+
+    /** SoXTransferFunction structure */
+    SoXTransferFunction__SIZE = 6;
+    SoXTransferFunction__ATT_segmentCount          = STRUCT_INDEX(1);
+    SoXTransferFunction__ATT_segmentList           = STRUCT_INDEX(2);
+    SoXTransferFunction__ATT_minimumLinearInValue  = STRUCT_INDEX(3);
+    SoXTransferFunction__ATT_minimumLinearOutValue = STRUCT_INDEX(4);
+    SoXTransferFunction__ATT_dBGain                = STRUCT_INDEX(5);
+    SoXTransferFunction__ATT_dBKnee                = STRUCT_INDEX(6);
+
+    //--------------------
+    // private functions
+    //--------------------
+
+    function SoXTransferFunction__adaptCurvesInSegmentList (segmentList,
+                                                            segmentCount,
+                                                            dBKnee)
+        /** Adapts curve segments in SoX compander transfer function in
+            <segmentList> with <segmentCount> by the <dBKnee> value */
+        local (currentSegmentStart i intermediatePoint length nextSegment
+               nextSegmentStart position previousSegment radius segment
+               targetPoint)
+    (                                       
+        radius = dbKnee * ln(10) / 20;
+
+        i = 1;
+        segment = null;
+        nextSegment = STRUCTARRAY_ptr(segmentList, i);
+        intermediatePoint = Point_make();
+
+        while (i <= segmentCount) (
+            previousSegment = segment;
+            segment         = nextSegment;
+            nextSegment     = STRUCTARRAY_ptr(segmentList, i);
+
+            !segment[SoXTfSegment__ATT_isStraightLine] ? (
+                currentSegmentStart = STRUCT_ptr(segment,
+                                                 SoXTfSegment__ATT_start);
+                nextSegmentStart = STRUCT_ptr(nextSegment,
+                                              SoXTfSegment__ATT_start);
+
+                // adapt curve segment to the left
+                length = SoXTfSegment_length(previousSegment);
+                position = max(0, length - radius);
+                targetPoint = currentSegmentStart;
+                SoXTfSegment_interpolate(previousSegment, position,
+                                 targetPoint);
+                Point_copy(STRUCT_ptr(previousSegment, SoXTfSegment__ATT_end),
+                           targetPoint);
+
+                // adapt curve segment to the right
+                length = SoXTfSegment_length(nextSegment);
+                position = min(radius, length / 2);
+                targetPoint = STRUCT_ptr(segment, SoXTfSegment__ATT_end);
+                SoXTfSegment_interpolate(nextSegment, position, targetPoint);
+
+                // find some intermediate point
+                Point_copy(intermediatePoint, currentSegmentStart);
+                Point_add(intermediatePoint,  targetPoint);
+                Point_add(intermediatePoint,  nextSegmentStart);
+                Point_scale(intermediatePoint, 1/3);
+
+                Point_copy(nextSegmentStart,  targetPoint);
+
+                // set coefficients of curve
+                SoXTfSegment_adaptCoefficients(segment, intermediatePoint);
+            );
+
+            i += 1;
+        );
+
+        Point_destroy(intermediatePoint);
+    );
+
+    //--------------------
+
+    function SoXTransferFunction__shiftScaleSegmentList (segmentList,
+                                                         segmentCount,
+                                                         dBGain)
+        /** Adapts values of SoX compander transfer function segments
+            in <segmentList> with <segmentCount> by <dBGain> and
+            makes values natural logarithms */
+        local (factor i point segment)
+    (
+        factor = ln(10) / 20;
+        i = 1;
+
+        while (i <= segmentCount) (
+            segment = STRUCTARRAY_ptr(segmentList, i);
+            segment[SoXTfSegment__ATT_startY] += dBGain;
+            segment[SoXTfSegment__ATT_endY]   += dBGain;
+            point = STRUCT_ptr(segment, SoXTfSegment__ATT_start);
+            Point_scale(point, factor);
+            point = STRUCT_ptr(segment, SoXTfSegment__ATT_end);
+            Point_scale(point, factor);
+
+            segment[SoXTfSegment__ATT_isStraightLine] ? (
+                segment[SoXTfSegment__ATT_a2] = 0;
+                segment[SoXTfSegment__ATT_a1] = SoXTfSegment_gradient(segment);
+            );
+
+            i += 1;
+        );
+    );
+
+    //--------------------
+
+    function SoXTransferFunction__updateSegmentListEnds (segmentList,
+                                                         segmentCount)
+        /** Adapts start values and kinds of SoX compander transfer
+            segments in <segmentList> with <segmentCount> */
+        local (endPoint i nextSegment segment startPoint)
+    (
+        nextSegment = STRUCTARRAY_ptr(segmentList, segmentCount);
+        i = segmentCount - 1;
+
+        while (i > 0) (
+            segment    = STRUCTARRAY_ptr(segmentList, i);
+            startPoint = STRUCT_ptr(nextSegment, SoXTfSegment__ATT_start);
+            endPoint   = STRUCT_ptr(segment, SoXTfSegment__ATT_end);
+            Point_copy(endPoint, startPoint);
+            nextSegment = segment;
+            i -= 1;
+        );
+    );
+
+    //--------------------
+
+    function SoXTransferFunction__updateSegmentListKinds (segmentList,
+                                                          segmentCount)
+        /** Adapts start values and kinds of SoX compander transfer
+            segments in <segmentList> with <segmentCount> */
+        local (i isStraightLine nextSegment segment)
+    (
+        i = segmentCount;
+
+        while (i > 0) (
+            segment = STRUCTARRAY_ptr(segmentList, i);
+            isStraightLine = ((i & 1) == 1);
+            segment[SoXTfSegment__ATT_isStraightLine] = isStraightLine;
+
+            !isStraightLine ? (
+                nextSegment = STRUCTARRAY_ptr(segmentList, i + 1);
+                Point_copy(STRUCT_ptr(segment, SoXTfSegment__ATT_start),
+                           STRUCT_ptr(nextSegment, SoXTfSegment__ATT_start));
+            );
+
+            i -= 1;
+        );
+    );
+
+    //--------------------
+
+    function SoXTransferFunction__updateSegmentList (self)
+        /** Adapts values of SoX compander transfer segments */
+        local (dBGain dBKnee outGain segmentCount segmentList)
+    (
+        dBKnee       = self[SoXTransferFunction__ATT_dBKnee];
+        dBGain       = self[SoXTransferFunction__ATT_dBGain];
+        segmentCount = self[SoXTransferFunction__ATT_segmentCount];
+        segmentList  = self[SoXTransferFunction__ATT_segmentList];
+
+        // pass 1: fill all segments with kind and start values
+        SoXTransferFunction__updateSegmentListKinds(segmentList,
+                                                    segmentCount);
+
+        // pass 2: fill all segments with end values and gradient
+        //         for the straight lines
+        SoXTransferFunction__updateSegmentListEnds(segmentList,
+                                                   segmentCount);
+
+        // pass 3: adapt transfer function by output gain and make
+        //         values natural logarithms
+        SoXTransferFunction__shiftScaleSegmentList(segmentList,
+                                                   segmentCount,
+                                                   dBGain);
+
+        // pass 4: adapt transfer function knees
+        SoXTransferFunction__adaptCurvesInSegmentList(segmentList,
+                                                      segmentCount,
+                                                      dBKnee);
+    );
+
+    //--------------------
+    // con-/destruction
+    //--------------------
+
+    function SoXTransferFunction_init (self)
+        /** Initializes SoX compander transfer function <self> */
+        local (segmentList)
+    (
+        segmentList =
+            STRUCTARRAY_make(SoXTransferFunction__maxSegmentCount,
+                             SoXTfSegment__SIZE);
+
+        self[SoXTransferFunction__ATT_segmentCount]          = 0;
+        self[SoXTransferFunction__ATT_segmentList]           = segmentList;
+        self[SoXTransferFunction__ATT_minimumLinearInValue]  = 0;
+        self[SoXTransferFunction__ATT_minimumLinearOutValue] = 0;
+        self[SoXTransferFunction__ATT_dBGain]                = 0;
+        self[SoXTransferFunction__ATT_dBKnee]                = 0;
+    );
+
+    //--------------------
+
+    function SoXTransferFunction_make ()
+        /** Creates SoX compander transfer function and initializes it */
+        local (self)
+    (
+        self = STRUCT_make(SoXTransferFunction__SIZE);
+        SoXTransferFunction_init(self);
+        self
+    );
+
+    //--------------------
+
+    function SoXTransferFunction_destroy (self)
+        /** Destroys SoX compander transfer function <self> */
+        local (segmentList)
+    (
+        segmentList = self[SoXTransferFunction__ATT_segmentList];
+        STRUCTARRAY_destroy(segmentList);
+        STRUCT_destroy(self);
+    );
+
+    //--------------------
+    // clearing
+    //--------------------
+
+    function SoXTransferFunction_clear (self)
+        /** Sets transfer function to zero */
+    (
+        self[SoXTransferFunction__ATT_segmentCount]          = 0;
+        self[SoXTransferFunction__ATT_minimumLinearInValue]  = 0;
+        self[SoXTransferFunction__ATT_minimumLinearOutValue] = 0;
+        self[SoXTransferFunction__ATT_dBGain]                = 0;
+        self[SoXTransferFunction__ATT_dBKnee]                = 0;
+
+        STRUCTARRAY_clear(self[SoXTransferFunction__ATT_segmentList]);
+    );
+
+    //--------------------
+    // changing
+    //--------------------
+
+    function SoXTransferFunction_adapt (self,
+                                        dBKnee, dBThreshold, ratio, dBGain)
+        /** Adapts values of SoX compander transfer function <self> */
+        local (firstSegment i segment segmentList)
+    (
+        ratio  = max(1, ratio);
+        dBKnee = max(dBKnee, 0);
+        dBThreshold = min(0, dBThreshold);
+
+        self[SoXTransferFunction__ATT_dBGain] = dBGain;
+        self[SoXTransferFunction__ATT_dBKnee] = dBKnee;
+
+        // set data for the straight segments
+        self[SoXTransferFunction__ATT_segmentCount] = 3;
+        segmentList = self[SoXTransferFunction__ATT_segmentList];
+
+        segment = STRUCTARRAY_ptr(segmentList, 1);
+        segment[SoXTfSegment__ATT_startX] =
+            (dBThreshold - SoXTransferFunction__leftDbOffset);
+        segment[SoXTfSegment__ATT_startY] = 0;
+
+        segment = STRUCTARRAY_ptr(segmentList, 3);
+        segment[SoXTfSegment__ATT_startX] = dBThreshold;
+        segment[SoXTfSegment__ATT_startY] = 0;
+        segment[SoXTfSegment__ATT_endX]   = 0;
+        segment[SoXTfSegment__ATT_endY]   = (ratio - 1) * dBThreshold / ratio;
+
+        SoXTransferFunction__updateSegmentList(self);
+
+        firstSegment = STRUCTARRAY_ptr(segmentList, 2);
+        self[SoXTransferFunction__ATT_minimumLinearInValue] =
+            exp(firstSegment[SoXTfSegment__ATT_startX]);
+        self[SoXTransferFunction__ATT_minimumLinearOutValue] =
+            exp(firstSegment[SoXTfSegment__ATT_startY]);
+    );
+
+    //-----------------------
+    // functional application
+    //-----------------------
+
+    function SoXTransferFunction_apply (self, value)
+        /** Applies transfer function <self> to <value> */
+        local (a1 a2 i isFound lnValue lnResult result segment
+               segmentCount segmentList x y)
+    (
+        value <= self[SoXTransferFunction__ATT_minimumLinearInValue] ? (
+            result = self[SoXTransferFunction__ATT_minimumLinearOutValue];
+        ) : (
+            value = min(value, 1);
+            lnValue = ln(value);
+            segmentCount = self[SoXTransferFunction__ATT_segmentCount];
+            segmentList  = self[SoXTransferFunction__ATT_segmentList];
+
+            isFound = false;
+            i = 1;
+
+            while (!isFound && i <= segmentCount) (
+                segment = STRUCTARRAY_ptr(segmentList, i);
+                isFound = SoXTfSegment_contains(segment, lnValue);
+                i += 1;
+            );
+
+            x  = segment[SoXTfSegment__ATT_startX];
+            y  = segment[SoXTfSegment__ATT_startY];
+            a1 = segment[SoXTfSegment__ATT_a1];
+            a2 = segment[SoXTfSegment__ATT_a2];
+            lnValue -= x;
+            lnResult = y + lnValue * (a2 * lnValue + a1);
+            result = exp(lnResult);
+        );
+
+        result
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function SoXTransferFunction_print (self, indentationLevel)
+         /** Prints transfer function <self> to debug output */
+        local (segment segmentCount segmentIndex segmentList)
+    (
+        Debug_printHdrIndented(indentationLevel, "TransferFct");
+        indentationLevel += 1;
+        Debug_printIndented(indentationLevel, "tfMinLin=%+f",
+                       self[SoXTransferFunction__ATT_minimumLinearInValue]);
+        Debug_printIndented(indentationLevel, "tfMinOut=%+f",
+                       self[SoXTransferFunction__ATT_minimumLinearOutValue]);
+        Debug_printIndented(indentationLevel, "tfGain  =%+f",
+                            self[SoXTransferFunction__ATT_dBGain]);
+        Debug_printIndented(indentationLevel, "tfKnee  =%+f",
+                            self[SoXTransferFunction__ATT_dBKnee]);
+        Debug_printIndented(indentationLevel, "tfSegCnt=%d",
+                            self[SoXTransferFunction__ATT_segmentCount]);
+
+        segmentCount = self[SoXTransferFunction__ATT_segmentCount];
+        segmentList = self[SoXTransferFunction__ATT_segmentList];
+        segmentIndex = 1;
+
+        while (segmentIndex <= segmentCount) (
+            segment = STRUCTARRAY_ptr(segmentList, segmentIndex);
+            Debug_printHdrIndented(indentationLevel, "Segm %d@%d",
+                                   segmentIndex, segment);
+            SoXTfSegment_printRaw(segment, indentationLevel + 1);
+            segmentIndex += 1;
+        );
+    );
+
+    //========================================

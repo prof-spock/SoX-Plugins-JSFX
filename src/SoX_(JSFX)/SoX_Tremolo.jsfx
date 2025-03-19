@@ -1,0 +1,188 @@
+desc: SoX Tremolo
+tags: tremolo frequency modulation
+author: Dr. Thomas Tensi, 2019
+
+//--------------------
+// IMPORTS
+//--------------------
+
+import ../_BaseModules/Base.jsfx-inc
+import ../_BaseModules/Base_memory.jsfx-inc
+import ../_BaseModules/Base_naturalset.jsfx-inc
+import ../_BaseModules/Base_string.jsfx-inc
+import ../_BaseModules/Base_fixedarray.jsfx-inc
+import ../_BaseModules/Base_struct.jsfx-inc
+import ../_BaseModules/Base_graphics.jsfx-inc
+import ../_BaseModules/Base_debug.jsfx-inc
+
+import ../_Audio/Audio_waveform.jsfx-inc
+
+import SoX__base.jsfx-inc
+
+//--------------------
+// SLIDERS
+//--------------------
+
+slider1:SL_frequency=0.5<0.1,2.0,0.001>Modulation [Hz]
+slider2:SL_depth=40<0,100,1>Depth [%]
+slider3:SL_timeOffset=0<-100000,100000,0.0001>Time Offset [s]
+
+//--------------------
+// INITIALIZATION
+//--------------------
+
+@init
+    //============================================================
+
+    function SoXTremolo_handleKey (key)
+    (
+        Debug_currentMode == Debug_Mode_effect ? (
+            Graphics_clear(Graphics_Color_black);
+        );
+    );
+
+    //============================================================
+
+    SoXTremolo_defaultPhase = degreesToRadians(90);
+
+    //--------------------
+
+    SoXTremolo__SIZE = 3;
+    SoXTremolo__ATT_x          = STRUCT_INDEX(1);
+    SoXTremolo__ATT_xIncrement = STRUCT_INDEX(2);
+    SoXTremolo__ATT_yOffset    = STRUCT_INDEX(3);
+
+    //--------------------
+    //--------------------
+
+    function SoXTremolo_init (self,
+                              sampleRate, frequency, modulationDepth, phase)
+        /** Initializes tremolo effect <self> with <sampleRate>,
+            modulation <frequency>, <modulationDepth> and <phase> */
+        local (xIncrement yOffset)
+    (
+        xIncrement = twoPi * frequency / sampleRate;
+        yOffset    = (1 - modulationDepth / 200);
+
+        self[SoXTremolo__ATT_x]          = phase;
+        self[SoXTremolo__ATT_xIncrement] = xIncrement;
+        self[SoXTremolo__ATT_yOffset]    = yOffset;
+    );
+
+    //--------------------
+
+    function SoXTremolo_make ()
+        /** Constructs a tremolo effect */
+        local (self)
+    (
+        self = STRUCT_make(SoXTremolo__SIZE);
+        SoXTremolo_init(self, srate, 1, 25, SoXTremolo_defaultPhase);
+        self
+    );
+
+    //--------------------
+
+    function SoXTremolo_apply (self, inputSampleList, outputSampleList)
+        /** Applies a double band suppressed carrier modulation <self>
+            to <inputSampleList> and returns output in
+            <outputSampleList> */
+        local (channel factor inputSample outputSample x xIncrement yOffset)
+    (
+        x          = self[SoXTremolo__ATT_x];
+        xIncrement = self[SoXTremolo__ATT_xIncrement];
+        yOffset    = self[SoXTremolo__ATT_yOffset];
+        factor = sin(x) * (1 - yOffset) + yOffset;
+        
+        channel = 1;
+
+        while (channel <= SoX_channelCount) (
+            inputSample  = FixedArray_getAt(inputSampleList, channel);
+            outputSample = inputSample * factor;
+            FixedArray_setAt(outputSampleList, channel, outputSample);
+            channel += 1;
+        );
+
+        x += xIncrement;
+        x = modulo(x, twoPi);
+        self[SoXTremolo__ATT_x] = x;
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function SoXTremolo_print (self, indentationLevel)
+        /** Prints <self> to debugging output */
+        local (waveForm waveFormKindAsString)
+    (
+        Debug_printHdrIndented(indentationLevel,
+                               "SoXTremolo@%d", self);
+        indentationLevel += 1;
+
+        Debug_printIndented(indentationLevel, "x    =%f",
+                            self[SoXTremolo__ATT_x]);
+        Debug_printIndented(indentationLevel, "xIncr=%f",
+                            self[SoXTremolo__ATT_xIncrement]);
+        Debug_printIndented(indentationLevel, "yOffs=%f",
+                            self[SoXTremolo__ATT_yOffset]);
+    );
+
+    //--------------------
+
+    function SoXTremolo_update ()
+        /** Updates on change of sample rate or play position */
+        local (deltaPhase effectivePhase)
+    (
+        deltaPhase = Audio_WaveForm_adjustPhaseByTime(SL_frequency,
+                                                      SL_timeOffset,
+                                                      play_position);
+        effectivePhase = SoXTremolo_defaultPhase + deltaPhase;
+        SoXTremolo_init(tremolo, srate, SL_frequency, SL_depth,
+                        effectivePhase);
+
+        Debug_clear();
+        SoXTremolo_print(tremolo, 0);
+    );    
+
+    //============================================================
+
+    tremolo = SoXTremolo_make();
+
+//--------------------
+// BLOCK
+//--------------------
+
+@block
+    (play_position < SoXTremolo__previousPlayPosition
+     || play_position > SoXTremolo__previousPlayPosition + 0.1
+     || srate != SoXTremolo__previousSampleRate) ? (
+        SoXTremolo_update();
+        SoXTremolo__previousSampleRate = srate;
+    );
+
+//--------------------
+// SLIDER CHANGE
+//--------------------
+
+@slider
+    SoXTremolo__previousPlayPosition = maximumInteger;
+    SoXTremolo_update();
+
+//--------------------
+// SAMPLE
+//--------------------
+
+@sample
+    SoXTremolo__previousPlayPosition = play_position;
+    SoX_readInputSampleList();
+    SoXTremolo_apply(tremolo, SoX_inputSampleList, SoX_outputSampleList);
+    SoX_writeOutputSampleList();
+
+//--------------------
+// GRAPHICS
+//--------------------
+
+@gfx
+    key = gfx_getchar();
+    key = Debug_handleKey(key);
+    SoXTremolo_handleKey(key);

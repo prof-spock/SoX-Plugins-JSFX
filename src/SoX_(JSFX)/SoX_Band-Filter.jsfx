@@ -1,0 +1,108 @@
+desc: SoX Band Filter
+tags: filter
+author: Dr. Thomas Tensi, 2019
+
+//--------------------
+// IMPORTS
+//--------------------
+
+import ../_BaseModules/Base.jsfx-inc
+import ../_BaseModules/Base_memory.jsfx-inc
+import ../_BaseModules/Base_naturalset.jsfx-inc
+import ../_BaseModules/Base_string.jsfx-inc
+import ../_BaseModules/Base_fixedarray.jsfx-inc
+import ../_BaseModules/Base_struct.jsfx-inc
+import ../_BaseModules/Base_graphics.jsfx-inc
+import ../_BaseModules/Base_debug.jsfx-inc
+
+import ../_Audio/Audio_samplequeue.jsfx-inc
+
+import SoX__base.jsfx-inc
+import SoX__iirfilter.jsfx-inc
+import SoX__biquadfilter.jsfx-inc
+
+//--------------------
+// SLIDERS
+//--------------------
+
+slider1:SL_mode=0<0,1,1{No,Yes}>Unpitched Audio Mode?
+slider2:SL_frequency=1000.0<10.0,20000.0,1>Frequency [Hz]
+slider3:SL_bandwidth=1<0.001,20000,0.00001>Bandwidth
+slider4:SL_bandwidthKind=0<0,3,1{Frequency,Octaves,Q,Butterworth}>Bandwidth Kind
+
+//--------------------
+// INITIALIZATION
+//--------------------
+
+@init
+
+    function SoXBandFilter_update ()
+        /** Updates filter parameters from sliders */
+        local (a0 a1 a2 alpha b0 b1 b2 bandwidthAsFrequency
+               factor usesUnpitchedAudioMode w0)
+    (
+        usesUnpitchedAudioMode = (SL_mode == 1);
+
+        // coefficients for biquad transform
+        w0 = twoPi * SL_frequency / srate;
+
+        bandwidthAsFrequency =
+            iif(SL_bandwidthKind == SoXBandwidthKind_quality,
+                SL_frequency / SL_bandwidth,
+                SL_bandwidthKind == SoXBandwidthKind_octaves,
+                SL_frequency * (2 ^ SL_bandwidth - 1) * 2 ^ (-SL_bandwidth / 2),
+                SL_bandwidth);
+
+        a2 = exp(-twoPi * bandwidthAsFrequency / srate);
+        a1 = -4 * a2 / (1 + a2) * cos(w0);
+        a0 = 1;
+        b2 = 0;
+        b1 = 0;
+        b0 = sqrt(1 - sqr(a1) / (4 * a2)) * (1 - a2);
+
+        usesUnpitchedAudioMode ? (
+            factor = sqrt((sqr(1 + a2) - sqr(a1)) * (1 - a2) / (1 + a2)) / b0;
+            b0 *= factor;
+        );
+
+        SoXBiquadFilter_init(biquadFilter, b0, b1, b2, a0, a1, a2);
+        Debug_clear();
+        SoXBiquadFilter_print(biquadFilter);
+    );
+
+    //============================================================
+
+    function SoXBandFilter_handleKey (key)
+    (
+        Debug_currentMode == Debug_Mode_effect ? (
+            Graphics_clear(Graphics_Color_black);
+        );
+    );
+
+    //============================================================
+
+//--------------------
+// BLOCK
+//--------------------
+
+@block
+    srate != SoXBiquadFilter__previousSampleRate ? (
+        SoXBandFilter_update();
+        SoXBiquadFilter__previousSampleRate = srate;
+    );
+
+//--------------------
+// SLIDER CHANGE
+//--------------------
+
+@slider
+    SoXBandFilter_update();
+
+//--------------------
+// GRAPHICS
+//--------------------
+
+@gfx
+    key = gfx_getchar();
+    key = Debug_handleKey(key);
+    SoXBandFilter_handleKey(key);

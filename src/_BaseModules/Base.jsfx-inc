@@ -1,0 +1,280 @@
+desc: general JSFX utility routines
+author: Dr. Thomas Tensi, 2019
+
+@init
+
+    /** keep the state permanently (e.g. for the memory viewer) */
+    ext_noinit = 1;
+
+    //========================================
+
+    // several constants
+    true  = (1 == 1);
+    false = !true;
+    twoPi = 2 * $pi;
+    maximumInteger = 2147483647;
+    infinity = 10^30;
+
+    nullAsString = "<null>";
+
+    // no-operation statement
+    pass = -1;
+
+    // fast processing is disabled by default
+    isCheckedMode = false;
+
+    //--------------------
+
+    function tenPower (d)
+        /** Returns 10^d for an integer <d> */
+        local (i result sgn)
+    (
+        result = 1;
+        sgn = sign(d);
+        d = abs(d);
+        i = 1;
+
+        while (i <= d) (
+            result *= 10;
+            i += 1;
+        );
+
+        sgn < 0 ? 1 / result : result
+    );
+
+    //--------------------
+
+    function degreesToRadians (x)
+        /** Returns degrees for <x> in radians */
+    (
+        x / 360 * twoPi
+    );
+
+    //--------------------
+
+    function round (x, decimalDigits)
+        /** Returns the rounded form of <x> with <decimalDigits> after
+            the decimal point */
+        local (factor)
+    (
+        factor = tenPower(decimalDigits);
+        x *= factor;
+        (x >= 0 ? floor(x + 0.5) : ceil(x - 0.5)) / factor
+    );
+
+    //--------------------
+
+    function round (x)
+        /** Returns the rounded form of <x> */
+    (
+        round(x, 0);
+    );
+
+    //--------------------
+
+    function forceToRange (value, lowBound, highBound, isInteger)
+        /** Returns <value> forced into range
+           (<lowBound>,<highBound>); if <isInteger> is set, the
+           returned value is an integer */
+        local (result)
+    (
+        result = isInteger ? round(value) : value;
+        result = min(highBound, max(result, lowBound));
+        result
+    );
+
+    //--------------------
+
+    function forceToRange (value, lowBound, highBound)
+        /** Returns <value> forced into range
+           (<lowBound>,<highBound>) */
+    (
+        forceToRange(value, lowBound, highBound, false)
+    );
+
+    //--------------------
+
+    function forceToPercentage (value, isInteger)
+        /** Returns <value> forced into range (0, 100); if <isInteger>
+            is set, the returned value is an integer */
+    (
+        forceToRange(value, 0, 100, isInteger)
+    );
+
+    //--------------------
+
+    function forceToPercentage (value)
+        /** Returns <value> forced into range (0, 100) */
+    (
+        forceToPercentage(value, false)
+    );
+
+    //--------------------
+
+    function fractionalPart (value)
+        /** Returns fractional part of <value> between -1 and +1 with
+            the sign of value */
+        local (result)
+    (
+        result = abs(value);
+        result -= floor(result);
+        result *= sign(value);
+        result
+    );
+
+    //--------------------
+
+    function iif (condition, trueValue, falseValue)
+        /** Returns result of a conditional expression with all
+            parameters evaluated */
+    (
+        condition ? trueValue : falseValue
+    );
+
+    //--------------------
+
+    function iif (conditionA, valueA,
+                  conditionB, valueB,
+                  elseValue)
+        /** Returns result of a two-way conditional expression with
+        all parameters evaluated */
+    (
+        iif(conditionA, valueA,
+            iif(conditionB, valueB,
+                elseValue))
+    );
+
+    //--------------------
+
+    function iif (conditionA, valueA,
+                  conditionB, valueB,
+                  conditionC, valueC,
+                  elseValue)
+        /** Returns result of a three-way conditional expression with
+        all parameters evaluated */
+    (
+        iif(conditionA, valueA,
+            iif(conditionB, valueB,
+                conditionC, valueC,
+                elseValue))
+    );
+
+    //--------------------
+
+    function iif (conditionA, valueA,
+                  conditionB, valueB,
+                  conditionC, valueC,
+                  conditionD, valueD,
+                  elseValue)
+        /** Returns result of a four-way conditional expression with
+        all parameters evaluated */
+    (
+        iif(conditionA, valueA,
+            iif(conditionB, valueB,
+                conditionC, valueC,
+                conditionD, valueD,
+                elseValue))
+    );
+
+    //--------------------
+
+    function iif (conditionA, valueA,
+                  conditionB, valueB,
+                  conditionC, valueC,
+                  conditionD, valueD,
+                  conditionE, valueE,
+                  elseValue)
+        /** Returns result of a five-way conditional expression with
+        all parameters evaluated */
+    (
+        iif(conditionA, valueA,
+            iif(conditionB, valueB,
+                conditionC, valueC,
+                conditionD, valueD,
+                conditionE, valueE,
+                elseValue))
+    );
+
+    //--------------------
+
+    function isInRange (value, lowValue, highValue)
+        /** Tells whether <value> is in interval
+            [<lowValue>,<highValue>]*/
+    (
+        lowValue <= value && value <= highValue
+    );
+
+    //--------------------
+
+    function ln (x)
+        /** returns the natural logarithm of <x> */
+    (
+        log(x)
+    );
+
+    //--------------------
+
+    function mod (x, d)
+        /** Returns the integer modulus; brings <x> into the range
+            [0,d) */
+    (
+        x < 0 ? (-(-x % d) + d) % d : x % d
+    );
+
+    //--------------------
+
+    function modularIncrement (v, maxValue, startsAtOne)
+        /** Increments <v> by one and ensures that it is either in
+            interval [1, <maxValue>] or [0, <maxValue>-1] (depending
+            on <startsAtOne>*/
+        local (offset)
+    (
+        offset = iif(startsAtOne, 1, 0);
+        v += 1;
+        mod(v - offset, maxValue) + offset
+    );
+
+    //--------------------
+
+    function modulo (x, d)
+        /** Returns the real modulus; brings <x> into the range
+            [0,d) */
+    (
+        d > 0.00001 ? (
+            while (x >= d) (
+                x -= d;
+            );
+
+            while (x < 0) (
+                x += d;
+            );
+        );
+
+        x
+    );
+
+    //--------------------
+
+    function radiansToDegrees (x)
+        /** Returns radians for <x> in degrees */
+    (
+        x * 360 / twoPi
+    );
+
+    //--------------------
+
+    function sinh (x)
+        /** Returns the hyperbolic sine of <x> */
+    (
+        (exp(x) - exp(-x)) / 2
+    );
+
+    //--------------------
+
+    function toInteger (value)
+        /** Forces <value> to integer range */
+    (
+        value | 0
+    );
+
+    //========================================

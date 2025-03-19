@@ -1,0 +1,1685 @@
+\documentclass[titlepage,twoside,12pt,a4paper]{report}
+  \usepackage[utf8]{inputenc}
+  \usepackage[T1]{fontenc}
+
+  \usepackage{amsmath}         % ==> align
+  \usepackage{amssymb}         % ==> for N
+  \usepackage{array}           % ==> for > in tabular column
+  \usepackage{caption}         % ==> captionof
+  \usepackage[usenames]{color} % ==> color
+  \usepackage{colortbl}        % ==> cellcolor
+  \usepackage{enumitem}        % ==> ttDescription
+  \usepackage{fancyhdr}        % ==> fancyhead
+  \usepackage{graphicx}        % ==> includegraphics
+  \usepackage{listings}        % ==> listings
+  \usepackage{lmodern}         % ==> scaling of cmr fonts
+
+  %-----------------------
+  %-- HEADERS / FOOTERS --
+  %-----------------------
+
+  \pagestyle{fancy}
+  %--
+  \fancyhead[LE]{\slshape \rightmark}
+  \fancyhead[CE]{~}
+  \fancyhead[RE]{~}
+  \fancyhead[LO]{~}
+  \fancyhead[CO]{~}
+  \fancyhead[RO]{\slshape \leftmark}
+  %--
+  \fancyfoot[LE]{\thepage}
+  \fancyfoot[CE]{~}
+  \fancyfoot[RE]{Dr.~Thomas Tensi}
+  \fancyfoot[LO]{JSFX Plugins for DAWs}
+  \fancyfoot[CO]{~}
+  \fancyfoot[RO]{\thepage}
+
+  %---------------------------------
+  %-- PAGE SIZE AND OTHER LENGTHS --
+  %---------------------------------
+
+  \renewcommand{\headrulewidth}{0.4pt}
+  \renewcommand{\footrulewidth}{0.4pt}
+  \addtolength{\headheight}{\baselineskip}
+  \addtolength{\voffset}{-5mm}
+  \setlength{\topmargin}{0mm}
+  \addtolength{\headsep}{-3mm}
+  \addtolength{\textheight}{20mm}
+  \setlength{\parindent}{0pt}
+  \setlength{\parskip}{5pt}
+
+  \bibliographystyle{plain}
+ 
+  \setcounter{secnumdepth}{3}
+  \setcounter{tocdepth}{3}
+
+  %-------------------
+  %-- MISC COMMANDS --
+  %-------------------
+
+  \newcommand{\bsl}{\textbackslash}
+
+  \newcommand{\centeredExternalPicture}[2]{%
+      \begin{center}
+          \externalPicture{#1}{#2}%
+      \end{center}
+  }
+
+  \newenvironment{centeredFigure}%
+	         {\begin{figure}[tb]\begin{center}}%
+	         {\end{center}\end{figure}}
+
+  \newenvironment{centeredFigureHere}%
+	         {\begin{figure}[h]\begin{center}}%
+	         {\end{center}\end{figure}}
+
+  \newcommand{\comment}[1]{\medskip \textbf{#1} \medskip}
+
+  \newcommand{\degrees}[1]{\(#1^{\circ}\)}
+                 
+  \newcommand{\embeddedCode}[1]{\textsf{#1}}
+
+  \newcommand{\externalPicture}[2]{%
+      \includegraphics[scale=#1]{figures/#2}%
+  }
+
+  \newcommand{\gitPluginPath}{https://github.com/prof-spock/SoX-Plugins-JSFX}
+  \newcommand{\horizontalRule}{\rule{\linewidth}{0.5mm}}
+
+  \newcommand{\hugeTimesFont}{%
+    %\fontfamily{ptm}
+    \fontsize{40}{45}\selectfont
+  }
+
+  \newcommand{\hyperlink}[1]{\textsf{\color{blue}#1}}
+
+  \newcommand{\panel}[4]{%
+    \begin{minipage}{\linewidth}
+      \centeredExternalPicture{#1}{#2}
+      \vspace*{-5mm}
+      \captionof{figure}{#3}
+      \label{figure:#4}
+    \end{minipage}
+  }
+
+  \definecolor{parameterTableHeadingBackgroundColor}{RGB}{200,200,200}
+  \definecolor{parameterTableOtherBackgroundColor}{RGB}{230,230,230}
+  \definecolor{frameBackgroundColor}{RGB}{240,240,240}
+
+  \newenvironment{parameterTable}
+                 {\begin{center}\small
+                    \begin{tabular}{|>{\tt}p{3cm}|p{5cm}|p{4.5cm}|}
+                      \hline \parameterTableHeader \hline
+                 }
+                 {  \end{tabular}
+                  \end{center}}
+
+  \newcommand{\parameterTableHeader}{%
+    \rowcolor{parameterTableHeadingBackgroundColor}
+    \bf Parameter&\bf Description&\bf Unit\\
+  }
+
+  \newcommand{\parameterTableLine}[3]{#1&#2&#3\\\hline}
+
+  \definecolor{restrictionForegroundColor}{RGB}{128,0,0}
+  \definecolor{restrictionBackgroundColor}{RGB}{250,250,192}
+
+  \renewcommand{\restriction}[1]{%
+    \begin{tabular}{lp{10cm}}%
+      \colorbox{restrictionBackgroundColor}%
+               {\color{restrictionForegroundColor}Restriction:}&#1\\
+    \end{tabular}\\}
+
+  \newcommand{\signalFlowFigure}[2]{%
+    \begin{centeredFigureHere}
+      \centeredExternalPicture{#2}{SoX-A-#1-flowGraph.png}
+      \caption{Signal Flow Graph for \SoX\ Plugin ``#1''}
+      \label{figure:signalFlow#1}
+    \end{centeredFigureHere}
+  }
+
+  \newcommand{\soxPanel}[1]{%
+    \panel{0.85}{SoX-J-Eff_#1.png}
+          {Panel for \SoX\ Plugin ``#1''}{panel#1}
+  }
+
+  \newcommand{\subTarget}{\hspace*{5mm}\(\dashleftarrow\)~}
+
+  \newcommand{\TODO}[1]{\emph{\color{red}\textbf{TODO:} #1}}
+
+  \newenvironment{ttDescription}%
+	         {\begin{description}[%
+                       style=nextline, labelwidth=0pt,
+                       itemindent=\dimexpr-5mm, leftmargin=1cm%
+                 ]}
+	         {\end{description}}
+
+  %-------------------------
+  %-- LISTING DEFINITIONS --
+  %-------------------------
+
+  \newlength{\listingMargin}
+  \setlength{\listingMargin}{4mm}
+  \newlength{\listingWidth}
+  \setlength{\listingWidth}{\linewidth}
+  \addtolength{\listingWidth}{-2\listingMargin}
+
+  \newlength{\listingInnerFrame}
+  \setlength{\listingInnerFrame}{1mm}
+
+  \definecolor{codeBackgroundColor}{RGB}{245,255,245}
+  %\definecolor{codeBackgroundColor}{RGB}{250,250,0}
+
+  \def\ttlisting{\par\minipage{\linewidth}\lstset
+}
+  \def\endttlisting{\endminipage\par}
+
+  \lstdefinestyle{standard}
+                 {showspaces=false, showstringspaces=false,
+                  xleftmargin=\listingMargin,
+                  xrightmargin=\listingMargin,
+                  framexleftmargin=\listingInnerFrame,
+                  framextopmargin=\listingInnerFrame,
+                  framexrightmargin=\listingInnerFrame,
+                  framexbottommargin=\listingInnerFrame,
+                  basicstyle=\footnotesize\ttfamily}
+
+  \lstnewenvironment{commandLine}
+                    {\ttlisting{style=standard,
+                        backgroundcolor=\color{codeBackgroundColor}}}
+                    {\endttlisting}
+
+  %-------------------
+  %-- ABBREVIATIONS --
+  %-------------------
+
+  \newcommand{\SoX}{SoX}
+  \newcommand{\SoXNG}{SoX\_ng}
+  \newcommand{\SoXPlugins}{JSFX-SoX}
+  \newcommand{\Z}{\mathbb{Z}}
+
+  \newcommand{\SoXChorusAndDelayKindList}{Chorus
+                                          / Delay Sequence
+                                          / Tapped Delay}
+  \newcommand{\SoXFilterKindList}{Allpass / Band / Bass / BandPass /
+                                  BandReject / Biquad / Equalizer /
+                                  HighPass / LowPass / Treble }
+  \newcommand{\SoXPTKindList}{Phaser / Tremolo}
+
+%############################################################
+\begin{document}
+\begin{titlepage}
+  ~\\[5cm]
+  \begin{center}
+    \textbf{\hugeTimesFont JSFX SoX Plugins}\\[1cm]
+    \textit{\Large A Reimplementation of the \SoX\ Commandline Processor
+        as JSFX DAW Plugins}
+  \end{center}
+  ~\\[7cm]
+  \large
+  \begin{tabular}{>{\bf}p{3cm}p{9cm}}
+    Author:&Dr.~Thomas Tensi\\
+    Date:&2025-03-18\\
+    Version:&0.96\\
+    
+  \end{tabular}
+  \vfill
+\end{titlepage}
+\tableofcontents
+
+
+%=====================
+\chapter{Introduction}
+%=====================
+
+%-----------------
+\section{Overview}
+%-----------------
+
+The \SoXPlugins\ software package provides plugins for
+being used in digital audio workstations (DAWs); they
+implement some of the more prominent audio processing effects
+from \SoX\ as DAW audio plugins. They implement
+some of the audio processing effects from \SoX.  It is also possible to
+use them in any VST compatible DAW using the freely available ReaJS
+VST plugin~\cite{reference:reaplugs} that is able to interpret JSFX
+files.
+
+\SoX~\cite{reference:soxDocumentation} is a command line audio
+processing tool for Unix, Windows and MacOSX that transforms source
+audio files in several formats into other audio files.  It provides
+several standard audio effects (like e.g. filters or reverb) in good
+quality and with a transparent, open-source implementation.  Currently
+a project called \SoXNG~\cite{reference:soxDocumentationB} and led by
+Martin W. Guy is modernizing all those effects and hence serves as the
+reference for this \SoXPlugins\ project.
+
+The effects provided here are a complete rewrite in
+JSFX of those \SoX\ algorithms nevertheless
+aiming at producing \emph{(bit-exact) identical} renderings in the
+DAW.  This goal is achieved: when rendering some audio externally via
+\SoX\ and internally with the plugins, there is almost no
+difference. After rendering and subtracting the results (see
+chapter~\ref{section:regressionTest}) those cancel out with typically
+a residual noise of less than -140dBFS due to rounding or precision
+errors (\SoX\ often uses 32bit integer processing, while \SoXPlugins\
+always uses double precision floating point processing).
+
+The main motivation for this package is to be able to play around with
+effects in a DAW and be sure that any external rendering by \SoX\ will
+produce exactly the same results.  Although \SoX\ does not always
+provide the "best" effects, it still is a reliable and well-defined
+audio tool.
+
+Only a selection of \SoX\ effects has been reimplemented as plugins,
+but those are the ones that are ---~in my opinion~--- the more
+prominent effects in that suite.
+
+Because \SoX\ very often uses rich command line options for its effects,
+not every effect configuration from \SoX\ can be fully transported into
+the slider oriented GUI of the \SoXPlugins.  For example, the
+compander of \SoX\ allows the definition of a transfer function having
+multiple segments.  Although the internal engine of the
+\SoXPlugins\ compander implements exactly the same internal segment
+logic of \SoX, the user interface only allows the typical definition of a
+threshold and a compression ratio (leading to a transfer function with
+three segments).
+
+\textbf{Note also that a spiffy user interface is \emph{not at all} a
+        priority for this package.  Also the parameter ranges are
+        somewhat debatable, but they simply reflect the wide
+        parameter ranges of the \SoX\ command-line effect.}
+
+The redesign and restructuring has also been done for easier
+maintenance, because there is some redundancy and unnecessary
+complexity in the original sources due to their several contributors.
+Nevertheless ---~as pointed out~--- the effects provided here
+faithfully model the \SoX\ command-line processing.
+
+All the code is open-source; hence you can check and adapt it to your
+needs (see chapter~\ref{chapter:implementation}).
+
+%--------------------------
+\section{Available Effects}
+%--------------------------
+
+The following effects are supported:
+\begin{ttDescription}
+  \item[allpass:] a biquad allpass filter two-poled with filter
+    frequency and the filter bandwith (in several units)
+
+  \item[band:] a biquad band filter with center filter frequency and
+    the filter bandwith (in several units) and an option for unpitched
+    audio
+
+  \item[bandpass:] a biquad filter for bandpass with center filter
+    frequency and the filter bandwith (in several units)
+
+  \item[bandreject:] a biquad filter for bandreject with center filter
+    frequency and the filter bandwith (in several units)
+
+  \item[bass:] a biquad filter for boosting or cutting bass with a
+    shelving characteristics with settings for filter frequency and
+    the filter bandwith (in several units)
+
+  \item[biquad:] a generic biquad (iir) filter with 6 coefficients b0,
+    b1, b2, a0, a1 and a2
+
+  \item[chorus:] a chorus effect with multiple parallel echos modulated
+    either by sine or triangle signals,
+
+  \item[compand:] a compander with attack, decay, input gain shift,
+    threshold and compression and soft knee; this is a reduced version
+    of \SoX\ compand with only a simple transfer function and a combined
+    attack/decay setting
+
+  \item[echo:] a tapped delay with several absolute delay times and
+    signal decays,
+
+  \item[echos:] a sequential delay with delay stages with absolute
+    delay times and signal decays fed with signals from the previous
+    stages,
+
+  \item[equalizer:] a biquad filter for equalizing with settings for
+    the pole count, the filter frequency and the filter bandwith (in
+    several units)
+
+  \item[gain:] a volume changer by \emph{exact} decibels\dots
+
+  \item[highpass:] a biquad filter for highpass with settings for the
+    pole count, the filter frequency and the filter bandwith (in
+    several units)
+
+  \item[mcompand:] a multiband compander with a Linkwitz-Riley
+    crossover filter and for each band a compander with attack, decay,
+    input gain shift, threshold and compression and soft knee; again
+    the companders only allow a simple transfer function and a
+    combined attack/decay setting
+
+  \item[lowpass:] a biquad filter for lowpass with settings for the
+    pole count, the filter frequency and the filter bandwith (in
+    several units)
+
+  \item[overdrive:] a simple tanh distortion with gain and colour
+    specification
+
+  \item[phaser:] a phaser effect with sine or triangle modulation
+
+  \item[reverb:] a reverb effect (based on Freeverb) with several
+    parameters for the room (like size and HF damping) as well as a
+    possible predelay
+
+  \item[treble:] a biquad filter for boosting or cutting treble with a
+    shelving characteristics with settings for filter frequency and
+    the filter bandwith (in several units)
+
+  \item[tremolo:] a tremolo effect with sine modulation using a
+    double-sideband suppressed carrier modulation
+\end{ttDescription}
+
+As an analysis tool (e.g. for comparing the tool outputs with
+reference audio clips) a multilane oscilloscope is also available.
+
+%-------------------------
+\section{Acknowledgements}
+%-------------------------
+
+This project is a derivative work based on the foundations laid by the
+\SoX\ community.  Although the algorithms used were modified and
+redesigned, this project would been much more complicated and tedious
+without this basis.
+
+Hence my thanks go to Chris Bagwell, Nick Bailey, Martin W. Guy,
+Daniel Pouzzner, Måns Rullgård, Rob Sewell and all the other
+contributors of the \SoX\ project: without your effort this would not
+have been possible!
+
+%=================================================
+\chapter{Installation of the \SoXPlugins\ Effects}
+%=================================================
+
+The installation is as follows:
+
+\begin{enumerate}
+
+   \item Load the \SoXPlugins\ files from the repository in
+     \cite{reference:jsfxSoxRepository}.
+  
+   \item Close the Reaper application or your other DAW using ReaJS
+     (if open).
+
+   \item Make a subdirectory \embeddedCode{Dr\_TT\bsl JSFXSoX} in
+     either the \embeddedCode{Effects} directory of the Reaper
+     installation (typically in \embeddedCode{\bsl Program Files\bsl
+       Reaper\bsl Effects}) or ---~if your DAW uses some different
+     directory for JSFX files~--- in that directory.
+
+   \item Copy over all \embeddedCode{*.jsfx} and
+     \embeddedCode{*.jsfx-inc} files from the distribution
+     \embeddedCode{src} directory into the target directory.  If
+     helpful, also add the documentation from the root directory.
+
+   \item If helpful, also copy the test files from \embeddedCode{test}
+     to the effects sub-directory \embeddedCode{Dr\_TT\bsl JSFXSoX\bsl
+     Test} (see section~\ref{section:regressionTest}).
+
+   \item Restart Reaper (or your other DAW).  You should now be able
+     to select the plugins from the JSFX folder (they are all prefixed
+     with "SoX").
+
+\end{enumerate}
+
+Alternatively you can use the ReaPack plugin \cite{reference:reapack}
+and do an automatic install via the \embeddedCode{index.xml} file in
+the repository \cite{reference:jsfxSoxRepository}.
+
+%==================================================
+\chapter{Description of the Effects in \SoXPlugins}
+%==================================================
+
+%------------------------
+\section{General Remarks}
+%------------------------
+
+
+As mentioned in the introduction this package provides several audio
+tools written in JSFX for emulating
+\SoX\ bit-exactly.
+
+This goal is reached up to a certain precision (of about -140dBFS),
+because \SoX\ often uses 32bit integer processing while
+\SoXPlugins\ use double precision float processing.
+
+Where noted in the following description, some simplifications have
+been done to take care of the limited user interface and also some
+parameters were omitted.
+
+Note again that the focus of this toolset is the faithful
+reimplementation and somehow a redesign of \SoX; a spiffy user
+interface is \emph{not at all} a priority in this project.
+
+For the same reasons none of the effects of \SoXPlugins\ displays
+anything; they just process audio parametrized by their slider
+settings.
+
+\begin{centeredFigure}
+  \centeredExternalPicture{0.5}{SoX-J-memoryViewer.png}
+  \caption{Memory View for \SoXPlugins\ Effects in Reaper}
+  \label{figure:memoryViewer}
+\end{centeredFigure}
+
+Nevertheless for debugging purposes, some textual display is supported
+via keypresses in the effects window as follows:
+
+\begin{itemize}
+  \item Internal effect data and debug instrumentation can be displayed
+        by pressing ``d''(ebug).  Figure~\ref{figure:debugViewer}
+        shows the debug data for a multiband-compander as an example.
+
+  \item The table of allocated strings is shown via key ``s''(trings).
+
+  \item The local memory is displayed via ``m''(emory)
+        (see figure~\ref{figure:memoryViewer}).
+
+  \item All those displays scale automatically and are scrollable via
+        ``+'' and ``-'' and reset via ``0'' (with ``*'' and ``\_''
+        allow for scrolling by a larger increment).
+
+  \item The font size in those displays can be scaled up or down by
+        ``3'' and ``1'' and reset via ``2''.
+
+  \item The display of the effect (if any) is shown via ``e''(ffect)
+        which is the default (and ---~as mentioned before~--- normally
+        empty).
+
+\end{itemize}
+
+All plugins are designed such that view are kept visible even when
+playback state is changed.  Hence one can e.g. have a live look at the
+memory data for some plugin (provided you know its layout in memory).
+
+\begin{centeredFigure}
+  \centeredExternalPicture{0.5}{SoX-J-debugViewer.png}
+  \caption{Debug View for \SoXPlugins\ Effects in Reaper}
+  \label{figure:debugViewer}
+\end{centeredFigure}
+
+All effects of \SoXPlugins\ are discussed in alphabetical order in the
+following chapter.  Note that the effects description is mostly taken
+from the \SoX\ documentation~\cite{reference:soxDocumentation,
+reference:soxDocumentationB} except for specifics of the
+\SoXPlugins\ effects.
+
+%------------------------------
+\clearpage
+\section{\SoX\ Allpass Filter}
+%------------------------------
+
+\soxPanel{Allpass}
+\begin{parameterTable}
+  
+  \parameterTableLine{Frequency}
+                     {the center frequency of the filter}
+                     {Hz}
+  \parameterTableLine{Bandwidth}
+                     {the bandwidth modulus of the filter}
+                     {---}
+  \parameterTableLine{Bandwidth Unit}
+                     {the bandwidth unit of the filter}
+                     {Frequency / Octaves / Quality / Butterworth}
+\end{parameterTable}
+
+This effect is a two-pole all-pass filter with
+\embeddedCode{Frequency} as center frequency and filter-width
+\embeddedCode{Bandwidth} with unit \embeddedCode{Bandwidth Unit}.  The
+bandwidth kinds are a relative \textit{Frequency}, a specification of
+\textit{octaves}, the filter \textit{quality} or the
+\textit{butterworth} quality (with fixed quality \(q=\sqrt{2}/2\)).
+
+An all-pass filter changes the audio's frequency-to-phase relationship
+without changing its frequency-to-amplitude relationship.  The
+detailed filter description can be found in
+\cite{reference:filter-cookbook}.
+
+%---------------------------
+\clearpage
+\section{\SoX\ Band Filter}
+%---------------------------
+
+\soxPanel{Band}
+\begin{parameterTable}
+  
+  \parameterTableLine{Unpitched Mode?}
+                     {flag to tell whether special processing
+                      for unpitched audio is applied}
+                     {Boolean}
+  \parameterTableLine{Frequency}
+                     {the center frequency of the filter}
+                     {Hz}
+  \parameterTableLine{Bandwidth}
+                     {the bandwidth modulus of the filter}
+                     {---}
+  \parameterTableLine{Bandwidth Unit}
+                     {the bandwidth unit of the filter}
+                     {Frequency / Octaves / Quality / Butterworth}
+\end{parameterTable}
+
+This effect is a band-pass filter.  The frequency response
+drops logarithmically around \embeddedCode{Frequency}, the
+\embeddedCode{Bandwidth} and \embeddedCode{Bandwidth Unit} parameters
+gives the slope of the drop; frequencies at \textit{frequency+width}
+and \textit{frequency-width} will be half of their original
+amplitudes. The effect defaults to a mode that is oriented to pitched
+audio, i.e. voice, singing, or instrumental music.
+
+When the option \embeddedCode{Unpitched Mode?} is set, an alternate
+mode for un-pitched audio (e.g. percussion) is applied. Note that this
+option introduces a power-gain of about 11dB in the filter, so beware
+of output clipping; the option introduces noise in the shape of the
+filter, i.e. peaking at the center frequency and settling around it.
+
+%-------------------------------
+\clearpage
+\section{\SoX\ Bandpass Filter}
+%-------------------------------
+
+\soxPanel{Bandpass}
+\begin{parameterTable}
+  \parameterTableLine
+                  {Mode}
+                  {the kind of the filter (here: \textbf{BandPass})}
+                  {BandPass / BandReject}
+  \parameterTableLine{Cst. Skirt Gain?}
+                     {flag to tell whether a constant skirt
+                      gain is applied}
+                     {Boolean}
+  \parameterTableLine{Frequency}
+                     {the center frequency of the filter}
+                     {Hz}
+  \parameterTableLine{Bandwidth}
+                     {the bandwidth modulus of the filter}
+                     {---}
+  \parameterTableLine{Bandwidth Unit}
+                     {the bandwidth unit of the filter}
+                     {Frequency / Octaves / Quality / Butterworth / Slope}
+\end{parameterTable}
+
+This effect is a bandpass filter; by selecting the
+appropriate \embeddedCode{Filter Kind}, this effect is a two-pole
+Butterworth band-pass filter with \embeddedCode{Frequency} as central
+frequency, and (3dB-point) band-width given by
+\embeddedCode{Bandwidth} and \embeddedCode{Bandwidth Unit}. The
+\embeddedCode{Cst. Skirt Gain?} option selects a constant skirt gain
+(peak gain = Q) instead of the default, which is a constant 0dB peak
+gain.  The filters roll off at 6dB per octave (20dB per decade).
+
+The detailed filter description can be found in
+\cite{reference:filter-cookbook}.
+
+%---------------------------------
+\clearpage
+\section{\SoX\ Bandreject Filter}
+%---------------------------------
+
+\soxPanel{Bandreject}
+\begin{parameterTable}
+  \parameterTableLine
+                  {Mode}
+                  {the kind of the filter (here: \textbf{BandReject})}
+                  {BandPass / BandReject}
+  \parameterTableLine{Frequency}
+                     {the center frequency of the filter}
+                     {Hz}
+  \parameterTableLine{Bandwidth}
+                     {the bandwidth modulus of the filter}
+                     {---}
+  \parameterTableLine{Bandwidth Unit}
+                     {the bandwidth unit of the filter}
+                     {Frequency / Octaves / Quality / Butterworth / Slope}
+\end{parameterTable}
+
+This effect is a bandreject filter; by selecting the
+appropriate \embeddedCode{Filter Kind}, this effect is a two-pole
+Butterworth band-reject filter with \embeddedCode{Frequency} as
+central frequency, and (3dB-point) band-width given by
+\embeddedCode{Bandwidth} and \embeddedCode{Bandwidth Unit}.
+
+The detailed filter description can be found in
+\cite{reference:filter-cookbook}.
+
+%---------------------------
+\clearpage
+\section{\SoX\ Bass Filter}
+%---------------------------
+
+\soxPanel{Bass}
+\begin{parameterTable}
+  \parameterTableLine
+                  {Mode}
+                  {the kind of the filter (here: \textbf{Bass})}
+                  {Bass / Treble}
+  \parameterTableLine{Gain}
+                     {gain of filter at 0Hz}
+                     {dB}
+  \parameterTableLine{Frequency}
+                     {the center frequency of the filter}
+                     {Hz}
+  \parameterTableLine{Bandwidth}
+                     {the bandwidth modulus of the filter}
+                     {---}
+  \parameterTableLine{Bandwidth Unit}
+                     {the bandwidth unit of the filter}
+                     {Frequency / Octaves / Quality / Butterworth}
+\end{parameterTable}
+
+This effect is a bass filter; by selecting the appropriate
+\embeddedCode{Filter Kind}, this effect boosts or cuts the bass
+(lower) frequencies of the audio using a two-pole shelving filter with
+a response similar to that of a standard hi-fi's tone-controls.  This
+is also known as shelving equalisation (EQ).
+
+The parameters are as follows:
+\begin{itemize}
+
+  \item \embeddedCode{Gain} gives the gain at 0Hz.  Its useful range
+    is about -20 (for a large cut) to +20 (for a large boost).  Beware
+    of clipping when using a positive gain.
+
+  \item \embeddedCode{Frequency} sets the filter's central frequency
+    and can be used to extend or reduce the frequency range to be
+    boosted or cut.
+
+  \item The band-width given by parameters \embeddedCode{Bandwidth}
+    and \embeddedCode{Bandwidth Unit} determines how steep is the
+    filter's shelf transition.  In addition to the common width
+    specification methods described above, ``slope'' may be used.  The
+    useful range of slope is about 0.3, for a gentle slope, to 1 (the
+    maximum), for a steep slope.
+
+\end{itemize}
+
+The detailed filter description can be found in
+\cite{reference:filter-cookbook}.
+
+%-----------------------------
+\clearpage
+\section{\SoX\ Biquad Filter}
+%-----------------------------
+
+\soxPanel{Biquad}
+\begin{parameterTable}
+  
+  \parameterTableLine{b0}{coefficient for \(x_{n}\)}{---}
+  \parameterTableLine{b1}{coefficient for \(x_{n-1}\)}{---}
+  \parameterTableLine{b2}{coefficient for \(x_{n-2}\)}{---}
+  \parameterTableLine{a0}{coefficient for \(y_{n}\)}{---}
+  \parameterTableLine{a1}{coefficient for \(y_{n-1}\)}{---}
+  \parameterTableLine{a2}{coefficient for \(y_{n-2}\)}{---}
+\end{parameterTable}
+
+This effect is a biquad IIR filter with the given
+coefficients (see \cite{reference:digitalBiquadFilter}).  It
+implements the (direct form) function
+\begin{equation*}
+   y_n = \sum_{i=0}^{2}b_ix_{n-i} - \sum_{i=1}^{2}a_iy_{n-i}
+\end{equation*}
+and is the basis for the other biquad filters (like e.g. the ``SoX
+Equalizer'').
+   
+The signal flow graph of the biquad filter is given in
+figure~\ref{figure:signalFlowBiquad} and implements the above equation.
+
+\signalFlowFigure{Biquad}{0.8}
+
+%-----------------------------
+\clearpage
+\section{\SoX\ Chorus}
+\label{section:effect-chorus}
+%-----------------------------
+
+\soxPanel{Chorus}
+\begin{parameterTable}
+  \parameterTableLine{Effect Kind}
+                     {the kind of the delay (here: \textbf{Chorus})}
+                     {\SoXChorusAndDelayKindList}
+  \parameterTableLine{In Gain}
+                     {the gain factor before processing}
+                     {---}
+  \parameterTableLine{Out Gain}
+                     {the gain factor applied after processing}
+                     {---}
+  \parameterTableLine{Time Offset}
+                     {the point in project time where modulation is at
+                      phase \degrees{0} (see \ref{section:timelocking})}
+                     {s}
+  \parameterTableLine{Stage Count}
+                     {the count of the delay stages}
+                     {---}
+  \parameterTableLine{Stage Index}
+                     {the index of the delay stage to be adapted}
+                     {---}
+  \rowcolor{parameterTableOtherBackgroundColor}
+  \multicolumn{3}{|l|}{\bf for each stage}\\\hline
+  \parameterTableLine{Delay}
+                     {the \emph{absolute} delay duration for that stage}
+                     {ms}
+  \parameterTableLine{Decay}
+                     {the decay factor for that stage}
+                     {---}
+  \parameterTableLine{Frequency}
+                     {the modulation frequency for that stage}
+                     {Hz}
+  \parameterTableLine{Depth}
+                     {the modulation depth for that stage}
+                     {ms}
+  \parameterTableLine{Waveform}
+                     {the modulation waveform for that stage}
+                     {Sine / Triangle}
+\end{parameterTable}
+
+This effect is a variant of the plugin \embeddedCode{SoxChorusAndEcho}
+and implements a modulated tapped delay (a ``chorus'') for the audio.
+
+\embeddedCode{In Gain} is the amplification factor for the input.
+\embeddedCode{Out Gain} is the amplification factor of the output.
+
+Because this effect uses a several modulations there is a parameter
+\embeddedCode{Time Offset} locking those modulators to a given start
+time i.e. this effect is \emph{time-locked}.  For details refer to
+section~\ref{section:timelocking}.
+
+\embeddedCode{Stage Count} gives the number of stages in the delay,
+i.e. pairs of (delay, decay), which can be set to the desired number,
+where the maximum is 10.  \embeddedCode{Stage Index} selects the delay
+stage whose parameters shall be modified;
+note that it is possible to modify a stage only when its index is not
+ greater than the stage count.
+
+\embeddedCode{Delay} gives the delay in milliseconds for the selected
+delay stage, \embeddedCode{Decay} a factor for the decay of that delay
+stage.  \embeddedCode{Frequency} gives the frequency of the delay
+modulation in Hz and \embeddedCode{Depth} specifies the amplitude of
+the modulation in milliseconds.  Possible waveforms are sine or
+triangle and can be specified by \embeddedCode{Waveform Kind}.
+
+The signal flow graph of the chorus is given in
+figure~\ref{figure:signalFlowChorus}: The input signal is amplified by
+\embeddedCode{inGain} and then flows to the aggregate summation as
+well as to each chorus stage.  Each stage delays the signal by
+\embeddedCode{delay\({}_i\)} modulated by \embeddedCode{depth\({}_i\)}
+with \embeddedCode{frequency\({}_i\)} and finally amplifies the result
+by \embeddedCode{decay\({}_i\)} and also feeds it to the summation.
+The summation result is amplified by \embeddedCode{outGain} and fed to
+the output of the effect.
+
+\signalFlowFigure{Chorus}{0.8}
+
+Note that there is an (unchecked!) recommendation to have
+\begin{equation*}
+    inGain \times \sum_i decay_i > \frac{1}{outGain}
+\end{equation*}
+
+%-----------------------------
+\clearpage
+\section{\SoX\ Compand}
+\label{section:effect-compand}
+%-----------------------------
+
+\soxPanel{Compand}
+\begin{parameterTable}
+  \parameterTableLine{Band Count}
+                     {the count of the bands (here: \textbf{1})}
+                     {---}
+  \parameterTableLine{Band Index}
+                     {the index of the band to be adapted (here:
+                      \textbf{1})}
+                     {---}
+  \parameterTableLine{Attack}
+                     {the attack time of the compander}
+                     {s}
+  \parameterTableLine{Decay}
+                     {the decay time of the compander}
+                     {s}
+  \parameterTableLine{Knee}
+                     {the rounding of the corners in the
+                      transfer function}
+                     {dB}
+  \parameterTableLine{Threshold}
+                     {the threshold of the compander}
+                     {dBFS}
+  \parameterTableLine{Ratio}
+                     {the compression factor of the compander}
+                     {---}
+  \parameterTableLine{Gain}
+                     {the compander gain before processing}
+                     {dB}
+  \parameterTableLine{Top Frequency}
+                     {the compander band top frequency (for all
+                      but the last active band)}
+                     {Hz}
+\end{parameterTable}
+
+This effect implements a compander to compress or expand the dynamic
+range of the audio.  A compander and multiband compander are both
+variants of the plugin \embeddedCode{SoXCompander} where a simple
+compander is a multiband compander with just one band.
+
+\embeddedCode{Band Count} tells the number of bands in a multiband
+compander, for a single band compander this must be set to 1.
+\embeddedCode{Band Index} selects the band whose parameters shall be
+modified, for a single band compander this also must be set to 1,
+because there is only one active band.
+
+The parameters \embeddedCode{Attack} and \embeddedCode{Decay} (in
+seconds) determine the time over which the instantaneous level of the
+input signal is averaged to determine its volume; attacks refer to
+increases in volume and decays refer to decreases. For most
+situations, the attack time (response to the music getting louder)
+should be shorter than the decay time because the human ear is more
+sensitive to sudden loud music than sudden soft music.  Typical values
+are 0.3s for attack and 0.8s for decay.
+
+The transfer function of the compander is given by parameters
+\embeddedCode{Threshold}, \embeddedCode{Ratio} and
+\embeddedCode{Knee}.  The compander leaves the original level
+unchanged, when it is below threshold and compresses it by ratio
+beyond this threshold.  So e.g. for a threshold of 20dBFS, a knee of
+0dB and a ratio of 4:1 the transfer function is a graph shown in
+figure~\ref{figure:transferFunction}.  Note that for technical reasons
+\SoX\ uses a linear lead-in segment with size 10dB below threshold
+value.
+
+\begin{centeredFigure}
+  \centeredExternalPicture{1.0}{SoX-A-transferFunction.png}
+  \caption{Example Transfer Function (Threshold 20dBFS, Ratio~4:1)}
+  \label{figure:transferFunction}
+\end{centeredFigure}
+
+If the parameter \embeddedCode{Knee} is greater than 0, the corner
+points of the transfer function will be rounded by that amount.
+
+The parameter \embeddedCode{Gain} is an additional gain in dB to be
+applied at all points on the transfer function and allows easy
+adjustment of the overall gain.
+
+As mentioned before the compander is a multiband compander with one
+band; hence the setting for the \embeddedCode{Top Frequency} is not
+used.
+
+\restriction{Only one overall pair of attack/decay parameters may be
+  specified (where \SoX\ allows one pair per channel). This is in
+  principle supported by the effects engine of \SoXPlugins, but not
+  supported in the current user interface.}
+\restriction{The original \SoX\ allows an arbitrary multi-segmented
+  transfer function.  This is in principle supported by the effects
+  engine of \SoXPlugins, but not supported in the current user
+  interface.}
+\restriction{There is no delay parameter for delayed compansion.}
+
+%----------------------
+\clearpage
+\section{\SoX\ Echo}
+%----------------------
+
+\soxPanel{Echo}
+\begin{parameterTable}
+  \parameterTableLine{Effect Kind}
+                     {the kind of the delay (here: \textbf{Tapped Delay})}
+                     {\SoXChorusAndDelayKindList}
+  \parameterTableLine{In Gain}
+                     {the gain factor before processing}
+                     {---}
+  \parameterTableLine{Out Gain}
+                     {the gain factor applied after processing}
+                     {---}
+  \parameterTableLine{Stage Count}
+                     {the count of the delay stages}
+                     {---}
+  \parameterTableLine{Stage Index}
+                     {the index of the delay stage to be adapted}
+                     {---}
+  \rowcolor{parameterTableOtherBackgroundColor}
+  \multicolumn{3}{|l|}{\bf for each stage}\\\hline
+  \parameterTableLine{Delay}
+                     {the \emph{absolute} delay duration for that stage}
+                     {ms}
+  \parameterTableLine{Decay}
+                     {the decay factor for that stage}
+                     {---}
+\end{parameterTable}
+
+This effect is a variant of the plugin \embeddedCode{SoxChorusAndEcho}
+and implements a tapped delay for the audio.
+
+\embeddedCode{In Gain} is the amplification factor for the input.
+\embeddedCode{Out Gain} is the amplification factor of the output.
+
+\embeddedCode{Stage Count} gives the number of stages in the delay,
+i.e. pairs of (delay, decay), which can be set to the desired number,
+where the maximum is 10.  \embeddedCode{Stage Index} selects the delay
+stage whose parameters shall be modified;
+note that it is possible to modify a stage only when its index is not
+ greater than the stage count.
+
+\embeddedCode{Delay} gives the delay in milliseconds for the selected
+delay stage, \embeddedCode{Decay} a factor for the decay of that delay
+stage.
+
+The signal flow graph of the delay in sequence is given in
+figure~\ref{figure:signalFlowEcho}: The input signal is amplified by
+\embeddedCode{inGain} and then flows to the aggregate summation as
+well as to each stage.  Each stage delays the signal by
+\embeddedCode{delay\({}_i\)}, amplifies the result by
+\embeddedCode{decay\({}_i\)} and also feeds it to the summation.  The
+summation result is amplified by \embeddedCode{outGain} and fed to the
+output of the effect.
+
+\signalFlowFigure{Echo}{0.8}
+
+Note that there is an (unchecked!) recommendation to have
+\begin{equation*}
+    inGain \times \sum_i decay_i > \frac{1}{outGain}
+\end{equation*}
+
+%----------------------
+\clearpage
+\section{\SoX\ Echos}
+%----------------------
+
+\soxPanel{Echos}
+\begin{parameterTable}
+  \parameterTableLine{Effect Kind}
+                     {the kind of the delay (here: \textbf{Delay Sequence})}
+                     {\SoXChorusAndDelayKindList}
+  \parameterTableLine{In Gain}
+                     {the gain factor applied to the input before
+                      summation}
+                     {---}
+  \parameterTableLine{Out Gain}
+                     {the gain factor applied after processing}
+                     {---}
+  \parameterTableLine{Stage Count}
+                     {the count of the delay stages}
+                     {---}
+  \parameterTableLine{Stage Index}
+                     {the index of the stage to be adapted}
+                     {---}
+  \rowcolor{parameterTableOtherBackgroundColor}
+  \multicolumn{3}{|l|}{\bf for each stage}\\\hline
+  \parameterTableLine{Delay}
+                     {the \emph{absolute} delay duration for that stage}
+                     {ms}
+  \parameterTableLine{Decay}
+                     {the decay factor for that stage}
+                     {---}
+\end{parameterTable}
+
+This effect is a variant of the plugin \embeddedCode{SoxChorusAndEcho}
+and implements a sequential delay for the audio.
+
+\embeddedCode{In Gain} is the amplification factor for the input
+before going into summation (see signal flow graph), \embeddedCode{Out
+Gain} is the amplification factor of the output.
+
+\embeddedCode{Stage Count} gives the number of stages in the delay,
+i.e. pairs of (delay, decay), which can be set to the desired number,
+where the maximum is 10.  \embeddedCode{Stage Index} selects the delay
+stage whose parameters shall be modified;
+note that it is possible to modify a stage only when its index is not
+ greater than the stage count.
+
+\embeddedCode{Delay} gives the delay in milliseconds for the selected
+delay stage, \embeddedCode{Decay} a factor for the decay of that delay
+stage.
+
+The signal flow graph of the delay in sequence is given in
+figure~\ref{figure:signalFlowEchos}: The input signal is amplified by
+\embeddedCode{inGain} and then flows to the aggregate summation and
+each stage.  Each stage delays the signal by \embeddedCode{delay\({}_i\)},
+amplifies the result by \embeddedCode{decay\({}_i\)} and also feeds it
+to the summation.  The summation result is amplified by
+\embeddedCode{outGain} and fed to the output of the effect.
+
+\signalFlowFigure{Echos}{0.8}
+
+Note that there is an (unchecked!) recommendation to have
+\begin{equation*}
+    inGain \times \sum_i decay_i > \frac{1}{outGain}
+\end{equation*}
+
+%--------------------------------
+\clearpage
+\section{\SoX\ Equalizer Filter}
+%--------------------------------
+
+\soxPanel{Equalizer}
+\begin{parameterTable}
+  
+  \parameterTableLine{Frequency}
+                     {the 3dB point frequency of the filter}
+                     {Hz}
+  \parameterTableLine{Bandwidth}
+                     {the bandwidth modulus of the filter}
+                     {---}
+  \parameterTableLine{Bandwidth Unit}
+                     {the bandwidth unit of the filter}
+                     {Frequency / Octaves / Quality / Butterworth}
+  \parameterTableLine{Eq. Gain}
+                     {gain of filter at frequency}
+                     {dB}
+\end{parameterTable}
+
+This effect is a two-pole peaking equalisation (EQ) filter.
+With this filter, the signal-level at and around a selected frequency
+can be increased or decreased, whilst (unlike band-pass and
+band-reject filters) that at all other frequencies is unchanged.
+
+The parameter \embeddedCode{Frequency} gives the filter's central
+frequency in Hz, parameters \embeddedCode{Bandwidth} and
+\embeddedCode{Bandwidth Unit} the bandwidth and \embeddedCode{Gain}
+the required amplification or attenuation in decibels.  Beware of
+clipping when using a positive gain.
+
+The filter is described in detail in \cite{reference:filter-cookbook}.
+
+%--------------------
+\clearpage
+\section{\SoX\ Gain}
+%--------------------
+
+\soxPanel{Gain}
+\begin{parameterTable}
+  \parameterTableLine{Gain}
+                     {the amplification or attenuation factor}
+                     {dB}
+\end{parameterTable}
+
+This effect is an amplifier or attenuator for the audio signal with a
+single \embeddedCode{Gain} parameter in decibels.  The gain factor
+applies to all channels identically.
+
+Nothing special, but note that the calculation is exact, hence a gain
+of -6dB does \emph{not} halve the signal (but a gain of -6.0206dB
+does quite well).
+
+%-------------------------------
+\clearpage
+\section{\SoX\ Highpass Filter}
+%-------------------------------
+
+\soxPanel{Highpass}
+\begin{parameterTable}
+  \parameterTableLine
+                  {Mode}
+                  {the kind of the filter (here: \textbf{HighPass})}
+                  {HighPass / LowPass}
+  \parameterTableLine{Number of Poles}
+                     {selects between single and double pole filter}
+                     {single/double}
+  \parameterTableLine{Frequency}
+                     {the 3dB point frequency of the filter}
+                     {Hz}
+  \parameterTableLine{Bandwidth}
+                     {the bandwidth modulus of the filter}
+                     {---}
+  \parameterTableLine{Bandwidth Unit}
+                     {the bandwidth unit of the filter}
+                     {Frequency / Octaves / Quality / Butterworth}
+\end{parameterTable}
+
+This effect is a high-pass filter with a 3dB point
+\embeddedCode{Frequency}.  Depending on \embeddedCode{Number of Poles}
+the filter can be either single-pole or double-pole.  The parameters
+\embeddedCode{Bandwidth} and \embeddedCode{Bandwidth Unit} apply only
+to double-pole filters; a Butterworth response is given by butterworth
+selection or by a q of 0.707.  The filters roll off at 6dB per pole
+per octave (20dB per pole per decade).
+
+The double-pole filters are described in detail in
+\cite{reference:filter-cookbook}.
+
+%------------------------------
+\clearpage
+\section{\SoX\ Lowpass Filter}
+%------------------------------
+
+\soxPanel{Lowpass}
+\begin{parameterTable}
+  \parameterTableLine
+                  {Mode}
+                  {the kind of the filter (here: \textbf{LowPass})}
+                  {HighPass / LowPass}
+  \parameterTableLine{Number of Poles}
+                     {selects between single and double pole filter}
+                     {single/double}
+  \parameterTableLine{Frequency}
+                     {the 3dB point frequency of the filter}
+                     {Hz}
+  \parameterTableLine{Bandwidth}
+                     {the bandwidth modulus of the filter}
+                     {---}
+  \parameterTableLine{Bandwidth Unit}
+                     {the bandwidth unit of the filter}
+                     {Frequency / Octaves / Quality / Butterworth}
+\end{parameterTable}
+
+This effect is a low-pass filter with a 3dB point
+\embeddedCode{Frequency}.  Depending on \embeddedCode{Number of Poles}
+the filter can be either single-pole or double-pole.  The parameters
+\embeddedCode{Bandwidth} and \embeddedCode{Bandwidth Unit} apply only
+to double-pole filters; a Butterworth response is given by butterworth
+selection or by a q of 0.707.  The filters roll off at 6dB per pole
+per octave (20dB per pole per decade).
+
+The double-pole filters are described in detail in
+\cite{reference:filter-cookbook}.
+
+%------------------------
+\clearpage
+\section{\SoX\ MCompand}
+%------------------------
+
+\soxPanel{MCompand}
+\begin{parameterTable}
+  \parameterTableLine{Band Count}
+                     {the count of the bands}
+                     {---}
+  \parameterTableLine{Band Index}
+                     {the index of the band to be adapted}
+                     {---}
+  \rowcolor{parameterTableOtherBackgroundColor}
+  \multicolumn{3}{|l|}{\bf for each band}\\\hline
+  \parameterTableLine{Attack}
+                     {the attack time of the compander band}
+                     {s}
+  \parameterTableLine{Decay}
+                     {the decay time of the compander band}
+                     {s}
+  \parameterTableLine{Knee}
+                     {the rounding of the corners in the transfer
+                      function}
+                     {dB}
+  \parameterTableLine{Threshold}
+                     {the threshold of the compander band}
+                     {dBFS}
+  \parameterTableLine{Ratio}
+                     {the compression factor of the compander band}
+                     {---}
+  \parameterTableLine{Gain}
+                     {the compander band gain before processing}
+                     {dB}
+  \parameterTableLine{Top Frequency}
+                     {the compander band top frequency (for all
+                      but the last active band)}
+                     {Hz}
+\end{parameterTable}
+
+Compander and multiband compander are both variants of the plugin
+\embeddedCode{SoXCompander} where a simple compander is a multiband
+compander with just one band.  For a general multi-band compander the
+audio is first divided into bands using Linkwitz-Riley cross-over
+filters and later separately specifiable compander run on every band
+(see the compand effect in~\ref{section:effect-compand} for the
+definition of its parameters).
+
+\embeddedCode{Band Count} gives the number of bands in a multiband
+compander which can be set to the desired number, where the maximum is
+10.  \embeddedCode{Band Index} selects the band whose parameters shall
+be modified; note that it is possible to modify a band only when its index is not
+ greater than the band count.
+
+\restriction{Only one overall pair of attack/decay parameters may be
+  specified per band (where \SoX\ allows one pair per channel). This is
+  in principle supported by the effects engine of \SoXPlugins, but not
+  supported in the current user interface.}
+\restriction{The original \SoX\ allows an arbitrary multi-segmented
+  transfer function.  This is in principle supported by the effects
+  engine of \SoXPlugins, but not supported in the current user
+  interface.}
+\restriction{There is no delay parameter for delayed compansion.}
+
+%-------------------------
+\clearpage
+\section{\SoX\ Overdrive}
+%-------------------------
+
+\soxPanel{Overdrive}
+\begin{parameterTable}
+  \parameterTableLine{Gain}
+                     {the overdrive gain before processing}
+                     {dB}
+  \parameterTableLine{Colour}
+                     {percentage for the amount of even harmonic
+                      content in output}
+                     {---}
+\end{parameterTable}
+
+This effect implements an tanh overdrive.  \embeddedCode{Gain} gives
+the input gain in decibels, the parameter \embeddedCode{Colour}
+controls the amount of even harmonic content in the overdriven
+output.
+
+%----------------------
+\clearpage
+\section{\SoX\ Phaser}
+%----------------------
+
+\soxPanel{Phaser}
+\begin{parameterTable}
+  \parameterTableLine{Effect Kind}
+                     {the kind of the modulation (here: \textbf{Phaser})}
+                     {\SoXPTKindList}
+  \parameterTableLine{In Gain}
+                     {the gain factor before processing}
+                     {---}
+  \parameterTableLine{Out Gain}
+                     {the gain factor applied after processing}
+                     {---}
+  \parameterTableLine{Delay}
+                     {the predelay of the effect}
+                     {ms}
+  \parameterTableLine{Decay}
+                     {the decay factor of the phaser}
+                     {---}
+  \parameterTableLine{Frequency}
+                     {the phaser modulation frequency}
+                     {Hz}
+  \parameterTableLine{Waveform}
+                     {the modulation waveform}
+                     {Sine / Triangle}
+  \parameterTableLine{Time Offset}
+                     {the point in project time where modulation is at
+                      phase \degrees{0} (see \ref{section:timelocking})}
+                     {s}
+\end{parameterTable}
+
+This effect is a phaser effect to the
+audio.
+
+\embeddedCode{In Gain} is the amplification factor for the input.
+\embeddedCode{Delay} gives the delay in milliseconds,
+\embeddedCode{Decay} a factor for the decay within the phaser and
+\embeddedCode{Frequency} gives the modulation frequency in Hz. The
+\embeddedCode{Waveform} of the modulation is either sinusoidal
+—--~preferable for multiple instruments~--- or triangular —--~gives
+single instruments a sharper phasing effect~---.  \embeddedCode{Out
+    Gain} is the amplification factor of the output.
+
+The decay should be less than 0.5 to avoid feedback, and usually no
+less than~0.1.  The (unchecked!) recommendation is to have
+\begin{align*}
+  in\_gain  &< 1 - decay^2\\
+  out\_gain &< \frac{1 - decay}{in\_gain}\\
+\end{align*}
+
+The parameter \embeddedCode{Time Offset} shows that this effect is
+time-locked.  For details refer to section~\ref{section:timelocking}.
+
+%----------------------
+\clearpage
+\section{\SoX\ Reverb}
+%----------------------
+
+\soxPanel{Reverb}
+\begin{parameterTable}
+  \parameterTableLine{Is Wet Only?}
+                     {tells whether only the wet signal should by produced}
+                     {Boolean}
+  \parameterTableLine{Reverberance}
+                     {percentage for reverb density}
+                     {---}
+  \parameterTableLine{HF Damping}
+                     {percentage amount of damping of high frequencies
+                      for every reflection relative to low frequencies}
+                     {---}
+  \parameterTableLine{Room Scale}
+                     {percentage for size of the room
+                      (more precisely the reflectivity of the room)}
+                     {---}
+  \parameterTableLine{Stereo Depth}
+                     {percentage amount of stereo effect}
+                     {---}
+  \parameterTableLine{Predelay}
+                     {time offset until first reverb occurs}
+                     {ms}
+  \parameterTableLine{Wet Gain}
+                     {gain of wet signal relative to dry signal}
+                     {dB}
+\end{parameterTable}
+
+This effect implements reverberation of audio using the ``freeverb''
+algorithm, which uses eight parallel Schröder-Moorer filtered-feedback
+comb-filters followed by four Schröder allpasses in series.
+
+Details on this algorithm can be found in \cite{reference:freeverb}.
+
+%-----------------------------
+\clearpage
+\section{\SoX\ Treble Filter}
+%-----------------------------
+
+\soxPanel{Treble}
+\begin{parameterTable}
+  \parameterTableLine
+                  {Mode}
+                  {the kind of the filter (here: \textbf{Treble})}
+                  {Bass / Treble}
+  \parameterTableLine{Gain}
+                     {gain of filter at 22kHz}
+                     {dB}
+  \parameterTableLine{Frequency}
+                     {the center frequency of the filter}
+                     {Hz}
+  \parameterTableLine{Bandwidth}
+                     {the bandwidth modulus of the filter}
+                     {---}
+  \parameterTableLine{Bandwidth Unit}
+                     {the bandwidth unit of the filter}
+                     {Frequency / Octaves / Quality / Butterworth}
+\end{parameterTable}
+
+This effect is a treble filter; by selecting the appropriate
+\embeddedCode{Filter Kind}, this effect boosts or cuts the treble
+(upper) frequencies of the audio using a two-pole shelving filter with
+a response similar to that of a standard hi-fi's tone-controls.  This
+is also known as shelving equalisation (EQ).
+
+The parameters are as follows:
+\begin{itemize}
+
+  \item \embeddedCode{Gain} gives the gain at a frequency whichever is
+    the lower of 22kHz and the Nyquist frequency.  Its useful range is
+    about -20 (for a large cut) to +20 (for a large boost).  Beware of
+    clipping when using a positive gain.
+
+  \item \embeddedCode{Frequency} sets the filter's central frequency
+    and can be used to extend or reduce the frequency range to be
+    boosted or cut.
+
+  \item The band-width given by parameters \embeddedCode{Bandwidth}
+    and \embeddedCode{Bandwidth Unit} determines how steep is the
+    filter's shelf transition.  In addition to the common width
+    specification methods described above, ``slope'' may be used.  The
+    useful range of slope is about 0.3, for a gentle slope, to 1 (the
+    maximum), for a steep slope.
+
+\end{itemize}
+
+The detailed filter description can be found in
+\cite{reference:filter-cookbook}.
+
+%-----------------------
+\clearpage
+\section{\SoX\ Tremolo}
+%-----------------------
+
+\soxPanel{Tremolo}
+\begin{parameterTable}
+  \parameterTableLine{Effect Kind}
+                     {the kind of the modulation (here: \textbf{Tremolo})}
+                     {\SoXPTKindList}
+  \parameterTableLine{Frequency}
+                     {the modulation frequency of the tremolo}
+                     {Hz}
+  \parameterTableLine{Depth}
+                     {percentage value for the intensity of modulation}
+                     {---}
+  \parameterTableLine{Time Offset}
+                     {the point in project time where modulation is at
+                      phase \degrees{0} (see \ref{section:timelocking})}
+                     {s}
+\end{parameterTable}
+
+This effect is a tremolo effect.  This
+tremolo is done by signal multiplication; hence it is a low frequency
+double sideband suppressed carrier modulation.  Parameter
+\embeddedCode{Frequency} gives the tremolo frequency,
+\embeddedCode{Depth} gives the intensity as a percentage.
+
+\embeddedCode{Time Offset} shows that this effect is time-locked.  For
+details refer to section~\ref{section:timelocking}.
+
+
+%--------------------------
+\clearpage
+\section{Timelocking}
+\label{section:timelocking}
+%--------------------------
+
+There are effects that behave differently in time, technically they
+are \emph{time-variant}.  A filter does not care \emph{when} a signal
+arrives, but a modulated effect like e.g. a phaser produces a
+different sound for different start times because the modulation is
+normally in another phase.
+
+Hence when looking at the behaviour at a specific point in time, those
+time-variant effects would behave differently when the effect start
+time were varied.
+
+For example, assume a phaser with a 0.25Hz modulation (one cycle every
+4s): when you start the effect 1s later, its modulation is now off by
+\degrees{90}.  This is not helpful when the effect now depends on
+start time or loop positioning.
+
+To circumvent this problem, all time variant effects from above
+(phaser and tremolo) are \emph{time-locked} i.e. they check the
+current play position and always behave the same at some specific
+point in time regardless of the playback start time.
+
+Additionally those effects have a parameter called
+\embeddedCode{Time Offset}.  This parameter tells at what time the
+effect has a phase of zero in its modulation.  The default is 0s,
+but it may be adapted accordingly.
+
+Take the phaser above and assume you want to make sure that its
+modulation is exactly at \degrees{0} at position 155s within your
+song\footnote{This is a little lie, because the initial phaser
+modulation phase is \degrees{90}, but the argument is still valid.}.
+Then you just set \embeddedCode{Time Offset} to ``155''.  Because the
+period of the modulation is 4s it is also okay to use \(155+4k, k\in
+\Z\) as offset (e.g. ``3''), but the above saves you from some
+calculation for complicated modulation frequencies.
+
+By this method even time-variant effects can be synced with
+externally generated audio material.
+
+
+%==================================================
+\chapter{Additional Tools}
+%==================================================
+
+For the analysis of the plugins one can use the stock plugins from
+Reaper, e.g. the spectrum analyzer \embeddedCode{gfxanalyzer}.
+
+While this plugin is very helpful, unfortunately there is no really
+good oscilloscope available with parallel lanes and a precise time
+axis.  Hence this is added to the plugin suite.
+
+%----------------------
+\section{Oscilloscope}
+%----------------------
+
+\panel{0.5}{SoX-J-oscilloscope.png}
+      {Oscilloscope with Parallel Lanes}{oscilloscope}
+\begin{parameterTable}
+  \parameterTableLine{Time Offset}
+                     {the offset between the start of the recording
+                      and the left position of the oscilloscope
+                      window}
+                     {s}
+  \parameterTableLine{Time Range}
+                     {the displayed time range in the oscilloscope
+                      window}
+                     {s}
+  \parameterTableLine{Zoom Factor}
+                     {the magnification factor for the signals in the
+                      window}
+                     {dB}
+  \parameterTableLine{Lane Count}
+                     {the number of parallel lanes displayed}
+                     {---}
+\end{parameterTable}
+
+The oscilloscope is based on Cockos' gfxscope, but, in contrast, it
+allows the parallel display of several signal lanes (either 1, 2, 3 or
+4) where the number of parallel lanes can be selected via a context
+menu on the menu button \embeddedCode{Lane Count}.
+
+There is a fixed assignment of channels to the lanes: lane 1 displays
+track channels 1 and 2, lane 2 track channels 3 and 4 and so on.  Both
+stereo channels are overlaid in the lane and encoded with different
+colors.
+
+All lanes have a vertical grid with an adaptive dB scaling. The
+displayed signals may be amplified or attenuated by some magnification
+factor set by the button \embeddedCode{Zoom}.  The button has a
+context menu (with a ten decibels resolution), but its value can also
+be changed by dragging the mouse on that menu button, by a vertical
+mouse drag within the oscilloscope window or by using the mouse wheel
+with the SHFT-key pressed.  When the CTRL-key is pressed during
+dragging, its sensitivity is reduced for a finer control.  A
+double-click on that menu button sets its value to the default of 0dB.
+
+The time resolution of the window can be set by the menu button
+\embeddedCode{Time Range}.  The button has a context menu with decadic
+values, but for a finer setting also a mouse drag can be done on the
+button.  Also a horizontal mouse drag with the SHIFT-key pressed
+changes that value. A double-click on that menu button sets the value
+to the default of the maximum available time range (typically about
+20s).
+
+The oscilloscope records the signals for several seconds (depending on
+the sample rate, typically 20s for 44.1kHz) and the internal sample
+buffer is reset as soon as playback is started.  Samples are kept, but
+subsequently rolled out in a fifo fashion when the buffer is full.
+Note that the start time of the recording is always displayed as the
+leftmost position on the horizontal axis of the window (in the unit
+``samples'' on the top margin and in the unit ``seconds'' on the
+bottom margin).
+
+To have a look within the recorded signals it is possible to shift the
+displayed start time relative to the start position by setting the
+menu button \embeddedCode{Time Offset}.  This can be done via a
+context menu of the button (with half a second resolution), via
+dragging on the button, by a horizontal mouse drag within the
+oscilloscope window or by using the mouse wheel.  A double-click on
+the button resets the offset to the default of zero.
+
+%=============================
+\chapter{Regression Test}
+\label{section:regressionTest}
+%=============================
+
+To test that the effects of \SoXPlugins\ really are bit-identical to
+\SoX, a little test suite has been set up for checking DAW versus the
+command-line.
+
+The suite assumes that command-line \SoX\ is installed in the search
+path of your operating system.
+
+If so, a simple batch script sets up raw audio test files and
+---~externally via the command line~--- applies \SoX\ effects to them
+producing audio result files.  The parameters used are a bit exotic to
+ensure that algorithmic differences between \SoX\ and
+\SoXPlugins\ will show up.  The batch script can be found in the
+\embeddedCode{test} subdirectory and is called
+\embeddedCode{makeTestFiles.bat} (for Windows) or
+\embeddedCode{makeTestFiles.sh} (for MacOS and Linux).
+
+Since there are so many DAWs available, it is hard to provide a test
+project for each of those.  The distribution just contains a Reaper
+project referencing those audio test files and result files in
+autonomous tracks (see figure~\ref{figure:regressionTestSetup}).
+Adaption to other DAWs should be straightforward.
+
+The \SoXPlugins\ effects are configured with the exactly the same
+parameters as given in the batch file and are correspondingly applied
+to the raw audio test files.
+
+\begin{centeredFigure}
+  \centeredExternalPicture{0.4}{SoX-A-regressionTest.png}
+  \caption{Regression Test Setup in Reaper}
+  \label{figure:regressionTestSetup}
+\end{centeredFigure}
+
+When subtracting the rendered audio in Reaper and the externally
+rendered audio from \SoX, they (almost) cancel out.  This can be
+checked by a spectrum analyser in the master channel, which is shown
+in figure~\ref{figure:regressionTestNoiseFloor}.  It shows a noise
+floor of typically less than -120dB.
+
+Surprisingly the tracks do not completely cancel out, but this comes
+from rounding or precision errors ---~\SoX\ often uses 32bit integer
+processing, while the \SoXPlugins\ always use double precision
+floating point processing~--- and also the 24~bit sample depth used in
+the FLAC files of the test suite; increasing that sample depth would
+even lead to less residual noise.
+
+\begin{centeredFigure}
+  \centeredExternalPicture{0.5}{SoX-A-noiseFloor.png}
+  \caption{Example Noise Floor for Regression Test in Reaper}
+  \label{figure:regressionTestNoiseFloor}
+\end{centeredFigure}
+
+
+
+%===========================================
+\begin{thebibliography}{REAPLUGSXX}
+\addcontentsline{toc}{chapter}{Bibliography}
+%===========================================
+
+
+
+  \bibitem[DBIQFILT]{reference:digitalBiquadFilter}
+    Wikipedia.\\
+    \textit{Digital Biquad Filter.}\\
+    \hyperlink{http://en.wikipedia.org/wiki/Digital\_biquad\_filter}
+    
+
+
+  \bibitem[FREEVERB]{reference:freeverb}
+    J. O. Smith.\\
+    \textit{Physical Audio Signal Processing.}\\
+    W3K Publishing, 2010, ISBN 978-0-9745607-2-4.\\
+    \hyperlink{https://ccrma.stanford.edu/\textasciitilde
+               jos/pasp/Freeverb.html}
+
+  \bibitem[JSFXSoX]{reference:jsfxSoxRepository}
+    Dr. Thomas Tensi.\\
+    \textit{\SoX\ Plugins for Reaper DAW in JSFX Language.}\\
+    \hyperlink{https://github.com/prof-spock/JSFX-SoX-Plugins}
+
+  \bibitem[REAPACK]{reference:reapack}
+    Christian Fillion.\\
+    \textit{ReaPack: Package manager for REAPER.}\\
+    \hyperlink{https://reapack.com}
+
+  \bibitem[REAPER]{reference:reaper}
+    Cockos Incorporated.\\
+    \textit{Reaper Digital Audio Workstation.}\\
+    \hyperlink{https://www.reaper.fm}
+
+  \bibitem[REAPLUGS]{reference:reaplugs}
+    Cockos Incorporated.\\
+    \textit{ReaPlugs VST FX Suite.}\\
+    \hyperlink{https://www.reaper.fm/reaplugs}
+    
+  \bibitem[RBJFILT]{reference:filter-cookbook}
+    R. Bristow-Johnson.\\
+    \textit{Cookbook formulae for audio EQ biquad filter coefficients.}\\
+    \hyperlink{https://www.w3.org/2011/audio/audio-eq-cookbook.html}
+
+  \bibitem[SoXDOC]{reference:soxDocumentation}
+    Chris Bagwell, Lance Norskog, Måns Rullgård et al.\\
+    \textit{SoX - SOund eXchange - Documentation}.\\
+    \hyperlink{http://sox.sourceforge.net/Docs/Documentation}
+
+  \bibitem[SoXNG]{reference:soxDocumentationB}
+    Martin W. Guy.\\
+    \textit{SoX NG}.\\
+    \hyperlink{https://codeberg.org/sox\_ng/sox\_ng}
+
+
+
+\end{thebibliography}
+\end{document}

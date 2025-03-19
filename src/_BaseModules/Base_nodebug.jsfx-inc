@@ -1,0 +1,121 @@
+desc: Display utilities for disabled debugging
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+
+@init
+    //========================================
+    // Debugging routines, all empty
+    //========================================
+
+    function Debug_clear ()
+        /** Resets debugging output */
+    (
+        pass;
+    );
+
+    //--------------------
+
+    function Debug_print (st)
+        /** Prints <st> in debug matrix and advances cursor;
+            overprints last cell if necessary */
+    (
+        pass;
+    );
+
+    //--------------------
+
+    function Debug_print (format, value1, value2, value3, value4)
+        /** Prints <value1> to <value4> in debug matrix using <format>
+            and advances cursor; overprints last cell if necessary */
+    (
+        pass;
+    );
+
+    //--------------------
+
+    function Debug_print (format, value1, value2, value3)
+        /** Prints <value1> to <value3> in debug matrix using <format>
+            and advances cursor; overprints last cell if necessary */
+    (
+        pass;
+    );
+
+    //--------------------
+
+    function Debug_print (format, value1, value2)
+        /** Prints <value1> to <value2> in debug matrix using <format>
+            and advances cursor; overprints last cell if necessary */
+    (
+        pass;
+    );
+
+    //--------------------
+
+    function Debug_print (format, value1)
+        /** Prints <value1> in debug matrix using <format> and
+            advances cursor; overprints last cell if necessary */
+    (
+        pass;
+    );
+
+    //--------------------
+
+    function Debug_printIndented (indentationLevel, format,
+                                  value1, value2, value3, value4)
+        /** Prints <value1> to <value4> in debug matrix using <format>
+            with indentation given by <indentationLevel> and advances
+            cursor; overprints last cell if necessary */
+    (
+        pass;
+    );
+
+    //--------------------
+
+    function Debug_printIndented (indentationLevel, format,
+                                  value1, value2, value3)
+        /** Prints <value1> to <value3> in debug matrix using <format>
+            with indentation given by <indentationLevel> and advances
+            cursor; overprints last cell if necessary */
+    (
+        pass;
+    );
+
+    //--------------------
+
+    function Debug_printIndented (indentationLevel, format,
+                                  value1, value2)
+        /** Prints <value1> to <value2> in debug matrix using <format>
+            with indentation given by <indentationLevel> and advances
+            cursor; overprints last cell if necessary */
+    (
+        pass;
+    );
+
+    //--------------------
+
+    function Debug_printIndented (indentationLevel, format, value1)
+        /** Prints <value1> in debug matrix using <format> with
+            indentation given by <indentationLevel> and advances
+            cursor; overprints last cell if necessary */
+    (
+        pass;
+    );
+
+    //--------------------
+
+    function Debug_printIndented (indentationLevel, st)
+        /** Prints <st> in debug matrix with indentation given by
+            <indentationLevel> and advances cursor; overprints last
+            cell if necessary */
+    (
+        pass;
+    );
+
+    //--------------------
+
+    function Debug_handleKey (key)
+        /** Handles <key> */
+    (
+        pass;
+    );

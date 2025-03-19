@@ -1,0 +1,307 @@
+desc: fixed array routines
+// implements an array of fixed length starting at index 1 where
+// length is stored by the memory allocation itself (for bounds
+// checking)
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+//requires Base_memory.jsfx-inc
+//requires Base_string.jsfx-inc
+
+@init
+    //========================================
+
+    /** error codes */
+    FixedArray__errFIRST    = 999990;
+    FixedArray__errBadIndex = FixedArray__errFIRST + 0;
+    FixedArray__errNullPtr  = FixedArray__errFIRST + 1;
+
+    //====================
+    // PRIVATE ROUTINES
+    //====================
+
+    function FixedArray__positionIsOkay (self, position)
+        /** Checks whether <position> is in range of <self> */
+    (
+        0 < position && position <= self[-1]
+    );
+
+    //--------------------
+
+    function FixedArray__addressFAST (self, position)
+        /** Gets address of element in <self> at <position> (without
+            bounds checking) */
+    (
+        self + position - 1
+    );
+
+    //--------------------
+
+    function FixedArray__addressCHECKED (self, position)
+        /** Gets address of element in <self> at <position> (with
+            bounds checking) */
+        local (result)
+    (
+        result = infinity;
+
+        self == null ? (
+            signalError(FixedArray__errNullPtr);
+        ) : !FixedArray__positionIsOkay(self, position) ? (
+            signalError(FixedArray__errBadIndex);
+        ) : (
+            result = FixedArray__addressFAST(self, position);
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function FixedArray__getAtFAST (self, position)
+        /** Gets element in <self> at <position> (without bounds
+            checking) */
+    (
+        self[position - 1]
+    );
+
+    //--------------------
+
+    function FixedArray__getAtCHECKED (self, position)
+        /** Gets element in <self> at <position> (with bounds
+            checking) */
+        local (result)
+    (
+        result = -infinity;
+
+        self == null ? (
+            signalError(FixedArray__errNullPtr);
+        ) : !FixedArray__positionIsOkay(self, position) ? (
+            signalError(FixedArray__errBadIndex);
+        ) : (
+            result = FixedArray__getAtFAST(self, position);
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function FixedArray__fillFAST (self, value)
+        /** Fills <self> with entries of <value> */
+
+    (
+        Memory_set(self, self[-1], value);
+    );
+
+    //--------------------
+
+    function FixedArray__fillCHECKED (self, value)
+        /** Fills <self> with entries of <value> */
+
+    (
+        self == null ? (
+            signalError(FixedArray__errNullPtr);
+        ) : (
+            FixedArray__fillFAST(self, value);
+        );
+    );
+
+    //--------------------
+
+    function FixedArray__setAtFAST (self, position, value)
+        /** Sets element in <self> at <position> to <value> (without
+            bounds checking) */
+    (
+        self[position - 1] = value;
+    );
+
+    //--------------------
+
+    function FixedArray__setAtCHECKED (self, position, value)
+        /** Sets element in <self> at <position> to <value> (with
+            bounds checking) */
+    (
+        self == null ? (
+            signalError(FixedArray__errNullPtr);
+        ) : !FixedArray__positionIsOkay(self, position) ? (
+            signalError(FixedArray__errBadIndex);
+        ) : (
+            FixedArray__setAtFAST(self, position, value);
+        );
+    );
+
+    //====================
+    // EXPORTED ROUTINES
+    //====================
+
+    //--------------------
+    // con-/destruction
+    //--------------------
+
+    function FixedArray_make (length)
+        /** Makes a fixed self with <length> elements */
+        local (self)
+    (
+        self = Memory_allocate(length);
+        self
+    );
+
+    //--------------------
+
+    function FixedArray_destroy (self)
+        /** Frees memory for <self> */
+    (
+        Memory_free(self);
+    );
+
+    //--------------------
+    // property access
+    //--------------------
+
+    function FixedArray_address (self, position)
+        /** Gets address of element in <self> at <position> */
+        local (result)
+    (
+        isCheckedMode ? (
+            result = FixedArray__addressCHECKED(self, position);
+        ) : (
+            result = FixedArray__addressFAST(self, position);
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function FixedArray_getAt (self, position)
+        /** Gets element in <self> at <position> */
+        local (result)
+    (
+        isCheckedMode ? (
+            result = FixedArray__getAtCHECKED(self, position);
+        ) : (
+            result = FixedArray__getAtFAST(self, position);
+        );
+
+        result
+    );
+
+    //--------------------
+    // change
+    //--------------------
+
+    function FixedArray_fill (self, value)
+        /** Fills <self> with entries of <value> */
+
+    (
+        isCheckedMode ? (
+            FixedArray__fillCHECKED(self, value);
+        ) : (
+            FixedArray__fillFAST(self, value);
+        );
+    );
+
+    //--------------------
+
+    function FixedArray_clear (self)
+        /** Clears <self> to zero entries */
+    (
+        FixedArray_fill(self, 0);
+    );
+
+    //--------------------
+
+    function FixedArray_setAt (self, position, value)
+        /** Sets element in <self> at <position> to <value> */
+    (
+        isCheckedMode ? (
+            FixedArray__setAtCHECKED(self, position, value);
+        ) : (
+            FixedArray__setAtFAST(self, position, value);
+        );
+    );
+
+    //--------------------
+    // assignment
+    //--------------------
+
+    function FixedArray_assign (self, other)
+        /** Copies elements from <other> to <self> */
+        local (i length value)
+    (
+        self == null || other == null ? (
+            signalError(FixedArray__errNullPtr);
+        ) : (
+            length = other[-1];
+            i = 1;
+
+            while (i <= length) (
+                value = FixedArray_getAt(other, i);
+                FixedArray_setAt(self, i, value);
+                i += 1;
+            );
+        );
+    );
+
+    //--------------------
+    // measurement
+    //--------------------
+
+    function FixedArray_length (self)
+        /** Gets length of <self> */
+        local (result)
+    (
+        self == null ? (
+            signalError(FixedArray__errNullPtr);
+            result = -infinity;
+        ) : (
+            result = self[-1];
+        );
+
+        result
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function FixedArray_toString (self, st,
+                                  maxCountOfDisplayedElements)
+        /** Converts <self> to string <st> with at most
+            <maxCountOfDisplayedElements> elements shown */
+        local (displayedLength element i length temp)
+    (
+        self == null ? (
+            String_copy(st, nullAsString);
+        ) : (
+            temp = String_make();
+            length = FixedArray_length(self);
+            displayedLength = min(length, maxCountOfDisplayedElements);
+            String_clear(st);
+            i = 1;
+
+            while (i <= displayedLength) (
+                element = FixedArray_getAt(self, i);
+                String_append(st, i > 1 ? ", " : "");
+                String_format(temp, "%f", element);
+                String_append(st, temp);
+                i += 1;
+            );
+
+            String_append(st, displayedLength < length ? ", ...)" : ")");
+            String_format(st, ", data = (%s)", st);
+            String_format(st, "FixedArray(length = %d%s)", length, st);
+
+            String_destroy(temp);
+        );
+    );
+
+    //--------------------
+
+    function FixedArray_toString (self, st)
+        /** Converts <self> to string <st> */
+    (
+        FixedArray_toString(self, st, 10);
+    );
+
+    //========================================

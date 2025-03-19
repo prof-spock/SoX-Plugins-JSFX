@@ -1,0 +1,263 @@
+desc: generic memory routines
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+
+@init
+    //========================================
+
+    null = 0;
+
+    /** structure type definition: Memory__ListElement */
+    Memory__ListElement_SIZE = 3;
+    /** pointer to next list element */
+    Memory__ListElement_ATT_next     = 0;
+    /** pointer to previous list element */
+    Memory__ListElement_ATT_previous = 1;
+    /** length (in words) of current free block */
+    Memory__ListElement_ATT_length   = 2;
+
+    /** value for marking the addresses in secured area */
+    Memory__markerValue = 88888888;
+
+    Memory__firstUsedAddress = 100;
+
+    /** restore point for reallocations */
+    Memory__restorePoint_address  = 0;
+    Memory__restorePoint_length   = 0;
+    Memory__restorePoint_previous = 0;
+
+    //========================================
+
+    function Memory_initialize ()
+        /** Initializes free block list */
+        local (block firstBlock remainingSlots secondBlock)
+    (
+        // fill initial page with markers to be able to detect null
+        // pointer accesses
+        memset(0, Memory__markerValue, Memory__firstUsedAddress);
+
+        // reset error code
+        Memory__firstUsedAddress[0] = 0;
+
+        // set up free list
+        firstBlock = Memory__firstUsedAddress + 1;
+        secondBlock = firstBlock + Memory__ListElement_SIZE;
+
+        block = firstBlock;
+        block[Memory__ListElement_ATT_next]     = secondBlock;
+        block[Memory__ListElement_ATT_previous] = null;
+        block[Memory__ListElement_ATT_length]   = 0;
+
+        block = secondBlock;
+        remainingSlots = __memtop() - (block + Memory__ListElement_SIZE);
+        block[Memory__ListElement_ATT_next]     = null;
+        block[Memory__ListElement_ATT_previous] = firstBlock;
+        block[Memory__ListElement_ATT_length]   = remainingSlots;
+
+        Memory_freePtr = firstBlock;
+    );
+
+    //--------------------
+    //--------------------
+
+    function ADDR (object, offset)
+        /** returns the address of field within <object> with offset
+            address <offset> */
+    (
+        object + offset
+    );
+
+    //--------------------
+
+    function ARRAYADDR (list, i, size)
+        /** Returns the address of array element within <list> with
+            index <i> and element size <size> */
+    (
+        list + i * size
+    );
+
+    //-------------------------
+    // primitive error handling
+    //-------------------------
+
+    function signalError (errorCode)
+        /** Writes <errorCode> to first used memory cell and  */
+    (
+        Memory__firstUsedAddress[] = errorCode;
+        Memory__error              = errorCode;
+    );
+
+    //--------------------
+
+    function getError ()
+        /** Writes <errorCode> to first used memory cell */
+    (
+        Memory__firstUsedAddress[];
+    );
+
+    //--------------------
+    // allocation
+    //--------------------
+
+    function Memory_allocateRaw (length)
+        /** Allocates <length> cells in local heap memory */
+        local (blockLength elementPtr freeBlockPtr nextFreeBlock
+               previousPtr)
+    (
+        length = max(length, 0);
+
+        // search for free block: first fit
+        elementPtr  = Memory_freePtr;
+
+        while (
+            elementPtr  = elementPtr[Memory__ListElement_ATT_next];
+            blockLength = elementPtr[Memory__ListElement_ATT_length];
+            blockLength < length + 1
+        );
+
+        // assume search has not failed: make new free block
+        freeBlockPtr = elementPtr + length + 1;
+        previousPtr  = elementPtr[Memory__ListElement_ATT_previous];
+        previousPtr[Memory__ListElement_ATT_next] = freeBlockPtr;
+        freeBlockPtr[Memory__ListElement_ATT_next] =
+            elementPtr[Memory__ListElement_ATT_next];
+        freeBlockPtr[Memory__ListElement_ATT_previous] = previousPtr;
+        freeBlockPtr[Memory__ListElement_ATT_length] =
+            blockLength - length - 1;
+
+        // store length in block and return <ptr>
+        elementPtr[0] = length;
+        elementPtr += 1;
+        elementPtr
+    );
+
+    //--------------------
+
+    function Memory_allocate (length)
+        /** Allocates <length> cells in local heap memory and set to
+            zero */
+        local (result)
+    (
+        result = Memory_allocateRaw(length);
+        memset(result, 0, length);
+        result
+    );
+
+    //--------------------
+
+    function Memory_allocateArray (count, elementSize)
+        /** Allocates <count> array cells in local heap memory and set
+            to zero */
+        local (result totalCount)
+    (
+        totalCount = count * elementSize;
+        result = Memory_allocate(totalCount);
+        result
+    );
+
+    //--------------------
+    // change memory
+    //--------------------
+
+    function Memory_set (self, count, value)
+        /** Sets <count> cells at <self> to <value> */
+    (
+        memset(self, value, count);
+    );
+
+    //--------------------
+
+    function Memory_copy (self, other, count)
+        /** Copies <count> cells from <other> to <self> */
+    (
+        memcpy(self, other, count);
+    );
+
+    //--------------------
+    // deallocation
+    //--------------------
+
+    function Memory_free (self)
+        /** Frees cells in local heap memory at <self> */
+        local (length other)
+    (
+        self == null ? (
+            signalError(999999);
+        ) : (
+            self -= 1;
+            length = self[0] + 1;
+
+            // set memory area to zero
+            memset(self, 0, length);
+
+            // relink the block to the free area
+            other = Memory_freePtr[Memory__ListElement_ATT_next];
+
+            self + length != other ? (
+                // just relink this block
+                self[Memory__ListElement_ATT_next]      = other;
+                other[Memory__ListElement_ATT_previous] = self;
+            ) : (
+                // merge this and the immediately following block
+                length += other[Memory__ListElement_ATT_length];
+                self[Memory__ListElement_ATT_next] =
+                    other[Memory__ListElement_ATT_next];
+                Memory_set(other, Memory__ListElement_SIZE, 0);
+            );
+
+            self[Memory__ListElement_ATT_previous] = Memory_freePtr;
+            self[Memory__ListElement_ATT_length]   = length;
+            Memory_freePtr[Memory__ListElement_ATT_next] = self;
+        );
+    );
+
+    //--------------------
+    // restore points
+    //--------------------
+
+    function Memory_saveRestorePoint ()
+        /** Sets memory restore point to current position */
+        local (elementPtr isFound nextPtr)
+    (
+        // search for last free block
+        elementPtr  = Memory_freePtr;
+
+        while (!isFound) (
+            nextPtr = elementPtr[Memory__ListElement_ATT_next];
+            isFound = (nextPtr == null);
+
+            !isFound ? (
+                elementPtr = nextPtr;
+            );
+        );
+
+        Memory__restorePoint_address = elementPtr;
+        Memory__restorePoint_length =
+            elementPtr[Memory__ListElement_ATT_length];
+        Memory__restorePoint_previous = 
+            elementPtr[Memory__ListElement_ATT_previous];
+    );
+
+    //--------------------
+
+    function Memory_restoreToPoint ()
+        /** Sets free list to memory restore point */
+        local (elementPtr previousPtr)
+    (
+        elementPtr  = Memory__restorePoint_address;
+        previousPtr = Memory__restorePoint_previous;
+
+        elementPtr[Memory__ListElement_ATT_next]     = null;
+        elementPtr[Memory__ListElement_ATT_previous] = previousPtr;
+        elementPtr[Memory__ListElement_ATT_length] =
+            Memory__restorePoint_length;
+
+        // relink previous block to restore point
+        previousPtr[Memory__ListElement_ATT_next] = elementPtr;
+    );
+
+    //========================================
+
+    Memory_initialize();
+    Memory_saveRestorePoint();

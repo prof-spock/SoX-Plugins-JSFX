@@ -1,0 +1,374 @@
+desc: mouse routines
+// abstracts the elementary mouse functions of JSFX graphics
+author: Dr. Thomas Tensi, 2025
+
+//requires Base.jsfx-inc
+//requires Base_graphics.jsfx-inc
+
+@init
+
+    //====================
+    // Mouse
+    //====================
+
+    /** maximum duration in seconds for a double click */
+    Mouse__doubleClickDuration = 0.5;
+
+    /** duration in seconds to keep wheel roll active */
+    Mouse__wheelHoldDuration = 0.2;
+
+    /** mouse event kind */
+    Mouse_EventKind_none            = 0;
+    Mouse_EventKind_up              = 1;
+    Mouse_EventKind_leftClick       = 2;
+    Mouse_EventKind_rightClick      = 3;
+    Mouse_EventKind_leftdoubleClick = 4;
+    Mouse_EventKind_leftDrag        = 5;
+    Mouse_EventKind_wheel           = 6;
+
+    /** Mouse_DragDirection enumeration type */
+    Mouse_DragDirection_none       = 0;
+    Mouse_DragDirection_horizontal = 1;
+    Mouse_DragDirection_vertical   = 2;
+
+    /** Mouse_State for internal state machine */
+    Mouse_State_afterClick    = 1;
+    Mouse_State_clicked       = 2;
+    Mouse_State_doubleClicked = 3;
+    Mouse_State_inDrag        = 4;
+    Mouse_State_inLimbo       = 5;
+    Mouse_State_inPress       = 6;
+    Mouse_State_inWheel       = 7;
+    Mouse_State_up            = 8;
+
+    /** internal bitset masks */
+    Mouse_Mask__leftButton  =  1;
+    Mouse_Mask__rightButton =  2;
+    Mouse_Mask__ctrl        =  4;
+    Mouse_Mask__shift       =  8;
+    Mouse_Mask__alt         = 16;
+
+    /** current mouse event mask reflecting the system mouse state */
+    Mouse__eventMask = 0;
+
+    /** previous mouse event mask */
+    Mouse__previousEventMask = 0;
+
+    /** x coordinate at last click or at dragAmount call */
+    Mouse__previousX = 0;
+
+    /** y coordinate at last click or at dragAmount call */
+    Mouse__previousY = 0;
+
+    /** direction of drag */
+    Mouse__dragDirection = Mouse_DragDirection_none;
+
+    /** the reference value for a drag or the mouse wheel */
+    Mouse__dragReference = 0;
+
+    /** time of the last event */
+    Mouse__previousEventTime = 0;
+
+    /** current mouse state for internal FSA */
+    Mouse__state = Mouse_State_inLimbo;
+
+    /** number of pixels before a mouse drag is registered */
+    Mouse__dragDelta = 3;
+
+    //--------------------
+    // PRIVATE ROUTINES 
+    //--------------------
+
+    function Mouse__buttonHasChanged (buttonMask, isSet)
+        /** Tells whether mouse button characterised by <buttonMask>
+            has changed its status and reached status <isSet> */
+        local (hasChanged maskedValue)
+    (
+        maskedValue = Mouse__eventMask & buttonMask;
+        hasChanged = (maskedValue != (Mouse__previousEventMask & buttonMask));
+        hasChanged && ((maskedValue != 0) == isSet)
+    );
+
+    //--------------------
+
+    function Mouse__eventToString (event)
+        /** Returns string for <event> */
+        local (result)
+    (
+        event == Mouse_EventKind_none ? (
+            result = "evt_none";
+        ) : event == Mouse_EventKind_up ? (
+            result = "evt_up";
+        ) : event == Mouse_EventKind_leftClick ? (
+            result = "evt_lftCl";
+        ) : event == Mouse_EventKind_rightClick ? (
+            result = "evt_rgtCl";
+        ) : event == Mouse_EventKind_leftdoubleClick ? (
+            result = "evt_lftDC";
+        ) : event == Mouse_EventKind_leftDrag ? (
+            result = "evt_lftDr";
+        ) : event == Mouse_EventKind_wheel ? (
+            result = "evt_wheel";
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function Mouse__shiftIsPressed ()
+        /** Returns information whether SHFT modifier is pressed */
+    (
+        (Mouse__eventMask & Mouse_Mask__shift) != 0
+    );
+
+    //--------------------
+
+    function Mouse__handleWheel ()
+        /** Processes mouse wheel as an alternative to dragging and
+            returns whether something has changed */
+        local (result resolutionFactor value)
+    (
+        resolutionFactor = 0.1;
+        result = false;
+
+        mouse_wheel != 0 ? (
+            result = true;
+            value = mouse_wheel * resolutionFactor;
+
+            Mouse__dragDirection == Mouse_DragDirection_none ? (
+                Mouse__dragReference = 0;
+                Mouse__dragDirection = (Mouse__shiftIsPressed()
+                                        ? Mouse_DragDirection_vertical
+                                        : Mouse_DragDirection_horizontal);
+            );
+
+            Mouse__dragReference += value;
+            Debug_print("MS:shift=%d", Mouse__shiftIsPressed());
+            Debug_print("MS:drg=%f", Mouse__dragReference);
+            Debug_print("MS:drD=%d", Mouse__dragDirection);
+        );
+
+        mouse_wheel = 0;
+        result
+    );
+
+    //--------------------
+
+    function Mouse__updateState (leftButtonIsPressed,
+                                 wheelIsActive,
+                                 eventTime)
+        /** Processes a finite state automaton for the left mouse
+            button based on previous state, left button position and
+            event time */
+        local (deltaTime deltaX deltaY isHorizontalDrag
+               isInDoubleClickDuration)
+    (
+        deltaTime = eventTime - Mouse__previousEventTime;
+
+        Mouse__state == Mouse_State_afterClick ? (
+            isInDoubleClickDuration = 
+                (deltaTime < Mouse__doubleClickDuration);
+
+            leftButtonIsPressed && isInDoubleClickDuration ? (
+                Mouse__state = Mouse_State_doubleClicked;
+            ) : !leftButtonIsPressed && !isInDoubleClickDuration ? (
+                Mouse__state = Mouse_State_up;
+            );
+        ) : Mouse__state == Mouse_State_clicked ? (
+            leftButtonIsPressed ? (
+                Mouse__state = Mouse_State_inPress;
+            ) : (
+                Mouse__state = Mouse_State_afterClick;
+            );
+
+        ) : Mouse__state == Mouse_State_doubleClicked ? (
+            Mouse__state = Mouse_State_up;
+        ) : Mouse__state == Mouse_State_inDrag ? (
+            !leftButtonIsPressed ? (
+                Mouse__state = Mouse_State_up;
+            );
+        ) : Mouse__state == Mouse_State_inLimbo ? (
+            Mouse__dragDirection = Mouse_DragDirection_none;
+
+            leftButtonIsPressed ? (
+                Mouse__state = Mouse_State_clicked;
+                Mouse__previousEventTime = eventTime;
+
+                Mouse__previousX = mouse_x;
+                Mouse__previousY = mouse_y;
+            );
+        ) : Mouse__state == Mouse_State_inPress ? (
+            !leftButtonIsPressed ? (
+                Mouse__state = Mouse_State_afterClick;
+            ) : (
+                Mouse__previousEventTime = eventTime;
+                deltaX = abs(Mouse__previousX - mouse_x);
+                deltaY = abs(Mouse__previousY - mouse_y);
+
+                deltaX > Mouse__dragDelta || deltaY > Mouse__dragDelta ? (
+                    Mouse__state = Mouse_State_inDrag;
+                    isHorizontalDrag = (deltaX > deltaY);
+
+                    isHorizontalDrag ? (
+                        Mouse__dragDirection = Mouse_DragDirection_horizontal;
+                        Mouse__dragReference = mouse_x;
+                    ) : (
+                        Mouse__dragDirection = Mouse_DragDirection_vertical;
+                        Mouse__dragReference = mouse_y;
+                    );
+                );
+            );
+        ) : Mouse__state == Mouse_State_inWheel ? (
+            deltaTime > Mouse__wheelHoldDuration ? (
+                Mouse__state = Mouse_State_up;
+            );
+        ) : Mouse__state == Mouse_State_up ? (
+            Mouse__state = Mouse_State_inLimbo;
+        );
+    );
+
+    //--------------------
+    // EXPORTED ROUTINES
+    //--------------------
+
+    //--------------------
+    // state change
+    //--------------------
+
+    function Mouse_resetDragAmount ()
+        /** Resets drag delta to zero by setting to last reported drag
+         * position */
+    (
+        Mouse__state == Mouse_State_inWheel ? (
+            Mouse__dragReference = 0;
+        ) : Mouse__dragDirection == Mouse_DragDirection_horizontal ? (
+            Mouse__dragReference = Mouse__previousX;
+        ) : Mouse__dragDirection == Mouse_DragDirection_vertical ? (
+            Mouse__dragReference = Mouse__previousY;
+        );
+    );
+
+    //--------------------
+    // property access
+    //--------------------
+
+    function Mouse_ctrlIsPressed ()
+        /** Returns information whether CTRL modifier is pressed */
+    (
+        (Mouse__eventMask & Mouse_Mask__ctrl) != 0
+    );
+
+    //--------------------
+
+    function Mouse_dragDirection ()
+        /** Returns information about the drag direction of mouse */
+    (
+        Mouse__dragDirection
+    );
+
+    //--------------------
+
+    function Mouse_dragAmount ()
+        /** Returns current drag delta */
+        local (result)
+    (
+        result = 0;
+
+        Mouse__state == Mouse_State_inWheel ? (
+            result = Mouse__dragReference;
+        ) : Mouse__dragDirection == Mouse_DragDirection_horizontal ? (
+            result = mouse_x - Mouse__dragReference;
+        ) : Mouse__dragDirection == Mouse_DragDirection_vertical ? (
+            // invert direction for a vertical drag
+            result = Mouse__dragReference - mouse_y;
+        );
+
+        Mouse__previousX = mouse_x;
+        Mouse__previousY = mouse_y;
+        result
+    );
+
+    //--------------------
+
+    function Mouse_leftButtonIsPressed ()
+        /** Returns information whether left button is down */
+    (
+        (Mouse__eventMask & Mouse_Mask__leftButton) != 0
+    );
+
+    //--------------------
+
+    function Mouse_rightButtonIsPressed ()
+        /** Returns information whether left button is down */
+    (
+        (Mouse__eventMask & Mouse_Mask__rightButton) != 0
+    );
+
+    //--------------------
+
+    function Mouse_shiftIsPressed ()
+        /** Returns information whether SHFT modifier is pressed */
+    (
+        Mouse__shiftIsPressed()
+    );
+
+    //--------------------
+    // complex processing
+    //--------------------
+
+    function Mouse_process ()
+        /** Handles mouse events and updates internal data; returns
+            kind of event */
+        local (eventTime isHorizontalDrag leftButtonIsPressed result
+               rightButtonGoesDown rightButtonGoesUp wheelIsActive)
+    (
+        gfx_getchar();
+        Mouse__eventMask = mouse_cap;
+        wheelIsActive = (mouse_wheel != 0);
+        leftButtonIsPressed =
+            ((Mouse__eventMask & Mouse_Mask__leftButton) != 0);
+        rightButtonGoesDown =
+            Mouse__buttonHasChanged(Mouse_Mask__rightButton, true);
+        rightButtonGoesUp =
+            Mouse__buttonHasChanged(Mouse_Mask__rightButton, false);
+        eventTime = time_precise();
+        result = Mouse_EventKind_none;
+
+        // only left and right button clicks and mouse wheels are
+        // processed
+        wheelIsActive ? (
+            Mouse__previousEventTime = eventTime;
+            Mouse__state = Mouse_State_inWheel;
+            Mouse__handleWheel();
+            result = Mouse_EventKind_wheel;
+        ) : rightButtonGoesDown ? (
+            // some right click
+            result = Mouse_EventKind_rightClick;
+        ) : rightButtonGoesUp ? (
+            result = Mouse_EventKind_up;
+        ) : (
+            Mouse__updateState(leftButtonIsPressed, wheelIsActive,
+                               eventTime);
+
+            Mouse__state == Mouse_State_clicked ? (
+                result = Mouse_EventKind_leftClick;
+             ) : Mouse__state == Mouse_State_doubleClicked ?(
+                 result = Mouse_EventKind_leftDoubleClick;
+             ) : Mouse__state == Mouse_State_inDrag ? (
+                result = Mouse_EventKind_leftDrag;
+             ) : Mouse__state == Mouse_State_up ? (
+                 // signal that left mouse button has gone up (unless
+                 // a double click may still be possible)
+                 result = Mouse_EventKind_up;
+             );
+        ) ;
+
+        Mouse__previousEventMask = Mouse__eventMask;
+
+        result != Mouse_EventKind_none ? (
+            Debug_print("event=%s", Mouse__eventToString(result));
+        );
+
+        result
+    );

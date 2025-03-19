@@ -1,0 +1,281 @@
+desc:JSFX naturalset functions
+// provides utility functions for bitset handling
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+//requires Base_memory.jsfx-inc
+
+@init
+    //============================================================
+
+    /** error codes */
+    NaturalSet__errFIRST    = 999980;
+    NaturalSet__errBadValue = NaturalSet__errFIRST + 0;
+    NaturalSet__errNullPtr  = NaturalSet__errFIRST + 1;
+
+    /** parameter for doing a shift and masking based storage of
+        bitset data */
+    NaturalSet__bitsPerWord = 31;
+
+    //====================
+    // LOCAL ROUTINES
+    //====================
+
+    function NaturalSet__bitMask (self, value)
+        /** Returns bitmask of <value> in word of <self> */
+    (
+        1 << (value % NaturalSet__bitsPerWord)
+    );
+
+    //--------------------
+
+    function NaturalSet__valueIsInRange (self, value)
+        /** Tells whether <value> is in range of <self> */
+    (
+        isInRange(value, 0, self[0])
+    );
+
+    //--------------------
+
+    function NaturalSet__wordIndex (self, value)
+        /** Returns word index of <value> in <self> */
+    (
+        floor(value / NaturalSet__bitsPerWord) + 1
+    );
+
+    //--------------------
+
+    function NaturalSet__wordCount (maximumValue)
+        /** Returns the count of words necessary for storing a bitset
+            from 0 to <maximumValue> */
+    (
+        ceil((maximumValue + 1) / NaturalSet__bitsPerWord)
+    );
+
+    //--------------------
+
+    function NaturalSet__fill (self, value)
+        /** Sets all word values in <self> to <value> */
+        local (wordCount)
+    (
+        self == null ? (
+            signalError(NaturalSet__errNullPtr);
+        ) : (
+            wordCount = NaturalSet__wordCount(self[0]);
+            Memory_set(ADDR(self, 1), wordCount, value);
+        );
+    );
+
+    //--------------------
+
+    function NaturalSet__contains (self, value)
+        /** Checks whether <self> contains <value> */
+        local (mask position result)
+    (
+        self == null ? (
+            signalError(NaturalSet__errNullPtr);
+            result = false;
+        ) : !NaturalSet__valueIsInRange(self, value) ? (
+            result = false;
+        ) : (
+            position = NaturalSet__wordIndex(self, value);
+            mask     = NaturalSet__bitMask(self, value);
+            result   = (self[position] & mask) != 0;
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function NaturalSet__lookupWithStartValue (self,
+                                               startValue,
+                                               elementIsContained)
+        /** Scans <self> starting at <startValue> either for a value
+            in set (when <elementIsContained> is true) or for a value
+            not in set (when <elementIsContained> is false); returns
+            -1 is no such value exists */
+        local (isFound maximumValue result value)
+    (
+        self == null ? (
+            signalError(NaturalSet__errNullPtr);
+            result = infinity;
+        ) : (
+            result = -1;
+            maximumValue = self[0];
+            isFound = false;
+            value = startValue;
+
+            while (value <= maximumValue && !isFound) (
+                isFound =
+                    (NaturalSet__contains(self, value) == elementIsContained);
+
+                isFound ? (
+                    result = value;
+                ) : (
+                    value += 1;
+                );
+            );
+        );
+
+        result
+    );
+
+    //====================
+    // EXPORTED ROUTINES
+    //====================
+
+    //--------------------
+    // con-/destruction
+    //--------------------
+
+    function NaturalSet_make (maximumValue)
+        /** Makes a natural set from 0 to <maximumValue> as a bitset,
+            initially empty */
+        local (self)
+    (
+        self = Memory_allocate(1 + NaturalSet__wordCount(maximumValue));
+        self[0] = maximumValue;
+        NaturalSet__fill(self, 0);
+        self
+    );
+
+    //--------------------
+
+    function NaturalSet_destroy (self)
+        /** Frees memory for <self> */
+    (
+        self == null ? (
+            signalError(NaturalSet__errNullPtr);
+        ) : (
+            Memory_free(self);
+        );
+    );
+
+    //--------------------
+    // query
+    //--------------------
+
+    function NaturalSet_contains (self, value)
+        /** Checks whether <self> contains <value> */
+    (
+        NaturalSet__contains(self, value)
+    );
+
+    //--------------------
+
+    function NaturalSet_lookup (self, elementIsContained)
+        /** Returns first value in <self> either contained (when
+            <elementIsContained> is true) or not contained (when
+            <elementIsContained> is false); -1 if no such value
+            exists */
+    (
+        NaturalSet__lookupWithStartValue(self, 0, elementIsContained);
+    );
+
+    //--------------------
+
+    function NaturalSet_lookup (self)
+        /** Returns first contained value in <self>; -1 if no such value
+            exists */
+    (
+        NaturalSet__lookupWithStartValue(self, 0, true);
+    );
+
+    //--------------------
+    // change
+    //--------------------
+
+    function NaturalSet_clear (self)
+        /** Clears all values from <self> */
+    (
+        NaturalSet__fill(self, 0);
+    );
+
+    //--------------------
+
+    function NaturalSet_exclude (self, value)
+        /** Removes <value> from <self> if in range */
+        local (mask position)
+    (
+        self == null ? (
+            signalError(NaturalSet__errNullPtr);
+        ) : NaturalSet__valueIsInRange(self, value) ? (
+            position = NaturalSet__wordIndex(self, value);
+            mask     = NaturalSet__bitMask(self, value);
+            self[position] ~= mask;
+        )
+    );
+
+    //--------------------
+
+    function NaturalSet_fill (self)
+        /** Fills all values in <self> */
+        local (fillValue)
+    (
+        fillValue = 2 ^ NaturalSet__bitsPerWord - 1;
+        NaturalSet__fill(self, fillValue);
+    );
+
+    //--------------------
+
+    function NaturalSet_include (self, value)
+        /** Adds <value> to <self> if in range */
+        local (mask position)
+    (
+        self == null ? (
+            signalError(NaturalSet__errNullPtr);
+        ) : NaturalSet__valueIsInRange(self, value) ? (
+            position = NaturalSet__wordIndex(self, value);
+            mask     = NaturalSet__bitMask(self, value);
+            self[position] |= mask;
+        )
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function NaturalSet_toString (self, st,
+                                  maxCountOfDisplayedElements)
+        /** Converts <self> to string <st> with at most
+            <maxCountOfDisplayedElements> elements shown */
+        local (element i isDone maximumValue)
+    (
+        self == null ? (
+            strcpy(st, nullAsString);
+        ) : (
+            // must use system strings and string functions
+            strcpy(st, "");
+            isDone = false;
+            i = 1;
+            element = -1;
+
+            while (i <= maxCountOfDisplayedElements && !isDone) (
+                element =
+                    NaturalSet__lookupWithStartValue(self, element + 1, true);
+
+                element < 0 ? (
+                    isDone = true;
+                ) : (
+                    sprintf(st, "%s%s%d", st, (i > 1 ? ", " : ""), element);
+                    i += 1;
+                );
+            );
+
+            maximumValue = self[0];
+            strcat(st, (!isDone ? ", ...)" : ")"));
+            sprintf(st, ", elements = (%s)", st);
+            sprintf(st, "NaturalSet(maxValue = %d%s)", maximumValue, st);
+        );
+    );
+
+    //--------------------
+
+    function NaturalSet_toString (self, st)
+        /** Converts <self> to string <st> */
+    (
+        NaturalSet_toString(self, st, 10);
+    );
+
+    //========================================

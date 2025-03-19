@@ -1,0 +1,79 @@
+desc:SoX Multipage Slider Support
+// provides utility functions for multi-page slider groups in SoX
+tags: slider
+author: Dr. Thomas Tensi, 2025
+
+//requires Base.jsfx-inc
+//requires Base_fixedarray.jsfx-inc
+//requires Base_debug.jsfx-inc
+//requires Audio_samplequeue.jsfx-inc
+
+//--------------------
+// INITIALIZATION
+//--------------------
+@init
+    //--------------------
+
+    SoXMultiPageSlider__previousPageCount    = 0;
+    SoXMultiPageSlider__previousPageIndex    = 0;
+
+    SoXMultiPageSlider__firstPageSliderIndex = 0;
+    SoXMultiPageSlider__pageLength           = 0;
+    SoXMultiPageSlider__effectivePageLength  = 0;
+    SoXMultiPageSlider__pageCount            = 0;
+
+    //--------------------
+
+    function SoXMultiPageSlider_initialize (pageCount,
+                                            pageLength,
+                                            effectivePageLength,
+                                            firstPageSliderIndex)
+        /** Sets up the page groups consisting of several sliders with
+            group count given by <pageCount>, the group length by
+            <pageLength>, the effective length by
+            <effectivePageLength> and the index of the first group
+            slider is <firstPageSliderIndex> */
+    (
+        SoXMultiPageSlider__pageCount            = pageCount;
+        SoXMultiPageSlider__pageLength           = pageLength;
+        SoXMultiPageSlider__effectivePageLength  = effectivePageLength;
+        SoXMultiPageSlider__firstPageSliderIndex = firstPageSliderIndex;
+    );
+
+    //--------------------
+
+    function SoXMultiPageSlider_update (pageCount, selectedPageIndex)
+        /** Ensures that the visible sliders are changed whenever
+            the page index or page count changes */
+        local (effectivePageLength firstPageSliderIndex pageIndex
+               pageLength i sliderIndex visibility)
+    (
+        SoXMultiPageSlider__previousPageCount != pageCount
+        || SoXMultiPageSlider__previousPageIndex != selectedPageIndex ? (
+            firstPageSliderIndex = SoXMultiPageSlider__firstPageSliderIndex;
+            pageLength           = SoXMultiPageSlider__pageLength;
+            effectivePageLength  = SoXMultiPageSlider__effectivePageLength;
+
+            pageIndex   = 1;
+            sliderIndex = firstPageSliderIndex;
+
+            while (pageIndex <= SoXMultiPageSlider__pageCount) (
+                i = 0;
+
+                while (i < pageLength) (
+                    visibility = iif(pageIndex == selectedPageIndex
+                                     && pageIndex <= pageCount
+                                     && i < effectivePageLength, 1, 0);
+                    slider_show(slider(sliderIndex), visibility);
+                    sliderIndex += 1;
+                    i += 1;
+                );
+
+                pageIndex += 1;
+            );
+
+            SoXMultiPageSlider__previousPageCount = pageCount;
+            SoXMultiPageSlider__previousPageIndex = pageIndex;
+        );
+    );
+

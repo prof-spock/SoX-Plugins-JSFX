@@ -1,0 +1,391 @@
+desc: Sample queue routines
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+//requires Base_memory.jsfx-inc
+//requires Base_fixedarray.jsfx-inc
+
+@init
+    //========================================
+
+    // a sample queue is a fixed length ring buffer with
+    // a pointer onto the top element
+
+    //====================
+    // LOCAL FEATURES
+    //====================
+
+    // sample queue header
+    Audio_SampleQueueHeader__SIZE = 3;
+    Audio_SampleQueueHeader__ATT_allocatedLength = STRUCT_INDEX(1);
+    Audio_SampleQueueHeader__ATT_length          = STRUCT_INDEX(2);
+    // contains index from start of array (including header!)
+    Audio_SampleQueueHeader__ATT_firstIndex      = STRUCT_INDEX(3);
+
+    //--------------------
+
+    function Audio_SampleQueue__currentPosition (self)
+        /** Returns current position within <self> */
+    (
+        self[Audio_SampleQueueHeader__ATT_firstIndex]
+    );
+
+    //--------------------
+
+    function Audio_SampleQueue__index (self, position)
+        /** Returns index for <self> at <position> (where position
+            starts at 1) */
+        local (firstIndex length result)
+    (
+        length     = self[Audio_SampleQueueHeader__ATT_length];
+        firstIndex = self[Audio_SampleQueueHeader__ATT_firstIndex];
+        result = firstIndex + position - 1;
+        result = (length == 0
+                  ? firstIndex
+                  : (Audio_SampleQueueHeader__SIZE
+                     + mod(result - Audio_SampleQueueHeader__SIZE, length)));
+        result
+    );
+
+    //--------------------
+
+    function Audio_SampleQueue__setToZero (self)
+        /** Sets contents of sample queue <self> to zero */
+        local (length)
+    (
+        length = self[Audio_SampleQueueHeader__ATT_length];
+        self[Audio_SampleQueueHeader__ATT_firstIndex] =
+            Audio_SampleQueueHeader__SIZE;
+        Memory_set(ADDR(self, Audio_SampleQueueHeader__SIZE), length, 0);
+    );
+
+    //====================
+    // EXPORTED FEATURES
+    //====================
+
+    //--------------------
+    // con-/destruction
+    //--------------------
+
+    function Audio_SampleQueue_make (length)
+        /** Makes a sample queue with at most <length> entries */
+        local (self)
+    (
+        length = (length < 1 ? 1 : length);
+        self = STRUCT_make(length + Audio_SampleQueueHeader__SIZE);
+
+        self[Audio_SampleQueueHeader__ATT_allocatedLength] = length;
+        self[Audio_SampleQueueHeader__ATT_length]          = length;
+        Audio_SampleQueue__setToZero(self);
+
+        self
+    );
+
+    //--------------------
+
+    function Audio_SampleQueue_destroy (self)
+        /** Destroys <self> and releases memory */
+    (
+        Memory_free(self);
+    );
+
+    //--------------------
+    // property access
+    //--------------------
+
+    function Audio_SampleQueue_getAt (self, position)
+        /** Gets sample in <self> at <position> (where position starts
+            at 1) */
+        local (index)
+    (
+        index = Audio_SampleQueue__index(self, position);
+        self[index]
+    );
+
+    //--------------------
+
+    function Audio_SampleQueue_first (self)
+        /** Gets first sample of <self> */
+        local (firstIndex)
+    (
+        firstIndex = self[Audio_SampleQueueHeader__ATT_firstIndex];
+        self[firstIndex]
+    );
+
+    //--------------------
+
+    function Audio_SampleQueue_last (self)
+        /** Gets last sample of <self> */
+    (
+        Audio_SampleQueue_getAt(self,
+                                self[Audio_SampleQueueHeader__ATT_length])
+    );
+
+    //--------------------
+    // measurement
+    //--------------------
+
+    function Audio_SampleQueue_length (self)
+        /** Returns effective length of queue <self> */
+    (
+        self[Audio_SampleQueueHeader__ATT_length]
+    );
+
+    //--------------------
+    // change
+    //--------------------
+
+    function Audio_SampleQueue_setToZero (self)
+        /** Sets contents of sample queue <self> to zero */
+    (
+        Audio_SampleQueue__setToZero(self);
+    );
+
+    //--------------------
+
+    function Audio_SampleQueue_setEffectiveLength (self, length)
+        /** Sets effective length of queue <self> to <length>
+            entries */
+        local (allocatedLength)
+    (
+        allocatedLength =
+            self[Audio_SampleQueueHeader__ATT_allocatedLength];
+
+        0 <= length && length <= allocatedLength ? (
+            self[Audio_SampleQueueHeader__ATT_length] = length;
+        );
+
+        Audio_SampleQueue_setToZero(self);
+    );
+
+    //--------------------
+
+    function Audio_SampleQueue_setAt (self, position, value)
+        /** Sets sample in <self> at <position> to <value> (where
+            position starts at 1) */
+        local (index)
+    (
+        index = Audio_SampleQueue__index(self, position);
+        self[index] = value;
+    );
+
+    //--------------------
+
+    function Audio_SampleQueue_setFirst (self, value)
+        /** Sets first sample  of <self> to <value> */
+        local (firstIndex)
+    (
+        firstIndex = self[Audio_SampleQueueHeader__ATT_firstIndex];
+        self[firstIndex] = value;
+    );
+
+    //--------------------
+
+   function Audio_SampleQueue_setLast (self, value)
+        /** Sets last sample of <self> to <value> */
+    (
+        Audio_SampleQueue_setAt(self,
+                                self[Audio_SampleQueueHeader__ATT_length],
+                                value);
+    );
+
+    //--------------------
+
+    function Audio_SampleQueue_rotateLeft (self, value)
+        /** Rotates contents of <self> by one position to the left
+            (making space for a new last entry); value is inserted
+            as the last entry */
+        local (length firstIndex)
+    (
+        length = self[Audio_SampleQueueHeader__ATT_length];
+
+        length > 0 ? (
+            firstIndex = self[Audio_SampleQueueHeader__ATT_firstIndex];
+            self[firstIndex] = value;
+            firstIndex += 1 - Audio_SampleQueueHeader__SIZE;
+            firstIndex =
+                Audio_SampleQueueHeader__SIZE + mod(firstIndex, length);
+            self[Audio_SampleQueueHeader__ATT_firstIndex] = firstIndex;
+        );
+    );
+
+    //--------------------
+
+    function Audio_SampleQueue_rotateRight (self, value)
+        /** Rotates contents of <self> by one position to the right
+            (making space for a new first entry); value is inserted as
+            the new first entry */
+        local (length firstIndex)
+    (
+        length = self[Audio_SampleQueueHeader__ATT_length];
+
+        length > 0 ? (
+            firstIndex = self[Audio_SampleQueueHeader__ATT_firstIndex];
+            firstIndex += length - 1 - Audio_SampleQueueHeader__SIZE;
+            firstIndex =
+                Audio_SampleQueueHeader__SIZE + mod(firstIndex, length);
+            self[Audio_SampleQueueHeader__ATT_firstIndex] = firstIndex;
+            self[firstIndex] = value;
+        );
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function Audio_SampleQueue_toString (self, st,
+                                         maxCountOfDisplayedElements)
+        /** Converts <self> to string <st> with at most
+            <maxCountOfDisplayedElements> elements shown */
+       local (allocatedLength displayedLength element firstIndex
+              i length temp)
+    (
+        temp = String_make();
+
+        allocatedLength =
+            self[Audio_SampleQueueHeader__ATT_allocatedLength];
+        length = self[Audio_SampleQueueHeader__ATT_length];
+        firstIndex = self[Audio_SampleQueueHeader__ATT_firstIndex];
+
+        displayedLength = min(length, maxCountOfDisplayedElements);
+        String_clear(st);
+        i = 1;
+
+        while (i <= displayedLength) (
+            element = Audio_SampleQueue_getAt(self, i);
+            String_append(st, i > 1 ? ", " : "");
+            String_format(temp, "%f", element);
+            String_append(st, temp);
+            i += 1;
+        );
+
+        String_append(st, displayedLength < length ? ", ...)" : ")");
+        String_format(st, ", data = (%s)", st);
+        String_format(st,
+                      "AudioSampleQueue(allocatedLength = %d,"
+                      " length = %d, firstIndex = %d%s)",
+                      allocatedLength, length, firstIndex, st);
+
+        String_destroy(temp);
+    );
+
+    //--------------------
+
+    function Audio_SampleQueue_toString (self, st)
+        /** Converts <self> to string <st> */
+    (
+        Audio_SampleQueue_toString(self, st, 10);
+    );
+
+    //==============================
+    // Audio_SampleQueueList
+    // providing sample queues for all input/output channels
+    //==============================
+
+    //-------------------------
+    // construction/destruction
+    //-------------------------
+
+    function Audio_SampleQueueList_make (channelCount,
+                                         queueLength,
+                                         hasTwoQueuesPerChannel)
+        /** Makes a list of sample queues for each channel with queues
+            having allocated length <queueLength>; depending on
+            <hasTwoQueuesPerChannel> either one or two queues are
+            provided per channel */
+        local (channel i result sampleQueue totalCount)
+    (
+        totalCount = channelCount * (hasTwoQueuesPerChannel ? 2 : 1);
+        result = FixedArray_make(totalCount);
+        i = 1;
+
+        while (i <= totalCount) (
+            sampleQueue = Audio_SampleQueue_make(queueLength);
+            FixedArray_setAt(result, i, sampleQueue);
+            i += 1;
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function Audio_SampleQueueList_destroy (self)
+        /** Frees memory for <self> */
+        local (i sampleQueue)
+    (
+        i = FixedArray_length(self);
+
+        while (i > 0) (
+            sampleQueue = FixedArray_getAt(self, i);
+            Audio_SampleQueue_destroy(sampleQueue);
+            i -= 1;
+        );
+
+        FixedArray_destroy(self);
+
+    );
+
+    //--------------------
+    // change
+    //--------------------
+
+    function Audio_SampleQueueList_setToZero (self)
+        /** Sets all sample queues in <self> to all zeros */
+        local (i length sampleQueue)
+    (
+        length = FixedArray_length(self);
+        i = 1;
+
+        while (i <= length) (
+            sampleQueue = FixedArray_getAt(self, i);
+            Audio_SampleQueue_setToZero(sampleQueue);
+            i += 1;
+        );
+    );
+
+    //--------------------
+
+    function Audio_SampleQueueList_setEffectiveLength (self,
+                                                       queueLength)
+        /** Sets effective length of each queue in list <self> to
+            <queueLength> entries */
+        local (i length sampleQueue)
+    (
+        length = FixedArray_length(self);
+        i = 1;
+
+        while (i <= length) (
+            sampleQueue = FixedArray_getAt(self, i);
+            Audio_SampleQueue_setEffectiveLength(sampleQueue,
+                                                 queueLength);
+            i += 1;
+        );
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function Audio_SampleQueueList_print (self, indentationLevel)
+        /** Prints <self> to debug output (in condensed form) */
+        local (i length sampleQueue)
+    (
+        Debug_printHdrIndented(indentationLevel, "SQList@%d", self);
+        indentationLevel += 1;
+
+        length = FixedArray_length(self);
+        i = 1;
+
+        while (i <= length) (
+            sampleQueue = FixedArray_getAt(self, i);
+            Debug_printIndented(indentationLevel, "[%d]@%d",
+                                i, sampleQueue);
+            Debug_printIndented(indentationLevel, "len=%d {%d}",
+                                Audio_SampleQueue_length(sampleQueue),
+                                sampleQueue[0]);
+            i += 1;
+        );
+    );
+
+    //========================================

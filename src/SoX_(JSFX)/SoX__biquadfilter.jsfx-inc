@@ -1,0 +1,180 @@
+desc: SoX BiQuad Filter
+//general routines for biquad filters
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+//requires Base_fixedarray.jsfx-inc
+//requires Audio_samplequeue.jsfx-inc
+//requires SoX__iirfilter.jsfx-inc
+
+//--------------------
+// INITIALIZATION
+//--------------------
+@init
+    //========================================
+
+    SoXBandwidthKind_frequency   = 0;
+    SoXBandwidthKind_octaves     = 1;
+    SoXBandwidthKind_quality     = 2;
+    SoXBandwidthKind_butterworth = 3;
+    SoXBandwidthKind_slope       = 4;
+
+    //--------------------
+
+    /** the filter order of a biquad filter */
+    SoXBiquadFilter__length = 3;
+
+    /** the previous sample rate (used for finding out whether rate has
+        changed)) */
+    SoXBiquadFilter__previousSampleRate = -1;
+
+
+    SoXBiquadFilter__SIZE = 2;
+    SoXBiquadFilter__ATT_filter    = STRUCT_INDEX(1);
+    SoXBiquadFilter__ATT_queueList = STRUCT_INDEX(2);
+
+    //--------------------
+
+    function SoXBiquadFilter_make ()
+        /** Makes a new filter */
+        local (filter sampleQueueList self)
+    (
+        self = STRUCT_make(SoXBiquadFilter__SIZE);
+
+        filter          = SoXIIRFilter_make(SoXBiquadFilter__length);
+        sampleQueueList =
+            Audio_SampleQueueList_make(SoX_channelCount,
+                                       SoXBiquadFilter__length, true);
+
+        self[SoXBiquadFilter__ATT_filter]    = filter;
+        self[SoXBiquadFilter__ATT_queueList] = sampleQueueList;
+
+        self
+    );
+
+    //--------------------
+    //--------------------
+
+    function SoXBiquadFilter_alphaForBandwidth (bandwidth, unit,
+                                                frequency, dBGain)
+        /** returns the alpha for given <bandwidth> measured as <unit>
+            with <frequency> and <dBgain> */
+        local (a alpha w0)
+    (
+        w0 = twoPi * frequency / srate;
+
+        unit == SoXBandwidthKind_quality ? (
+            alpha = sin(w0) / (2 * bandwidth);
+        );
+
+        unit == SoXBandwidthKind_octaves ? (
+            alpha = sin(w0) * sinh(ln(2)/2 * bandwidth * w0 / sin(w0));
+        );
+
+        unit == SoXBandwidthKind_butterworth ? (
+            alpha = sin(w0) / (2 * sqrt(0.5));
+        );
+
+        unit == SoXBandwidthKind_frequency ? (
+            alpha = sin(w0) / (2 * frequency / bandwidth);
+        );
+
+        unit == SoXBandwidthKind_slope ? (
+            a = 10^(dBGain/40);
+            alpha = (sin(w0) / 2
+                     * sqrt((a + 1 / a) * (1 / bandwidth - 1) + 2));
+        );
+
+        alpha
+    );
+
+    //--------------------
+
+    function SoXBiquadFilter_init (self, b0, b1, b2, a0, a1, a2)
+        /** Sets <self> coefficients to given parameters and
+            normalizes it */
+        local (filter)
+    (
+        filter = self[SoXBiquadFilter__ATT_filter];
+        SoXIIRFilter_init3(filter, b0, b1, b2, a0, a1, a2);
+    );
+
+    //--------------------
+
+    function SoXBiquadFilter_applyToChannel (self, inputQueue, outputQueue)
+        /** Applies biquad <self> to <inputQueue> and <outputQueue>;
+            assumes that first entry in input queue is current sample
+            and writes result sample into top of output queue */
+        local (filter)
+    (
+        filter = self[SoXBiquadFilter__ATT_filter];
+        SoXIIRFilter_apply(filter, inputQueue, outputQueue);
+    );
+
+    //--------------------
+
+   function SoXBiquadFilter_apply (self, inputSampleList, outputSampleList)
+        /** Applies filter <self> to input and output queues for all
+            channels; assumes that samples are in <inputSampleList>
+            and returns them in <outputSampleList> */
+        local (channel filter i inputQueue inputSample outputQueue
+               outputSample queueList)
+    (
+        filter    = self[SoXBiquadFilter__ATT_filter];
+        queueList = self[SoXBiquadFilter__ATT_queueList];
+
+        // shift, add input samples, filter and write them out
+        channel = 1;
+        i = 1;
+
+        while (channel <= SoX_channelCount) (
+            inputQueue  = FixedArray_getAt(queueList, i);
+            outputQueue = FixedArray_getAt(queueList, i + 1);
+            inputSample = FixedArray_getAt(inputSampleList, channel);
+            Audio_SampleQueue_rotateRight(inputQueue, inputSample);
+            Audio_SampleQueue_rotateRight(outputQueue, 0);
+            SoXBiquadFilter_applyToChannel(self, inputQueue, outputQueue);
+            outputSample = Audio_SampleQueue_first(outputQueue);
+            FixedArray_setAt(outputSampleList, channel, outputSample);
+            i += 2;
+            channel += 1;
+        );
+    );
+
+    //--------------------
+
+    function SoXBiquadFilter_print (self, indentationLevel)
+        /** Prints <self> to debug output */
+        local (filter queueList)
+    (
+        filter    = self[SoXBiquadFilter__ATT_filter];
+        queueList = self[SoXBiquadFilter__ATT_queueList];
+
+        Debug_printHdrIndented(indentationLevel, "SoXBiquad@%d", self);
+        indentationLevel += 1;
+
+        SoXIIRFilter_print(filter, indentationLevel);
+        Audio_SampleQueueList_print(queueList, indentationLevel);
+    );
+
+    //--------------------
+
+    function SoXBiquadFilter_print (self)
+        /** Prints <self> to debug output */
+    (
+        SoXBiquadFilter_print(self, 0);
+    );
+
+    //========================================
+
+    biquadFilter = SoXBiquadFilter_make();
+
+//--------------------
+// SAMPLE
+//--------------------
+
+@sample
+    SoX_readInputSampleList();
+    SoXBiquadFilter_apply(biquadFilter,
+                          SoX_inputSampleList, SoX_outputSampleList);
+    SoX_writeOutputSampleList();

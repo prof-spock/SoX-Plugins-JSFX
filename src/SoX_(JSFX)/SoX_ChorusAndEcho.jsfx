@@ -1,0 +1,209 @@
+desc:SoX Chorus and Echo
+// emulates a SoX chorus, echo or echos with at most three stages
+tags: chorus tapped delay
+author: Dr. Thomas Tensi, 2025
+
+//--------------------
+// IMPORTS
+//--------------------
+
+import ../_BaseModules/Base.jsfx-inc
+import ../_BaseModules/Base_memory.jsfx-inc
+import ../_BaseModules/Base_naturalset.jsfx-inc
+import ../_BaseModules/Base_string.jsfx-inc
+import ../_BaseModules/Base_fixedarray.jsfx-inc
+import ../_BaseModules/Base_struct.jsfx-inc
+import ../_BaseModules/Base_graphics.jsfx-inc
+import ../_BaseModules/Base_debug.jsfx-inc
+
+import ../_Audio/Audio_samplequeue.jsfx-inc
+import ../_Audio/Audio_waveform.jsfx-inc
+
+import SoX__base.jsfx-inc
+import SoX__multipageslider.jsfx-inc
+import SoX__complexdelay.jsfx-inc
+
+//--------------------
+// SLIDERS
+//--------------------
+
+slider1:SL_kind=0<0,2,1{Chorus,TappedDelay,DelaySequence}>Effect Kind
+slider2:SL_inGain=0.4<0.0,1,0.001>In Gain
+slider3:SL_outGain=0.74<0.0,5.0,0.001>Out Gain
+slider4:SL_timeOffset=0<-100000,100000,0.0001>Time Offset [s]
+
+slider6:SL_stageCount=1<1,10,1>Stage Count
+slider7:SL_stageIndex=1<1,10,1>Stage Index
+
+// generate slider groups for delay stages via preprocessor
+<?
+    maxStageCount = 10;
+    sliderIndex   =  9;
+    groupLength   =  5;
+    i = 1;
+
+    while (i <= maxStageCount) (
+        stageCharacter = $'A' + i - 1;
+        printf("slider%d:SL_delay%c"
+               "=0<0.0,100.0,0.001>Delay %c [ms]\n",
+               sliderIndex + 0, stageCharacter, stageCharacter);
+        printf("slider%d:SL_decay%c"
+               "=0<0.0,1.0,0.001>Decay %c\n",
+               sliderIndex + 1, stageCharacter, stageCharacter);
+        printf("slider%d:SL_frequency%c="
+               "0.1<0.1,5.0,0.001>Frequency %c [Hz]\n",
+               sliderIndex + 2, stageCharacter, stageCharacter);
+        printf("slider%d:SL_depth%c="
+               "0.0<0.0,10.0,0.001>Depth %c [ms]\n",
+               sliderIndex + 3, stageCharacter, stageCharacter);
+        printf("slider%d:SL_waveFormKind%c="
+               "1<0,1,1{Sine,Triangle}>Waveform Kind %c\n",
+               sliderIndex + 4, stageCharacter, stageCharacter);
+        sliderIndex += groupLength;
+        i += 1;
+    );
+?>
+
+//--------------------
+// INITIALIZATION
+//--------------------
+
+@init
+
+    //--------------------
+
+    SoXChorusAndEcho__previousKind          = -1;
+    SoXChorusAndEcho__previousPosition      = -1;
+    SoXChorusAndEcho__previousSampleRate    = -1;
+
+    SoXChorusAndEcho__timeOffsetSliderIndex =  4;
+    SoXChorusAndEcho__firstGroupSliderIndex =  9;
+    SoXChorusAndEcho__groupLength           =  5;
+
+    //--------------------
+
+    function SoXChorusAndEcho__updateStages (self, stageCount)
+        /** Updates the stages from the sliders */
+        local (decay delay depth frequency sliderIndex stageIndex
+               waveformKind)
+    (
+        stageIndex = 1;
+        sliderIndex = SoXChorusAndEcho__firstGroupSliderIndex;
+
+        while (stageIndex <= stageCount) (
+            delay        = slider(sliderIndex + 0) / 1000;
+            decay        = slider(sliderIndex + 1);
+            frequency    = slider(sliderIndex + 2);
+            depth        = slider(sliderIndex + 3) / 1000;
+            waveformKind = iif(slider(sliderIndex + 4) == 0,
+                               Audio_WaveFormKind_sine,
+                               Audio_WaveFormKind_triangle);
+
+            SoXComplexDelay_updateStage(self, stageIndex,
+                                        delay, decay, frequency,
+                                        depth, waveformKind);
+
+            sliderIndex += SoXChorusAndEcho__groupLength;
+            stageIndex += 1;
+        );
+    );
+
+    //--------------------
+
+    function SoXChorusAndEcho__update (isSliderChange)
+        /** Updates chorus/echo parameters from sliders */
+        local (firstGroupSliderIndex isCompleteChange isTimeChange
+               visibility)
+    (
+        isTimeChange =
+            !isInRange(play_position,
+                       SoXChorusAndEcho__previousPosition - 0.1,
+                       SoXChorusAndEcho__previousPosition + 0.1);
+        isCompleteChange =
+            (SoXChorusAndEcho__previousKind != SL_kind
+             || srate != SoXChorusAndEcho__previousSampleRate);
+
+        isSliderChange ? (
+            firstGroupSliderIndex =
+                SoXChorusAndEcho__firstGroupSliderIndex;
+            SoXMultiPageSlider_initialize(10,
+                                          SoXChorusAndEcho__groupLength, 
+                                          SL_kind == 0 ? 5 : 2,
+                                          firstGroupSliderIndex);
+            SoXMultiPageSlider_update(SL_stageCount, SL_stageIndex);
+        );
+
+        isCompleteChange ? (
+            effect != null ? (
+                SoX_resetBaseLibraries();
+                Audio_WaveForm_initialize();
+            );
+
+            // hide or show time offset slider depending on kind
+            visibility = (SL_kind == 0 ? 1 : 0);
+            slider_show(slider(SoXChorusAndEcho__timeOffsetSliderIndex),
+                        visibility);
+            effect = SoXComplexDelay_make(SL_kind + 1);
+            SoXChorusAndEcho__previousKind       = SL_kind;
+            SoXChorusAndEcho__previousSampleRate = srate;
+        );
+
+        isCompleteChange || isTimeChange || isSliderChange ? (
+             SoXComplexDelay_update(effect, SL_inGain, SL_outGain,
+                                    SL_timeOffset, SL_stageCount);
+             SoXChorusAndEcho__updateStages(effect, SL_stageCount);
+             SoXChorusAndEcho__previousPosition = play_position;
+
+            Debug_clear();
+            SoXComplexDelay_print(effect, 0);
+        );
+    );
+
+    //--------------------
+
+    function SoXChorusAndEcho_handleKey (self, key)
+    (
+        Debug_currentMode == Debug_Mode_effect ? (
+            Graphics_clear(Graphics_Color_black);
+        );
+    );
+
+    //--------------------
+    //--------------------
+
+    effect = null;
+
+//--------------------
+// SLIDER CHANGE
+//--------------------
+
+@slider
+    SoXChorusAndEcho__update(true);
+
+//--------------------
+// BLOCK
+//--------------------
+
+@block
+    SoXChorusAndEcho__update(false);
+
+//--------------------
+// SAMPLE
+//--------------------
+
+@sample
+    SoX_readInputSampleList();
+    SoXComplexDelay_apply(effect,
+                          SoX_inputSampleList,
+                          SoX_outputSampleList);
+    SoX_writeOutputSampleList();
+    SoXChorusAndEcho__previousPosition = play_position;
+
+//--------------------
+// GRAPHICS
+//--------------------
+
+@gfx
+    key = gfx_getchar();
+    key = Debug_handleKey(key);
+    SoXChorusAndEcho_handleKey(effect, key);

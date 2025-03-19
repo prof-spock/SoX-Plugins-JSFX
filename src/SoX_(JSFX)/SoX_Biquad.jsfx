@@ -1,0 +1,85 @@
+desc: SoX BiQuad Filter
+//generic biquad filter
+author: Dr. Thomas Tensi, 2019
+
+//--------------------
+// IMPORTS
+//--------------------
+
+import ../_BaseModules/Base.jsfx-inc
+import ../_BaseModules/Base_memory.jsfx-inc
+import ../_BaseModules/Base_naturalset.jsfx-inc
+import ../_BaseModules/Base_string.jsfx-inc
+import ../_BaseModules/Base_fixedarray.jsfx-inc
+import ../_BaseModules/Base_struct.jsfx-inc
+import ../_BaseModules/Base_graphics.jsfx-inc
+import ../_BaseModules/Base_debug.jsfx-inc
+
+import ../_Audio/Audio_samplequeue.jsfx-inc
+
+import SoX__base.jsfx-inc
+import SoX__iirfilter.jsfx-inc
+import SoX__biquadfilter.jsfx-inc
+
+//--------------------
+// SLIDERS
+//--------------------
+
+slider1:SL_b0=1<-1,1,1e-6>b0
+slider2:SL_b1=0<-1,1,1e-6>b1
+slider3:SL_b2=0<-1,1,1e-6>b2
+slider4:SL_a0=1<-1,1,1e-6>a0
+slider5:SL_a1=0<-1,1,1e-6>a1
+slider6:SL_a2=0<-1,1,1e-6>a2
+
+//--------------------
+// INITIALIZATION
+//--------------------
+
+@init
+
+    function SoXBiquadFilter_update ()
+        /** Updates filter parameters from sliders */
+        local (bound)
+    (
+        bound = 0.000001;
+
+        abs(SL_a0) < bound ? (
+            SL_a0 = bound;
+            sliderchange(SL_a0);
+        );
+
+        // coefficients for biquad transform
+        SoXBiquadFilter_init(biquadFilter,
+                             SL_b0, SL_b1, SL_b2, SL_a0, SL_a1, SL_a2);
+
+        Debug_clear();
+        SoXBiquadFilter_print(biquadFilter);
+    );
+
+    //============================================================
+
+    function SoXBiquadFilter_handleKey (key)
+    (
+        Debug_currentMode == Debug_Mode_effect ? (
+            Graphics_clear(Graphics_Color_black);
+        );
+    );
+
+    //============================================================
+
+//--------------------
+// SLIDER CHANGE
+//--------------------
+
+@slider
+    SoXBiquadFilter_update();
+
+//--------------------
+// GRAPHICS
+//--------------------
+
+@gfx
+    key = gfx_getchar();
+    key = Debug_handleKey(key);
+    SoXBiquadFilter_handleKey(key);

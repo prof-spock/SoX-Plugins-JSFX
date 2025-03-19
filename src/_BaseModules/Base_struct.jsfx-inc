@@ -1,0 +1,119 @@
+desc: support for structure types
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+//requires Base_fixedarray.jsfx-inc
+
+@init
+
+    //--------------------
+
+    function STRUCT_INDEX (index)
+        /** Returns the real index into the structure memory area for
+            <index> */
+    (
+        index - 1
+    );
+
+    //-------------------------
+    // construction/destruction
+    //-------------------------
+
+    function STRUCT_make (size)
+        /** Returns a pointer to the allocated structure memory area
+            for <size> */
+    (
+        FixedArray_make(size)
+    );
+
+    //--------------------
+
+    function STRUCT_destroy (self)
+        /** Destroys allocated structure memory area at <self> */
+    (
+        FixedArray_destroy(self);
+    );
+
+    //--------------------
+    // element access
+    //--------------------
+
+    function STRUCT_ptr (self, attribute)
+        /** Returns address of structure <attribute> within <self> */
+    (
+        self + attribute
+    );
+
+    //====================
+    // Array of Structs
+    //====================
+
+    //-------------------------
+    // construction/destruction
+    //-------------------------
+
+    function STRUCTARRAY_make (elementCount, elementSize)
+        /** Allocates array of structures with <elementCount> elements
+            each of size <elementSize>; the first two words store
+            count and size for later access */
+        local (result)
+    (
+        result = Memory_allocate(elementCount * elementSize + 2);
+        result[0] = elementCount;
+        result[1] = elementSize;
+        result
+    );
+
+    //--------------------
+
+    function STRUCTARRAY_destroy (self)
+        /** Destroys array of structures <self> */
+    (
+        Memory_free(self);
+    );
+
+    //--------------------
+    // clearing
+    //--------------------
+
+    function STRUCTARRAY_clear (self)
+        /** Clears array of structures <self> */
+        local (elementCount elementSize)
+    (
+        elementCount = self[0];
+        elementSize  = self[1];
+        Memory_set(self + 2, elementCount * elementSize, 0);
+    );
+
+    //--------------------
+    // measurement
+    //--------------------
+
+    function STRUCTARRAY_length (self)
+        /** Returns length of array <self> */
+    (
+        self[0]
+    );
+
+    //--------------------
+    // element access
+    //--------------------
+
+    function STRUCTARRAY_ptr (self, index)
+        /** Returns address of element at <index> within <self> (with
+            a one-based index) */
+        local (elementCount elementSize result)
+    (
+        elementCount = self[0];
+        elementSize  = self[1];
+        index = toInteger(index);
+
+        isCheckedMode && (index <= 0 || index > elementCount) ? (
+            result = null;
+        ) : (
+            result = self + 2 + (index - 1) * elementSize;
+        );
+
+        result
+    );
+

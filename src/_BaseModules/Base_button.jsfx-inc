@@ -1,0 +1,882 @@
+desc: menu bar button routines
+// implements an array of menu buttons
+author: Dr. Thomas Tensi, 2025
+
+//requires Base.jsfx-inc
+//requires Base_memory.jsfx-inc
+//requires Base_string.jsfx-inc
+//requires Base_fixedarray.jsfx-inc
+//requires Base_graphics.jsfx-inc
+//requires Base_mouse.jsfx-inc
+
+@init
+    //========================================
+
+    //====================
+    // Button
+    //====================
+
+    //--------------------
+    // LOCAL FEATURES
+    //--------------------
+
+    Button__backgroundStdColor = Graphics_Color_makeGrey(0.75);
+    Button__backgroundSelColor = Graphics_Color_makeGrey(0.55);
+    Button__borderColor        = Graphics_Color_makeGrey(0.15);
+    Button__textStdColor       = Graphics_Color_black;
+    Button__textSelColor       = Graphics_Color_yellow;
+
+    Button__margin = 4;  // margin around text in button
+
+    /** Button Type */
+    Button__SIZE = 6;
+    Button__ATT_x          = STRUCT_INDEX(1);
+    Button__ATT_y          = STRUCT_INDEX(2);
+    Button__ATT_width      = STRUCT_INDEX(3);
+    Button__ATT_height     = STRUCT_INDEX(4);
+    Button__ATT_label      = STRUCT_INDEX(5);
+    Button__ATT_isSelected = STRUCT_INDEX(6);
+
+    Button__ATT_boundingBox = Button__ATT_x;
+
+    //--------------------
+    // EXPORTED FEATURES
+    //--------------------
+
+    //--------------------
+    // con-/destruction
+    //--------------------
+
+    function Button_makeAsParent (self)
+        /** Makes new button when self is already allocated */
+    (
+        self[Button__ATT_x]          = 0;
+        self[Button__ATT_y]          = 0;
+        self[Button__ATT_width]      = 0;
+        self[Button__ATT_height]     = 0;
+        self[Button__ATT_label]      = String_make();
+        self[Button__ATT_isSelected] = false;
+    );
+
+    //--------------------
+
+    function Button_make ()
+        /** Makes new button */
+        local (self)
+    (
+        self = STRUCT_make(Button__SIZE);
+        Button_makeAsParent(self);
+        self
+    );
+
+    //--------------------
+    // property change
+    //--------------------
+
+    function Button_setPosition (self, x, y)
+        /** Sets right upper corner position of <self> to (<x>,<y>)
+            and returns x-coordinate of left upper corner */
+        local (width)
+    (
+        width = self[Button__ATT_width];
+        x -= width + 2 * Button__margin;
+        self[Button__ATT_x] = x;
+        self[Button__ATT_y] = y;
+        x
+    );
+
+    //--------------------
+
+    function Button_setLabel (self, st)
+        /** Sets label of <self> to <label> and recalculates width and
+            height */
+        local (height label width)
+    (
+        gfx_measurestr(st, width, height);
+        width  += 2 * Button__margin;
+        height += 2 * Button__margin;
+
+        label = self[Button__ATT_label];
+        String_copy(label, st);
+        self[Button__ATT_width]  = width;
+        self[Button__ATT_height] = height;
+    );
+
+    //--------------------
+
+    function Button_setSelected (self, isSelected)
+        /** Sets selected status of <self> to <isSelected> */
+    (
+        self[Button__ATT_isSelected] = isSelected;
+    );
+
+    //--------------------
+    // event handling
+    //--------------------
+
+    function Button_checkForPress (self)
+        /** Checks whether button <self> is clicked and then sets it
+            as selected */
+            local (isSelected rectangle)
+    (
+        rectangle = STRUCT_ptr(self, Button__ATT_boundingBox);
+        isSelected = GO_Rectangle_contains(rectangle, mouse_x, mouse_y);
+
+        isSelected ? (
+            self[Button__ATT_isSelected] = true;
+        );
+
+        isSelected
+    );
+
+    //--------------------
+    // drawing
+    //--------------------
+
+    function Button_draw (self)
+        /** Draws button <self> according to current attributes; if
+            isSelected is set, a special rendering is applied */
+        local (backgroundColor height isSelected label textColor
+               width x y)
+    (
+        x          = self[Button__ATT_x];
+        y          = self[Button__ATT_y];
+        width      = self[Button__ATT_width];
+        height     = self[Button__ATT_height];
+        label      = self[Button__ATT_label];
+        isSelected = self[Button__ATT_isSelected];
+
+        Graphics_Color_set(Button__borderColor);
+        gfx_rect(x, y, width, height);
+
+        backgroundColor = iif(isSelected,
+                              Button__backgroundSelColor,
+                              Button__backgroundStdColor);
+        Graphics_Color_set(backgroundColor);
+        gfx_rect(x + 1, y + 1, width - 2, height - 2);
+
+        gfx_x = x + Button__margin;
+        gfx_y = y + Button__margin;
+        textColor =
+            iif(isSelected, Button__textSelColor, Button__textStdColor);
+        Graphics_Color_set(textColor);
+        gfx_drawstr(label);
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function Button_printRaw (self, indentationLevel)
+        /** Prints string representation of <self> to debug output
+            without header */
+    (
+        Debug_printIndented(indentationLevel, "x     =%d",
+                            self[Button__ATT_x]);
+        Debug_printIndented(indentationLevel, "y     =%d",
+                            self[Button__ATT_y]);
+        Debug_printIndented(indentationLevel, "width =%d",
+                            self[Button__ATT_width]);
+        Debug_printIndented(indentationLevel, "height=%d",
+                            self[Button__ATT_height]);
+        Debug_printIndented(indentationLevel, "label ='%s'",
+                            self[Button__ATT_label]);
+        Debug_printIndented(indentationLevel, "isSel =%s",
+                            String_fromBoolean(self[Button__ATT_isSelected]));
+    );
+
+    //--------------------
+
+    function Button_print (self, indentationLevel)
+        /** Prints string representation of <self> to debug output */
+    (
+        Debug_printHdrIndented(indentationLevel, "Button@%d", self);
+        Button_printRaw(self, indentationLevel + 1);
+    );
+
+    //====================
+    // ButtonBar
+    //====================
+
+    //--------------------
+    // LOCAL FEATURES
+    //--------------------
+
+    ButtonBar__color = Graphics_color_makeGrey(0.35);
+    ButtonBar__hGap  = 12; // horizontal gap between two buttons
+    ButtonBar__vGap  =  6; // horizontal gap between two button lines
+
+    /** the button bar structure */
+    ButtonBar__SIZE = 2;
+    ButtonBar__ATT_lineCount = STRUCT_INDEX(1);
+    ButtonBar__ATT_data      = STRUCT_INDEX(2);
+
+    //--------------------
+    // EXPORTED FEATURES
+    //--------------------
+
+    //--------------------
+    // con-/destruction
+    //--------------------
+
+    function ButtonBar_makeAsParent (self, count, buttonSize)
+        /** Makes new button bar with <count> buttons when <self> is
+            already allocated, where <buttonSize> gives the size of
+            each button */
+    (
+        self[ButtonBar__ATT_lineCount] = 1;
+        self[ButtonBar__ATT_data] =
+            STRUCTARRAY_make(count, buttonSize);
+    );
+
+    //--------------------
+
+    function ButtonBar_make (count)
+        /** Returns button bar with <count> buttons */
+        local (self)
+    (
+        self = STRUCT_make(ButtonBar__SIZE);
+        ButtonBar_makeAsParent(self, count, Button__SIZE);
+        self
+    );
+
+    //--------------------
+    // property access
+    //--------------------
+
+    function ButtonBar_count (self)
+        /** Returns the count of buttons in button bar <self> */
+        local (buttonList)
+    (
+        buttonList = self[ButtonBar__ATT_data];
+        STRUCTARRAY_length(buttonList)
+    );
+
+    //--------------------
+
+    function ButtonBar_height (self)
+        /** Returns the height of the button bar <self> */
+        local (buttonHeight lineCount)
+    (
+        lineCount    = self[ButtonBar__ATT_lineCount];
+        buttonHeight = gfx_texth + 2 * Button__margin;
+        lineCount * (buttonHeight + ButtonBar__vGap)
+    );
+
+    //--------------------
+    // property change
+    //--------------------
+
+    function ButtonBar_setLineCount (self, lineCount)
+        /** Sets count of button bar lines to <lineCount> */
+    (
+        lineCount > 0 && lineCount == toInteger(lineCount) ? (
+            self[ButtonBar__ATT_lineCount] = lineCount;
+        );
+    );
+
+    //--------------------
+    // event handling
+    //--------------------
+
+    function ButtonBar_checkForPress (self)
+        /** Returns index of clicked button (if any) and sets it as
+            selected or returns 0 */
+        local (button buttonCount buttonIndex buttonList height
+               isSelected x y width)
+    (
+        buttonList = self[ButtonBar__ATT_data];
+        buttonCount = STRUCTARRAY_length(buttonList);
+        isSelected = false;
+        buttonIndex = 1;
+
+        while (buttonIndex <= buttonCount && !isSelected) (
+            button = STRUCTARRAY_ptr(buttonList, buttonIndex);
+            isSelected = Button_checkForPress(button);
+            buttonIndex += iif(isSelected, 0, 1);
+        );
+
+        isSelected ? buttonIndex : 0;
+    );
+
+    //--------------------
+    // change
+    //--------------------
+
+    function ButtonBar_deselectAll (self)
+        /** Makes all buttons in <self> unselected */
+        local (button buttonCount buttonIndex buttonList)
+    (
+        buttonList = self[ButtonBar__ATT_data];
+        buttonCount = STRUCTARRAY_length(buttonList);
+        buttonIndex = 1;
+
+        while (buttonIndex <= buttonCount) (
+            button = STRUCTARRAY_ptr(buttonList, buttonIndex);
+            Button_setSelected(button, false);
+            buttonIndex += 1;
+        );
+    );
+
+    //--------------------
+
+    function ButtonBar_setSelected (self, button)
+        /** Sets <button> in <self> to selected, deselecting all
+            others */
+    (
+        ButtonBar_deselectAll(self);
+        Button_setSelected(button, true);
+    );
+
+
+    //--------------------
+    // drawing
+    //--------------------
+
+    function ButtonBar_draw (self)
+        /** Draws all buttons in <self> from right to left and bottom
+            to top  */
+        local (button buttonCount buttonHeightbuttonIndex buttonList
+               buttonsPerLine lineCount lineIndex x y)
+    (
+        lineCount = self[ButtonBar__ATT_lineCount];
+        Graphics_Color_set(ButtonBar__color);
+        gfx_rect(0, 0, gfx_w, ButtonBar_height(self));
+
+        buttonList = self[ButtonBar__ATT_data];
+        buttonCount = STRUCTARRAY_length(buttonList);
+        buttonsPerLine = toInteger(buttonCount / lineCount);
+        
+        buttonIndex = 1;
+        lineIndex = lineCount - 1;
+
+        while (buttonIndex <= buttonCount) (
+            button = STRUCTARRAY_ptr(buttonList, buttonIndex);
+            buttonHeight = button[Button__ATT_height];
+
+            mod(buttonIndex - 1, buttonsPerLine) == 0 ? (
+                x = gfx_w - ButtonBar__hGap / 2;
+                y = (lineIndex * buttonHeight
+                     + (lineIndex + 1/2) * ButtonBar__vGap);
+                lineIndex -= 1;
+            );
+
+            x = Button_setPosition(button, x, y);
+            Button_draw(button);
+            x -= ButtonBar__hGap;
+            buttonIndex += 1;
+        );
+    );
+
+    //====================
+    // ValueGenerator
+    //====================
+    // represents a singleton generator of values from an interval
+    // with some increment and either on a linear or a log scale
+
+    ValueGenerator__minValue    = 0;
+    ValueGenerator__maxValue    = 0;
+    ValueGenerator__value       = 0;
+    ValueGenerator__resolution  = 0;
+    ValueGenerator__stepWidth   = 0;
+    ValueGenerator__isLinear    = 0;
+    ValueGenerator__decadeValue = 0;
+    ValueGenerator__decade      = 0;
+
+    //--------------------
+
+    function ValueGenerator_reset ()
+        /** Resets generator for a new generation process */
+    (
+        ValueGenerator__value       = ValueGenerator__minValue;
+        ValueGenerator__decadeValue = 1;
+        ValueGenerator__decade      = 1;
+    );
+
+    //--------------------
+
+    function ValueGenerator_initialize (minValue, maxValue,
+                                        resolution, stepWidth,
+                                        isLinear)
+        /** Initializes generator to given values for the interval
+            <minValue> to <maxValue> with inverse increment
+            <resolution> and information about lin or log scale in
+            <isLinear> */
+    (
+        ValueGenerator__isLinear = isLinear;
+
+        !isLinear ? (
+            ValueGenerator__minValue = minValue;
+            ValueGenerator__maxValue = maxValue;
+        ) : (
+            ValueGenerator__minValue   = minValue * resolution;
+            ValueGenerator__maxValue   = maxValue * resolution;
+            ValueGenerator__resolution = resolution;
+            ValueGenerator__stepWidth  = stepWidth;
+        );
+
+        ValueGenerator_reset();
+    );
+
+    //--------------------
+
+    function ValueGenerator_value ()
+        /** Returns current value of generator */
+        local (result)
+    (
+        result = ValueGenerator__value;
+        (ValueGenerator__isLinear
+         ? result / ValueGenerator__resolution
+         : result)
+    );
+
+    //--------------------
+
+    function ValueGenerator_advance ()
+        /** Advances generator and tells whether it has gone beyond
+            the interval */
+    (
+        ValueGenerator__isLinear ? (
+            ValueGenerator__value += ValueGenerator__stepWidth;
+        ) : (
+            ValueGenerator__decadeValue < 5 ? (
+                ValueGenerator__decadeValue =
+                    iif(ValueGenerator__decadeValue == 1, 2, 5);
+            ) : (
+                ValueGenerator__decadeValue = 1;
+                ValueGenerator__decade     *= 10;
+            );
+
+            ValueGenerator__value = (ValueGenerator__minValue
+                                     * ValueGenerator__decadeValue
+                                     * ValueGenerator__decade);
+        );
+
+        ValueGenerator__value > ValueGenerator__maxValue
+    );
+
+    //--------------------
+
+    function ValueGenerator_count ()
+        /** Returns number of values for generator */
+        local (count)
+    (
+        isLinear ? (
+            count = round(1 + ((ValueGenerator__maxValue
+                               - ValueGenerator__minValue)
+                               / ValueGenerator__resolution
+                               / ValueGenerator__stepWidth));
+        ) : (
+            // three values per decade: 1, 2, 5
+            count = ceil(log10(ValueGenerator__maxValue
+                               / ValueGenerator__minValue) * 3) + 1;
+        );
+
+        count
+    );
+
+    //--------------------
+
+    function ValueGenerator_print (indentationLevel)
+        /** Prints value generator to debugging output */
+    (
+        Debug_printHdrIndented(indentationLevel, "ValGen");
+        indentationLevel += 1;
+
+        Debug_printIndented(indentationLevel, "min   =%f",
+                            ValueGenerator__minValue);
+        Debug_printIndented(indentationLevel, "max   =%f",
+                            ValueGenerator__maxValue);
+        Debug_printIndented(indentationLevel, "val   =%f",
+                            ValueGenerator__value);
+        Debug_printIndented(indentationLevel, "resol =%f",
+                            ValueGenerator__resolution);
+        Debug_printIndented(indentationLevel, "stpWdt=%f",
+                            ValueGenerator__stepWidth);
+        Debug_printIndented(indentationLevel, "isLin =%s",
+                            String_fromBoolean(ValueGenerator__isLinear));
+        Debug_printIndented(indentationLevel, "decVal=%f",
+                            ValueGenerator__decadeValue);
+        Debug_printIndented(indentationLevel, "decade=%f",
+                            ValueGenerator__decade);
+    );
+
+    //====================
+    // ValueButton
+    //====================
+    // represents a button with an associated and displayed value to
+    // be changed by mouse events
+
+    //--------------------
+    // PRIVATE FEATURES
+    //--------------------
+
+    /** ValueButton type inherits from Button */
+    ValueButton__SIZE = Button__SIZE + 6;
+    ValueButton__ATT_value            = STRUCT_INDEX(Button__SIZE + 1);
+    ValueButton__ATT_defaultValue     = STRUCT_INDEX(Button__SIZE + 2);
+    ValueButton__ATT_minValue         = STRUCT_INDEX(Button__SIZE + 3);
+    ValueButton__ATT_maxValue         = STRUCT_INDEX(Button__SIZE + 4);
+    ValueButton__ATT_linearResolution = STRUCT_INDEX(Button__SIZE + 5);
+    ValueButton__ATT_sensitivity      = STRUCT_INDEX(Button__SIZE + 6);
+
+    /** factor used for followup values in a non-linear value scale */
+    ValueButton__factor = 1.0001;
+
+    /** previous value of dragging */
+    ValueButton__previousDragValue = infinity;
+
+    //--------------------
+
+    function ValueButton__isLinear (self)
+        /** Tells whether <self> is a linear button */
+    (
+        self[ValueButton__ATT_linearResolution] > 0.0
+    );
+
+    //--------------------
+
+    function ValueButton__adaptValue (self, value)
+        /** Adapts <value> to numeric constraints of <self> */
+        local (decadeBase isLinear logValue minValue maxValue
+               resolution)
+    (
+        minValue   = self[ValueButton__ATT_minValue];
+        maxValue   = self[ValueButton__ATT_maxValue];
+        resolution = self[ValueButton__ATT_linearResolution];
+        isLinear   = ValueButton__isLinear(self);
+
+        isLinear ? (
+            value =
+                forceToRange(value * resolution,
+                             minValue * resolution,
+                             maxValue * resolution, true) / resolution;
+        ) : (
+            logValue = forceToRange(log10(value),
+                                    log10(minValue), log10(maxValue),
+                                    false);
+            // bring to six significant digits
+            decadeBase = 10 ^(floor(logValue));
+            value = round(10 ^ logValue / decadeBase, 5) * decadeBase;
+        );
+
+        value
+    );
+
+    //--------------------
+
+    function ValueButton__handleDrag (self, sensitivity)
+        /** Handles drag in slider <self> where <sensitivity> gives
+            the change sensitivity; if <isLinear> is not set, the
+            values are logarithmized before; returns whether something
+            has changed */
+        local (buttonSensitivity delta dragAmount hasChanged isLinear
+               maxValue minValue previousValue value)
+    (
+        previousValue   = self[ValueButton__ATT_value];
+        minValue        = self[ValueButton__ATT_minValue];
+        maxValue        = self[ValueButton__ATT_maxValue];
+        buttonSensitity = self[ValueButton__ATT_sensitivity];
+        isLinear        = ValueButton__isLinear(self);
+
+        value = (ValueButton__previousDragValue == infinity
+                 ? previousValue
+                 : ValueButton__previousDragValue);
+
+        dragAmount = Mouse_dragAmount() * sensitivity * buttonSensitity;
+        
+        !isLinear ? (
+            value = value * ValueButton__factor ^ (5 * dragAmount);
+        ) : (
+            delta = (maxValue - minValue) / 10000;
+            value = value + dragAmount * delta;
+        );
+
+        value = ValueButton__adaptValue(self, value);
+        hasChanged = (value != previousValue);
+
+        !hasChanged ? (
+            ValueButton__previousDragValue = value;
+        ) : (
+            self[ValueButton__ATT_value] = value;
+            ValueButton__previousDragValue = infinity;
+            Mouse_resetDragAmount();
+        );
+
+        hasChanged
+    );
+
+    //--------------------
+
+    function ValueButton__hasIntegerValues (self)
+        /** Tells whether button <self> has only integer values */
+        local (delta isLinear minValue resolution)
+    (
+        minValue = self[ValueButton__ATT_minValue];
+        isLinear = ValueButton__isLinear(self);
+        resolution = self[ValueButton__ATT_linearResolution];
+        (isLinear && resolution == 1)
+    );
+
+    //--------------------
+
+    function ValueButton__valueCount (self)
+        /** Returns number of values for <self> */
+        local (count isLinear maxValue minValue resolution)
+    (
+        minValue   = self[ValueButton__ATT_minValue];
+        maxValue   = self[ValueButton__ATT_maxValue];
+        resolution = self[ValueButton__ATT_linearResolution];
+        isLinear   = ValueButton__isLinear(self);
+
+        isLinear ? (
+            count = round(1 + (maxValue - minValue) * resolution);
+        ) : (
+            // three values per decade: 1, 2, 5
+            count = ceil(log10(maxValue/minValue) * 3) + 1;
+        );
+
+        count
+    );
+
+    //--------------------
+    // EXPORTED ROUTINES
+    //--------------------
+
+    //-----------------------------
+    // construction & configuration
+    //-----------------------------
+
+    function ValueButton_make ()
+        /** Creates new value button */
+        local (self)
+    (
+        self = STRUCT_make(ValueButton__SIZE);
+        Button_makeAsParent(self);
+        self
+    );
+
+    //-----------------------------
+
+    function ValueButton_makeAt (self)
+        /** Creates value button at memory position <self> */
+    (
+        Button_makeAsParent(self);
+    );
+
+    //--------------------
+
+    function ValueButton_configure (self,
+                                    value, defaultValue,
+                                    minValue, maxValue, resolution,
+                                    sensitivity)
+        /** Sets value button <self> as ranging from <minValue> to
+            <maxValue> with <resolution> and either linear or
+            logarithmic value changes depending on whether resolution
+            is not equal to zero; for a linear button, the resolution
+            is an integral divisor; <value> specifies the initial
+            value, <defaultValue> the standard value */
+    (
+        self[ValueButton__ATT_value]            = value;
+        self[ValueButton__ATT_defaultValue]     = defaultValue;
+        self[ValueButton__ATT_minValue]         = minValue;
+        self[ValueButton__ATT_maxValue]         = maxValue;
+        self[ValueButton__ATT_linearResolution] = resolution;
+        self[ValueButton__ATT_sensitivity]      = sensitivity;
+    );
+
+    //--------------------
+    // event handling
+    //--------------------
+
+    function ValueButton_resetDragging ()
+        /** Resets dragging setup */
+    (
+        ValueButton__previousDragValue = infinity;
+    );
+
+    //--------------------
+
+    function ValueButton_handleDrag (self)
+        /** Handles drag for value button <self>; returns whether
+            something has changed */
+    (
+        ValueButton__handleDrag(self, 1)
+    );
+
+    //--------------------
+
+    function ValueButton_handleDragPrecise (self)
+        /** Handles drag for value button <self> with precision when
+            CTRL is pressed; returns whether something has changed */
+        local (factor)
+    (
+        factor = iif(Mouse_ctrlIsPressed(), 0.01, 1);
+        ValueButton__handleDrag(self, factor)
+    );
+
+    //--------------------
+    // property access
+    //--------------------
+
+    function ValueButton_defaultValue (self)
+        /** Returns default value of <self>*/
+    (
+        self[ValueButton__ATT_defaultValue]
+    );
+
+    //--------------------
+
+    function ValueButton_maxValue (self)
+        /** Returns maximum value of <self>*/
+    (
+        self[ValueButton__ATT_maxValue]
+    );
+
+    //--------------------
+
+    function ValueButton_minValue (self)
+        /** Returns minimum value of <self>*/
+    (
+        self[ValueButton__ATT_minValue]
+    );
+
+    //--------------------
+
+    function ValueButton_value (self)
+        /** Returns value of <self>*/
+    (
+        self[ValueButton__ATT_value]
+    );
+
+    //--------------------
+    // property change
+    //--------------------
+
+    function ValueButton_setToDefault (self)
+        /** Sets value button <self> to its initial value */
+        local (defaultValue)
+    (
+        defaultValue = self[ValueButton__ATT_defaultValue];
+        self[ValueButton__ATT_value] = defaultValue;
+    );
+
+    //--------------------
+
+    function ValueButton_setValue (self, value)
+        /** Sets value of <self> to <value> forcing it to allowed
+         * range and resolution */
+    (
+        value = ValueButton__adaptValue(self, value);
+        self[ValueButton__ATT_value] = value;
+    );
+
+    //--------------------
+    // measurement
+    //--------------------
+
+    function ValueButton_initializeGenerator (self, stepWidth)
+        /** Resets value generator for data from button <self> with
+            <stepWidth> */
+        local (isLinear maxValue minValue resolution)
+    (
+        minValue   = ValueButton_minValue(self);
+        maxValue   = ValueButton_maxValue(self);
+        resolution = self[ValueButton__ATT_linearResolution];
+        isLinear   = ValueButton__isLinear(self);
+
+        ValueGenerator_initialize(minValue, maxValue,
+                                  resolution, stepWidth, isLinear);
+    );
+
+    //--------------------
+
+    function ValueButton_constructMenuString (self, st)
+        /** Constructs menu string for <self> into <st> */
+        local (format isDone isFirst menuValue prefix separator value)
+    (
+        String_clear(st);
+
+        ValueButton_initializeGenerator(self, 1);
+        value = ValueButton_value(self);
+        format = (ValueButton__hasIntegerValues(self)
+                  ? "%s%s%s%d" : "%s%s%s%f");
+        isFirst = true;
+        isDone = false;
+
+        while (!isDone) (
+            menuValue = ValueGenerator_value();
+
+            !isDone ? (
+                separator = (isFirst ? "" : "|");
+                prefix = (menuValue == value ? "!" : "");
+                String_format(st, format, st, separator, prefix, menuValue);
+                isFirst = false;
+                isDone = ValueGenerator_advance();
+            );
+        );
+    );
+
+    //--------------------
+
+    function ValueButton_valueAt (self, i)
+        /** Returns <i>-th value of <self>, minValue if i is less than
+            1 and maxValue if i is too large */
+        local (index isDone result)
+    (
+        i < 1 ? (
+            result = ValueButton_minValue(self);
+        ) : i > ValueButton__valueCount(self) ? (
+            result = ValueButton_maxValue(self);
+        ) : (
+            ValueButton_initializeGenerator(self, 1);
+            index = 1;
+            isDone = false;
+
+            while (!isDone && index <= i) (
+                result = ValueGenerator_value();
+
+                !isDone ? (
+                    isDone = ValueGenerator_advance();
+                    index += 1;
+                );
+            );
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function ValueButton_valueCount (self)
+        /** Returns number of values for <self> */
+    (
+        ValueButton__valueCount(self)
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function ValueButton_print (self, indentationLevel)
+        /** Prints string representation of <self> to debug output */
+        local (isLinear)
+    (
+        Debug_printHdrIndented(indentationLevel, "VButton@%d", self);
+
+        indentationLevel += 1;
+        Button_printRaw(self, indentationLevel);
+
+        Debug_printIndented(indentationLevel, "value =%f",
+                            self[ValueButton__ATT_value]);
+        Debug_printIndented(indentationLevel, "defVal=%f",
+                            self[ValueButton__ATT_defaultValue]);
+        Debug_printIndented(indentationLevel, "minVal=%f",
+                            self[ValueButton__ATT_minValue]);
+        Debug_printIndented(indentationLevel, "maxVal=%f",
+                            self[ValueButton__ATT_maxValue]);
+        Debug_printIndented(indentationLevel, "resol.=%f",
+                            self[ValueButton__ATT_linearResolution]);
+    );
+
+    //========================================

@@ -1,0 +1,172 @@
+desc:SoX Overdrive
+// emulates the overdrive effect of SoX
+tags: overdrive
+author: Dr. Thomas Tensi, 2019
+
+//--------------------
+// IMPORTS
+//--------------------
+
+import ../_BaseModules/Base.jsfx-inc
+import ../_BaseModules/Base_memory.jsfx-inc
+import ../_BaseModules/Base_naturalset.jsfx-inc
+import ../_BaseModules/Base_string.jsfx-inc
+import ../_BaseModules/Base_fixedarray.jsfx-inc
+import ../_BaseModules/Base_struct.jsfx-inc
+import ../_BaseModules/Base_graphics.jsfx-inc
+import ../_BaseModules/Base_debug.jsfx-inc
+
+import ../_Audio/Audio_samplequeue.jsfx-inc
+
+import SoX__base.jsfx-inc
+
+//--------------------
+// SLIDERS
+//--------------------
+
+slider1:SL_dBGain=20<0,100,1>Gain [dB]
+slider2:SL_colour=20<0,100,1>Colour [%]
+
+//--------------------
+// INITIALIZATION
+//--------------------
+
+@init
+
+    //============================================================
+
+    SoXOverdrive__SIZE = 3;
+    SoXOverdrive__ATT_gainFactor      = STRUCT_INDEX(1);
+    SoXOverdrive__ATT_colour          = STRUCT_INDEX(2);
+    SoXOverdrive__ATT_sampleQueueList = STRUCT_INDEX(3);
+
+    //--------------------
+
+    function SoXOverdrive_init (self, dBGain, colour)
+        /** Sets parameters of overdrive effect <self> to <dbGain> and
+            <colour> and clears all sample queues */
+        local(sampleQueueList)
+    (
+        self[SoXOverdrive__ATT_gainFactor] = SoX_dBToLinear(dBGain);
+        self[SoXOverdrive__ATT_colour]     = colour / 200;
+        sampleQueueList = self[SoXOverdrive__ATT_sampleQueueList];
+        Audio_SampleQueueList_setToZero(sampleQueueList);
+    );
+
+    //--------------------
+
+    function SoXOverdrive_make ()
+        /** Makes a new overdrive effect */
+        local (sampleQueueList self)
+    (
+        self = STRUCT_make(SoXOverdrive__SIZE);
+        sampleQueueList =
+            Audio_SampleQueueList_make(SoX_channelCount, 1, true);
+        self[SoXOverdrive__ATT_sampleQueueList] = sampleQueueList;
+        SoXOverdrive_init(self, 0, 0);
+        self
+    );
+
+    //--------------------
+
+    function SoXOverdrive_apply (self, inputSampleList, outputSampleList)
+        /** Distorts samples from <inputSampleList> by effect <self>
+            in all channels with a simple tanh distortion and returns
+            result in <outputSampleList> */
+        local(channel colour gainFactor inputSample inputSampleQueue
+              newValue outputSample outputSampleQueue
+              previousInputSample previousOutputSample queueIndex
+              sampleQueueList)
+    (
+        gainFactor      = self[SoXOverdrive__ATT_gainFactor];
+        colour          = self[SoXOverdrive__ATT_colour];
+        sampleQueueList = self[SoXOverdrive__ATT_sampleQueueList];
+        
+        channel = 1;
+        queueIndex = 1;
+
+        while (channel <= SoX_channelCount) (
+            inputSample = FixedArray_getAt(inputSampleList, channel);
+            inputSampleQueue  = FixedArray_getAt(sampleQueueList,
+                                                 queueIndex);
+            outputSampleQueue = FixedArray_getAt(sampleQueueList,
+                                                 queueIndex + 1);
+            previousInputSample  =
+                Audio_SampleQueue_first(inputSampleQueue);
+            previousOutputSample =
+                Audio_SampleQueue_first(outputSampleQueue);
+
+            newValue = inputSample * gainFactor + colour;
+            newValue = min(1, max(-1, newValue));
+            newValue = newValue - newValue * newValue * newValue / 3;
+
+            outputSample = (newValue - previousInputSample
+                            + 0.995 * previousOutputSample);
+            FixedArray_setAt(outputSampleList, channel,
+                             inputSample * 0.5 + outputSample * 0.75);
+            Audio_SampleQueue_setFirst(inputSampleQueue, newValue);
+            Audio_SampleQueue_setFirst(outputSampleQueue, outputSample);
+
+            channel += 1;
+            queueIndex += 2;
+        );
+    );
+
+    //--------------------
+
+    function SoXOverdrive_handleKey (key)
+    (
+        Debug_currentMode == Debug_Mode_effect ? (
+            Graphics_clear(Graphics_Color_black);
+        );
+    );
+
+    //--------------------
+
+    function SoXOverdrive_print (self, indentationLevel)
+        /** Prints overdrive effect <self> to debug output */
+        local (sampleQueueList)
+    (
+        Debug_printHdrIndented(indentationLevel,
+                               "SoXOverdrive@%d", self);
+        indentationLevel += 1;
+
+        sampleQueueList = self[SoXOverdrive__ATT_sampleQueueList];
+        Debug_printIndented(indentationLevel, "gain=%f",
+                            self[SoXOverdrive__ATT_gainFactor]);
+        Debug_printIndented(indentationLevel, "color=%f",
+                            self[SoXOverdrive__ATT_colour]);
+        Audio_SampleQueueList_print(sampleQueueList, indentationLevel);
+    );
+
+    //============================================================
+
+    overdrive = SoXOverdrive_make();
+
+//--------------------
+// SLIDER CHANGE
+//--------------------
+
+@slider
+    SoXOverdrive_init(overdrive, SL_dBGain, SL_colour);
+    Debug_clear();
+    SoXOverdrive_print(overdrive, 0);
+
+//--------------------
+// SAMPLE
+//--------------------
+
+@sample
+    SoX_readInputSampleList();
+    SoXOverdrive_apply(overdrive,
+                       SoX_inputSampleList, SoX_outputSampleList);
+    SoX_writeOutputSampleList();
+
+//--------------------
+// GRAPHICS
+//--------------------
+
+@gfx
+    key = gfx_getchar();
+    key = Debug_handleKey(key);
+    SoXOverdrive_handleKey(key);

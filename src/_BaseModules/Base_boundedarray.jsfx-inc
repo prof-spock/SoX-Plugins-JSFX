@@ -1,0 +1,353 @@
+desc: bounded array routines
+// implements an array of fixed maximum length and dynamic effective
+// length where both lengths are stored as first and second entry in
+// array (for bounds checking and length information)
+author: Dr. Thomas Tensi, 2019
+
+//requires Base.jsfx-inc
+//requires Base_memory.jsfx-inc
+//requires Base_string.jsfx-inc
+
+@init
+    //========================================
+
+    /** error codes */
+    BoundedArray__errFIRST    = 999970;
+    BoundedArray__errBadValue = BoundedArray__errFIRST + 0;
+    BoundedArray__errNullPtr  = BoundedArray__errFIRST + 1;
+
+    // type definition for Header
+    BoundedArray__Header_SIZE = 2;
+    BoundedArray__Header_ATT_allocatedLength = 0;
+    BoundedArray__Header_ATT_effectiveLength = 1;
+
+    //====================
+    // PRIVATE ROUTINES
+    //====================
+
+    function BoundedArray__positionIsOkay (self, position)
+        /** Checks whether <position> is in range of <self> */
+    (
+        isInRange(position,
+                  1, self[BoundedArray__Header_ATT_effectiveLength])
+    );
+
+    //--------------------
+
+    function BoundedArray__addressFAST (self, position)
+        /** Gets address of element in <self> at <position> (without
+            bounds checking) */
+    (
+        self + position + 1
+    );
+
+    //--------------------
+
+    function BoundedArray__addressCHECKED (self, position)
+        /** Gets address of element in <self> at <position> (with
+            bounds checking) */
+        local (result)
+    (
+        result = maximumInteger;
+
+        self == null ? (
+            signalError(BoundedArray__errNullPtr);
+        ) : !BoundedArray__positionIsOkay(self, position) ? (
+            signalError(BoundedArray__errBadValue);
+        ) : (
+            result = BoundedArray__addressFAST(self, position);
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function BoundedArray__clearFAST (self)
+        /** Clears <self> to zero entries (without bounds checking)*/
+    (
+        Memory_set(self + BoundedArray__Header_SIZE,
+                   self[BoundedArray__Header_ATT_allocatedLength], 0);
+    );
+
+    //--------------------
+
+    function BoundedArray__clearCHECKED (self)
+        /** Clears <self> to zero entries (with bounds checking) */
+    (
+        self == null ? (
+            signalError(BoundedArray__errNullPtr);
+        ) : (
+            BoundedArray_clearFAST(self);
+        );
+    );
+
+    //--------------------
+
+    function BoundedArray__getAtFAST (self, position)
+        /** Gets element in <self> at <position> (without bounds
+            checking) */
+    (
+        self[position + 1]
+    );
+
+    //--------------------
+
+    function BoundedArray__getAtCHECKED (self, position)
+        /** Gets element in <self> at <position> (with bounds
+            checking) */
+        local (result)
+    (
+        result = -infinity;
+
+        self == null ? (
+            signalError(BoundedArray__errNullPtr);
+        ) : !BoundedArray__positionIsOkay(self, position) ? (
+            signalError(BoundedArray__errBadValue);
+        ) : (
+            result = BoundedArray__getAtFAST(self, position);
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function BoundedArray__setAtFAST (self, position, value)
+        /** Sets element in <self> at <position> to <value> (without
+            bounds checking) */
+    (
+        self[position + 1] = value;
+    );
+
+    //--------------------
+
+    function BoundedArray__setAtCHECKED (self, position, value)
+        /** Sets element in <self> at <position> to <value> (with
+            bounds checking) */
+    (
+        self == null ? (
+            signalError(BoundedArray__errNullPtr);
+        ) : !BoundedArray__positionIsOkay(self, position) ? (
+            signalError(BoundedArray__errBadValue);
+        ) : (
+            BoundedArray__setAtFAST(self, position, value);
+        );
+    );
+
+    //--------------------
+
+    function BoundedArray_setLengthFAST (self, length)
+        /** Sets effective length of <self> to <length> (without
+            bounds checking) */
+    (
+        self[BoundedArray__Header_ATT_effectiveLength] = length;
+    );
+
+    //--------------------
+
+    function BoundedArray_setLengthCHECKED (self, length)
+        /** Sets effective length of <self> to <length> (with
+            bounds checking) */
+    (
+        self == null ? (
+            signalError(BoundedArray__errNullPtr);
+        ) : length > self[BoundedArray__Header_ATT_allocatedLength] ? (
+            signalError(BoundedArray__errBadValue);
+        ) : (
+            BoundedArray_setLengthFAST(self, length);
+        );
+    );
+
+    //====================
+    // EXPORTED ROUTINES
+    //====================
+
+    //--------------------
+    // con-/destruction
+    //--------------------
+
+    function BoundedArray_make (maximumLength)
+        /** Makes a bounded self with at most <maximumLength>
+            elements */
+        local (self)
+    (
+        // first entry contains the maximum length
+        // second the effective length
+        // rest are the elements
+        self = Memory_allocate(maximumLength + BoundedArray__Header_SIZE);
+        self[BoundedArray__Header_ATT_allocatedLength] = maximumLength;
+        self[BoundedArray__Header_ATT_effectiveLength] = maximumLength;
+        self
+    );
+
+    //--------------------
+
+    function BoundedArray_destroy (self)
+        /** Destroys bounded array */
+    (
+        self == null ? (
+            signalError(BoundedArray__errNullPtr);
+        ) : (
+            Memory_free(self);
+        );
+    );
+
+    //--------------------
+    // property access
+    //--------------------
+
+    function BoundedArray_address (self, position)
+        /** Gets address of element in <self> at <position> */
+        local (result)
+    (
+        isCheckedMode ? (
+            result = BoundedArray__addressCHECKED(self, position);
+        ) : (
+            result = BoundedArray__addressFAST(self, position);
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function BoundedArray_getAt (self, position)
+        /** Gets element in <self> at <position> */
+        local (result)
+    (
+        isCheckedMode ? (
+            result = BoundedArray__getAtCHECKED(self, position);
+        ) : (
+            result = BoundedArray__getAtFAST(self, position);
+        );
+
+        result
+    );
+
+    //--------------------
+    // change
+    //--------------------
+
+    function BoundedArray_clear (self)
+        /** Clears <self> to zero entries */
+    (
+        isCheckedMode ? (
+            BoundedArray_clearCHECKED(self);
+        ) : (
+            BoundedArray_clearFAST(self);
+        );
+    );
+
+    //--------------------
+
+    function BoundedArray_setAt (self, position, value)
+        /** Sets element in <self> at <position> to <value> */
+    (
+        isCheckedMode ? (
+            BoundedArray__setAtCHECKED(self, position, value);
+        ) : (
+            BoundedArray__setAtFAST(self, position, value);
+        );
+    );
+
+    //--------------------
+
+    function BoundedArray_setLength (self, length)
+        /** Sets effective length of <self> to <length> */
+    (
+        isCheckedMode ? (
+            BoundedArray__setLengthCHECKED(self, length);
+        ) : (
+            BoundedArray__setLengthFAST(self, length);
+        );
+    );
+
+    //--------------------
+    // measurement
+    //--------------------
+
+    function BoundedArray_length (self)
+        /** Gets effective length of <self> */
+        local (isOkay result)
+    (
+        isOkay = !isChecked || self != null;
+
+        isOkay ? (
+            result = self[BoundedArray__Header_ATT_effectiveLength];
+        ) : (
+            signalError(BoundedArray__errNullPtr);
+            result = -infinity;
+        );
+
+        result
+    );
+
+    //--------------------
+
+    function BoundedArray_maximumLength (self)
+        /** Gets maximum length of <self> */
+        local (isOkay result)
+    (
+        isOkay = !isChecked || self != null;
+
+        isOkay ? (
+            result = self[BoundedArray__Header_ATT_allocatedLength];
+        ) : (
+            signalError(BoundedArray__errNullPtr);
+            result = -infinity;
+        );
+
+        result
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function BoundedArray_toString (self, st,
+                                    maxCountOfDisplayedElements)
+        /** Converts <self> to string <st> with at most
+            <maxCountOfDisplayedElements> elements shown */
+        local (displayedLength element i length temp)
+    (
+        self == null ? (
+            String_copy(st, "NULL");
+        ) : (
+            temp = String_make();
+            length = self[BoundedArray__Header_ATT_effectiveLength]
+
+            displayedLength = min(length, maxCountOfDisplayedElements);
+            String_clear(st);
+            i = 1;
+
+            while (i <= displayedLength) (
+                element = BoundedArray_getAt(self, i);
+                String_append(st, i > 1 ? ", " : "");
+                String_format(temp, "%f", element);
+                String_append(st, temp);
+                i += 1;
+            );
+
+            String_append(st,
+                          (displayedLength < length ? ", ...)" : ")"));
+            String_format(st, ", data = (%s)", st);
+            String_format(st,
+                          "BoundedArray(allocatedLength = %d,"
+                          " length = %d%s)",
+                          self[BoundedArray__Header_ATT_allocatedLength],
+                          length, st);
+
+            String_destroy(temp);
+        );
+    );
+
+    //--------------------
+
+    function BoundedArray_toString (self, st)
+        /** Converts <self> to string <st> */
+    (
+        BoundedArray_toString(self, st, 10);
+    );
+
+    //========================================

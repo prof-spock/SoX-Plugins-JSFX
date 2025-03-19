@@ -1,0 +1,636 @@
+desc: Display utilities for debugging
+author: Dr. Thomas Tensi, 2019
+
+//requires Base_graphics.jsfx-inc
+//requires Base_string.jsfx-inc
+
+@init
+
+    //===========================================
+    // Memory, Text & String Matrix for Debugging
+    //===========================================
+
+    // Debug_Mode enumeration
+    Debug_Mode__COUNT = 4;
+    Debug_Mode_effect   = 1;
+    Debug_Mode_memory   = 2;
+    Debug_Mode_string   = 3;
+    Debug_Mode_textData = 4;
+
+    Debug_currentMode = Debug_Mode_effect;
+
+    Debug__Font_name = "Courier New";
+    Debug__Font_size = 18;
+    Debug__Font_magnification = 0;
+
+    // list of length per graphics mode in MTS matrix
+    Debug_MTSMatrix__maximumIndexList = null;
+    Debug_MTSMatrix__startIndexList   = null;
+    Debug_MTSMatrix__dataTable        = null;
+
+    // text data entries in MTS matrix
+    Debug_MTSMatrix__TextEntry_SIZE = 2;
+    Debug_MTSMatrix__TextEntry_ATT_color  = 0;
+    Debug_MTSMatrix__TextEntry_ATT_string = 1;
+
+    // maximum allowed index for MTSMatrix data page
+    Debug_MTSMatrix_dataMaximumCount = 600;
+
+    //--------------------
+    //--------------------
+
+    function Debug_MTSMatrix_clearDataTable ()
+        /** Sets data matrix to empty */
+        local (i maximumIndex textEntry textEntryString)
+    (
+        // clear all existing entries in data table
+        maximumIndex =
+            FixedArray_getAt(Debug_MTSMatrix__maximumIndexList,
+                             Debug_Mode_textData);
+        i = 0;
+
+        while (i < maximumIndex) (
+            textEntry = ARRAYADDR(Debug_MTSMatrix__dataTable,
+                                  i, Debug_MTSMatrix__TextEntry_SIZE);
+            textEntry[Debug_MTSMatrix__TextEntry_ATT_color] =
+                Graphics_Color_black;
+            textEntryString =
+                textEntry[Debug_MTSMatrix__TextEntry_ATT_string];
+            String_clear(textEntryString);
+            i += 1;
+        );
+
+        FixedArray_setAt(Debug_MTSMatrix__startIndexList,
+                         Debug_Mode_textData, 0);
+        FixedArray_setAt(Debug_MTSMatrix__maximumIndexList,
+                         Debug_Mode_textData, 0);
+    );
+
+    //--------------------
+
+    function Debug_MTSMatrix_initialize ()
+        /** Initializes internal data of data matrix */
+        local (textEntry textEntrySize i maList totalCount vaList)
+    (
+        // initialize maximum address and view address lists
+        maList = FixedArray_make(Debug_Mode__COUNT);
+        Debug_MTSMatrix__maximumIndexList = maList;
+
+        // set each maximum index just one about the allowed maximum
+        FixedArray_setAt(maList, Debug_Mode_memory, __memtop() + 1);
+        FixedArray_setAt(maList, Debug_Mode_string, 1024);
+
+        vaList = FixedArray_make(Debug_Mode__COUNT);
+        Debug_MTSMatrix__startIndexList = vaList;
+        FixedArray_setAt(vaList, Debug_Mode_memory, 0);
+        FixedArray_setAt(vaList, Debug_Mode_string, 0);
+
+        // initialize data entry list
+        totalCount = Debug_MTSMatrix_dataMaximumCount;
+        textEntrySize = Debug_MTSMatrix__TextEntry_SIZE;
+        Debug_MTSMatrix__dataTable =
+            Memory_allocateArray(totalCount, textEntrySize);
+        i = 0;
+
+        while (i < totalCount) (
+            textEntry = ARRAYADDR(Debug_MTSMatrix__dataTable,
+                                  i, textEntrySize);
+            textEntry[Debug_MTSMatrix__TextEntry_ATT_color] =
+                Graphics_Color_black;
+            textEntry[Debug_MTSMatrix__TextEntry_ATT_string] =
+                String_make();
+            i += 1;
+        );
+
+        Debug_MTSMatrix_clearDataTable();
+        Debug_currentMode = Debug_Mode_effect;
+    );
+
+    //--------------------
+
+    function Debug_MTSMatrix_columnCount ()
+        /** Tells the column count of the memory matrix calculated
+            from width and standard column */
+        local (h referenceWidth st)
+    (
+        st = iif(Debug_currentMode == Debug_Mode_memory,
+                     "00000: 000000000000 ",
+                 Debug_currentMode == Debug_Mode_string,
+                     "0000: XXXXXXXXXXXXXXX ",
+                 Debug_currentMode == Debug_Mode_textData,
+                     "XXXXXXXXXXXXXXXXXXXX ",
+                 "X");
+        gfx_measurestr(st, referenceWidth, h);
+        max(1, floor(gfx_w / referenceWidth))
+    );
+
+    //--------------------
+
+    function Debug_MTSMatrix_rowCount ()
+        /** Tells the row count of the memory matrix calculated
+            from height and textheight */
+    (
+        max(1, floor(gfx_h / gfx_texth))
+    );
+
+    //--------------------
+
+    function Debug_MTSMatrix_showEntry (index)
+        /** Shows memory, data or string matrix in current
+            mode */
+        local (color data indexTemplate isInteger isString st
+               template textEntry)
+    (
+        Debug_currentMode > 0 ? (
+            Debug_currentMode == Debug_Mode_textData ? (
+                textEntry =
+                    ARRAYADDR(Debug_MTSMatrix__dataTable,
+                              index, Debug_MTSMatrix__TextEntry_SIZE);
+                color = textEntry[Debug_MTSMatrix__TextEntry_ATT_color];
+                Graphics_color_set(color);
+                st = textEntry[Debug_MTSMatrix__TextEntry_ATT_string];
+                gfx_drawstr(st);
+            ) : (
+                isString =
+                    (Debug_currentMode == Debug_Mode_string);
+                template = (isString ? "%4d: " : "%5d: ");
+                Graphics_color_set(Graphics_Color_darkGreen);
+                gfx_printf(template, index);
+                Graphics_color_set(Graphics_Color_white);
+                data = (isString ? index : index[]);
+                isInteger = (floor(data) == data);
+                template = (isString ? "%.15s"
+                            : (isInteger ? "%12i" : "%+5.4e"));
+                gfx_printf(template, data);
+            );
+        );
+    );
+
+    //--------------------
+
+    function Debug_MTSMatrix_show ()
+        /** Shows contents of memory, data or string matrix depending
+            on current mode and start index and maximum index
+            settings */
+        local (columnCount columnIndex data deltaX deltaY
+               fontSize index maximumIndex rowCount rowIndex x)
+    (
+        Debug_currentMode > Debug_Mode_effect ? (
+            fontSize =
+                toInteger(Debug__Font_size
+                          * 1.1^Debug__Font_magnification);
+            gfx_setfont(1, Debug__Font_name, fontSize);
+            columnCount = Debug_MTSMatrix_columnCount();
+            rowCount    = Debug_MTSMatrix_rowCount();
+            deltaX = gfx_w / columnCount;
+            deltaY = gfx_h / rowCount;
+            index =
+                FixedArray_getAt(Debug_MTSMatrix__startIndexList,
+                                 Debug_currentMode);
+            maximumindex =
+                FixedArray_getAt(Debug_MTSMatrix__maximumIndexList,
+                                 Debug_currentMode);
+            columnIndex = 1;
+
+            while (columnIndex <= columnCount) (
+                x = deltaX * (columnIndex - 1);
+                rowIndex = 1;
+
+                while (rowIndex <= rowCount) (
+                    index < maximumIndex ? (
+                        gfx_x = x;
+                        gfx_y = deltaY * (rowIndex - 1);
+                        Debug_MTSMatrix_showEntry(index);
+                        index += 1;
+                    );
+
+                    rowIndex += 1;
+                );
+
+                columnIndex += 1;
+            );
+        );
+    );
+
+    //--------------------
+
+    function Debug_MTSMatrix_addTextEntry (color, st)
+        /** Adds data entry at next position to (<color>,<st>) */
+        local (index textEntry textEntryString)
+    (
+        index =
+            FixedArray_getAt(Debug_MTSMatrix__maximumIndexList,
+                             Debug_Mode_textData);
+
+        index < Debug_MTSMatrix_dataMaximumCount ? (
+            textEntry = ARRAYADDR(Debug_MTSMatrix__dataTable,
+                                  index, Debug_MTSMatrix__TextEntry_SIZE);
+            index += 1;
+            FixedArray_setAt(Debug_MTSMatrix__maximumIndexList,
+                             Debug_Mode_textData, index);
+            textEntry[Debug_MTSMatrix__TextEntry_ATT_color] = color;
+            textEntryString =
+                textEntry[Debug_MTSMatrix__TextEntry_ATT_string];
+            String_copy(textEntryString, st);
+        );
+    );
+
+    //--------------------
+
+    key_pageReset = $'0';
+    key_pageIncr  = $'+';
+    key_pageIncr2 = $'*';
+    key_pageDecr  = $'-';
+    key_pageDecr2 = $'_';
+    key_modeDebug          = $'d';
+    key_modeEffect          = $'e';
+    key_modeMemory          = $'m';
+    key_modeString          = $'s';
+    key_fontSizeIncr   = $'3';
+    key_fontSizeReset   = $'2';
+    key_fontSizeDecr  = $'1';
+
+    //--------------------
+
+    function Debug_MTSMatrix_handleKey (key)
+        /** Handles <key> in MTS matrix; if processed, 0 is returned,
+            otherwise the original key itself */
+       local (keyIsRelevant largePageSize maximumIndex pageSize
+              result startIndex)
+    (
+        keyIsRelevant =
+            (key == key_modeDebug || key == key_modeMemory
+             || key == key_modeString
+             || key == key_pageIncr     || key == key_pageDecr
+             || key == key_pageIncr2    || key == key_pageDecr2
+             || key == key_pageReset    || key == key_fontSizeReset
+             || key == key_fontSizeIncr || key == key_fontSizeDecr);
+
+        keyIsRelevant || key == key_modeEffect ? (
+            Debug_currentMode =
+                iif(key == key_modeDebug,  Debug_Mode_textData,
+                    key == key_modeEffect, Debug_Mode_effect,
+                    key == key_modeMemory, Debug_Mode_memory,
+                    key == key_modeString, Debug_Mode_string,
+                    Debug_currentMode);
+        );
+
+        Debug_currentMode != Debug_Mode_effect ? (
+            pageSize = (Debug_MTSMatrix_rowCount()
+                        * Debug_MTSMatrix_columnCount());
+            largePageSize = 10 * pageSize;
+
+            Graphics_clear(Graphics_Color_black);
+            maximumIndex =
+                FixedArray_getAt(Debug_MTSMatrix__maximumIndexList,
+                                     Debug_currentMode);
+
+            key == key_fontSizeReset ? (
+                Debug__Font_magnification = 0;
+            ) : key == key_fontSizeIncr || key == key_fontSizeDecr ? (
+                Debug__Font_magnification +=
+                    iif(key == key_fontSizeIncr,  +1,
+                        key == key_fontSizeDecr, -1,
+                        0);
+            ) : keyIsRelevant ? (
+                startIndex =
+                    FixedArray_getAt(Debug_MTSMatrix__startIndexList,
+                                     Debug_currentMode);
+                startIndex +=
+                    iif(key == key_pageIncr,  +pageSize,
+                        key == key_pageDecr,  -pageSize,
+                        key == key_pageIncr2, +largePageSize,
+                        key == key_pageDecr2, -largePageSize,
+                        key == key_pageReset, -startIndex,
+                        0);
+                startIndex =
+                    forceToRange(startIndex, 0, maximumIndex, true);
+                
+                FixedArray_setAt(Debug_MTSMatrix__startIndexList,
+                                 Debug_currentMode, startIndex);
+            );
+
+            Debug_MTSMatrix_show();
+        );
+
+        keyIsRelevant ? 0 : key
+    );
+
+    //========================================
+    // Debugging routines
+    //========================================
+
+    Debug__headingColor1 = Graphics_color_yellow;
+    Debug__headingColor2 = Graphics_color_green;
+    Debug__headingColor3 = Graphics_color_cyan;
+    Debug__headingColor4 = Graphics_color_magenta;
+    Debug__headingColor5 = Graphics_color_red;
+
+    Debug__standardColor = Graphics_color_white;
+
+    //--------------------
+
+    function Debug_initialize ()
+        /** Initializes all internal data of debugging */
+    (
+        Debug_MTSMatrix_initialize();
+    );
+
+    //--------------------
+
+    function Debug_clear ()
+        /** Resets debugging output */
+    (
+        Debug_MTSMatrix_clearDataTable();
+    );
+
+    //--------------------
+
+    function Debug__printWithPrefix (prefix, st)
+        /** Prints <st> in debug matrix prefixed by <prefix> analyzing
+            any preceding header specification in st and advances
+            cursor; overprints last cell if necessary */
+        local (color fullSt localSt)
+    (
+        fullSt  = String_make();
+        localSt = String_make();
+
+        String_startsWith(st, "[]") ? (
+            color = Graphics_Color_current();
+            String_substring(localSt, st, 3);
+        ) : String_startsWith(st, "[H1]") ? (
+            color = Debug__headingColor1;
+            String_substring(localSt, st, 5);
+        ) : String_startsWith(st, "[H2]") ? (
+            color = Debug__headingColor2;
+            String_substring(localSt, st, 5);
+        ) : String_startsWith(st, "[H3]") ? (
+            color = Debug__headingColor3;
+            String_substring(localSt, st, 5);
+        ) : String_startsWith(st, "[H4]") ? (
+            color = Debug__headingColor4;
+            String_substring(localSt, st, 5);
+        ) : String_startsWith(st, "[H5]") ? (
+            color = Debug__headingColor5;
+            String_substring(localSt, st, 5);
+        ) : (
+            color = Debug__standardColor;
+            String_copy(localSt, st);
+        );
+
+        String_copy(fullSt, prefix);
+        String_append(fullSt, localSt);
+        
+        Debug_MTSMatrix_addTextEntry(color, fullSt);
+       
+        String_destroy(localSt);
+        String_destroy(fullSt);
+    );
+
+    //--------------------
+
+    function Debug_print (st)
+        /** Prints <st> in debug matrix and advances
+            cursor; overprints last cell if necessary */
+    (
+        Debug__printWithPrefix("", st);
+    );
+
+    //--------------------
+
+    function Debug_print (format, value1, value2, value3, value4)
+        /** Prints <value1> to <value4> in debug matrix using <format>
+            and advances cursor; overprints last cell if necessary */
+    (
+        Debug_print(sprintf(#, format, value1, value2, value3, value4));
+    );
+
+    //--------------------
+
+    function Debug_print (format, value1, value2, value3)
+        /** Prints <value1> to <value3> in debug matrix using <format>
+            and advances cursor; overprints last cell if necessary */
+    (
+        Debug_print(format, value1, value2, value3, 0);
+    );
+
+    //--------------------
+
+    function Debug_print (format, value1, value2)
+        /** Prints <value1> to <value2> in debug matrix using <format>
+            and advances cursor; overprints last cell if necessary */
+    (
+        Debug_print(format, value1, value2, 0, 0);
+    );
+
+    //--------------------
+
+    function Debug_print (format, value1)
+        /** Prints <value1> in debug matrix using <format> and
+            advances cursor; overprints last cell if necessary */
+    (
+        Debug_print(format, value1, 0, 0, 0);
+    );
+
+    //--------------------
+
+    function Debug_printIndented (indentationLevel, format,
+                                  value1, value2, value3, value4)
+        /** Prints <value1> to <value4> in debug matrix using <format>
+            with indentation given by <indentationLevel> and advances
+            cursor; overprints last cell if necessary */
+        local (indentation)
+    (
+        indentation = String_make();
+        String_repeat(indentation, " ", indentationLevel);
+        Debug__printWithPrefix(indentation,
+                               sprintf(#, format,
+                                       value1, value2, value3, value4));
+        String_destroy(indentation);
+    );
+
+    //--------------------
+
+    function Debug_printIndented (indentationLevel, format,
+                                  value1, value2, value3)
+        /** Prints <value1> to <value3> in debug matrix using <format>
+            with indentation given by <indentationLevel> and advances
+            cursor; overprints last cell if necessary */
+    (
+        Debug_printIndented(indentationLevel, format,
+                            value1, value2, value3, 0);
+    );
+
+    //--------------------
+
+    function Debug_printIndented (indentationLevel, format,
+                                  value1, value2)
+        /** Prints <value1> to <value2> in debug matrix using <format>
+            with indentation given by <indentationLevel> and advances
+            cursor; overprints last cell if necessary */
+    (
+        Debug_printIndented(indentationLevel, format,
+                            value1, value2, 0, 0);
+    );
+
+    //--------------------
+
+    function Debug_printIndented (indentationLevel, format, value1)
+        /** Prints <value1> in debug matrix using <format> with
+            indentation given by <indentationLevel> and advances
+            cursor; overprints last cell if necessary */
+    (
+        Debug_printIndented(indentationLevel, format,
+                            value1, 0, 0, 0);
+    );
+
+    //--------------------
+
+    function Debug_printIndented (indentationLevel, st)
+        /** Prints <st> in debug matrix with indentation given by
+            <indentationLevel> and advances cursor; overprints last
+            cell if necessary */
+    (
+        Debug_printIndented(indentationLevel, st, 0, 0, 0, 0);
+    );
+
+    //--------------------
+
+    function Debug_printHdrIndented (indentationLevel, format,
+                                     value1, value2, value3, value4)
+        /** Prints <value1> to <value4> in debug matrix using <format>
+            with indentation and heading level given by
+            <indentationLevel> and advances cursor; overprints last
+            cell if necessary */
+        local (extendedFormat)
+    (
+        extendedFormat = String_make();
+        String_format(extendedFormat, "[H%1d]%s",
+                      indentationLevel + 1, format);
+        Debug_printIndented(indentationLevel, extendedFormat,
+                            value1, value2, value3, value4);
+        String_destroy(extendedFormat);
+    );
+
+    //--------------------
+
+    function Debug_printHdrIndented (indentationLevel, format,
+                                  value1, value2, value3)
+        /** Prints <value1> to <value3> in debug matrix using <format>
+            with indentation given by <indentationLevel> and advances
+            cursor; overprints last cell if necessary */
+    (
+        Debug_printHdrIndented(indentationLevel, format,
+                               value1, value2, value3, 0);
+    );
+
+    //--------------------
+
+    function Debug_printHdrIndented (indentationLevel, format,
+                                  value1, value2)
+        /** Prints <value1> to <value2> in debug matrix using <format>
+            with indentation given by <indentationLevel> and advances
+            cursor; overprints last cell if necessary */
+    (
+        Debug_printHdrIndented(indentationLevel, format,
+                               value1, value2, 0, 0);
+    );
+
+    //--------------------
+
+    function Debug_printHdrIndented (indentationLevel, format, value1)
+        /** Prints <value1> in debug matrix using <format> with
+            indentation given by <indentationLevel> and advances
+            cursor; overprints last cell if necessary */
+    (
+        Debug_printHdrIndented(indentationLevel, format,
+                               value1, 0, 0, 0);
+    );
+
+    //--------------------
+
+    function Debug_printHdrIndented (indentationLevel, st)
+        /** Prints <st> in debug matrix with indentation given by
+            <indentationLevel> and advances cursor; overprints last
+            cell if necessary */
+    (
+        Debug_printHdrIndented(indentationLevel, st, 0, 0, 0, 0);
+    );
+
+    //--------------------
+
+    function Debug_printListIndented (indentationLevel, list,
+                                      header, elementFormat)
+        /** Prints elements of <list> with <header>, where elements
+            are formatted by <elementFormat> */
+        local (count element i lineFormat)
+    (
+        lineFormat = String_make();
+
+        Debug_printHdrIndented(indentationLevel, header, list);
+        indentationLevel += 1;
+
+        String_copy(lineFormat, "[%d]=");
+        String_append(lineFormat, elementFormat);
+        count = FixedArray_length(list);
+        i = 1;
+
+        while (i <= count) (
+            element = FixedArray_getAt(list, i);
+            Debug_printIndented(indentationLevel, lineFormat, i, element);
+            i += 1;
+        );
+
+        String_destroy(lineFormat);
+    );
+
+    //--------------------
+
+    function Debug_printSepStringIndented (indentationLevel, st)
+        /** Splits <st> at newlines and prints them indented to debug
+            output */
+        local (hasSeparator length line lineLength position separator
+               startPosition)
+    (
+        line = String_make();
+
+        separator = String_multiLineSeparator;
+        startPosition = 1;
+        length = String_length(st);
+        hasSeparator = true;
+
+        while (hasSeparator) (
+            position = String_findChar(st, separator, startPosition);
+            hasSeparator = (position > startPosition);
+
+            !hasSeparator && startPosition < length ? (
+                position = length + 1;
+            );
+
+            position > startPosition ? (
+                lineLength = position - startPosition;
+                String_substring(line, st, startPosition, lineLength);
+                Debug_printIndented(indentationLevel, line);
+                startPosition = position + 1;
+            );
+        );
+
+        String_destroy(line);
+    );
+
+    //--------------------
+
+    function Debug_handleKey (key)
+        /** Handles <key> */
+    (
+        key == $'c' ? (
+            Debug_clear();
+        );
+
+        Debug_MTSMatrix_handleKey(key)
+    );
+
+    //============================================================
+
+    Debug_initialize();
+    Memory_saveRestorePoint();

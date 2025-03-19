@@ -1,0 +1,418 @@
+desc:SoX Complex Delay Include File
+// provides utility functions for chorus, echo and echos effects of
+// SoX
+tags: chorus delay
+author: Dr. Thomas Tensi, 2025
+
+//requires Base.jsfx-inc
+//requires Base_fixedarray.jsfx-inc
+//requires Base_debug.jsfx-inc
+//requires Base_struct.jsfx-inc
+//requires Audio_samplequeue.jsfx-inc
+//requires Audio_waveform.jsfx-inc
+
+//--------------------
+// INITIALIZATION
+//--------------------
+
+@init
+
+    // delay kind enumeration type
+    SoXDelayKind_chorus        = 1;
+    SoXDelayKind_tappedDelay   = 2;
+    SoXDelayKind_delaySequence = 3;
+
+    //--------------------
+
+    function SoXDelayKind_toString (self)
+    (
+        iif(self == SoXDelayKind_chorus, "chorus",
+            self == SoXDelayKind_tappedDelay, "echo",
+            "echos")
+    );
+
+    //====================
+    // SoXDelayStage
+    //====================
+    // contains the parameter data for a single chorus/echo stage
+
+    SoXDelayStage__SIZE = 7;
+    SoXDelayStage__ATT_isChorusStage       = STRUCT_INDEX(1);
+    SoXDelayStage__ATT_delay               = STRUCT_INDEX(2);
+    SoXDelayStage__ATT_decay               = STRUCT_INDEX(3);
+    SoXDelayStage__ATT_frequency           = STRUCT_INDEX(4);
+    SoXDelayStage__ATT_depth               = STRUCT_INDEX(5);
+    SoXDelayStage__ATT_modulationKind      = STRUCT_INDEX(6);
+    SoXDelayStage__ATT_modulationWave      = STRUCT_INDEX(7);
+
+   //--------------------
+
+    function SoXDelayStage_print (self, index, indentationLevel)
+        /** Prints string representation of <self> */
+        local (isChorusStage kind waveform)
+    (
+        Debug_printHdrIndented(indentationLevel, "Stage_%d@%d",
+                               index, self);
+        indentationLevel += 1;
+
+        isChorusStage = self[SoXDelayStage__ATT_isChorusStage];
+        Debug_printIndented(indentationLevel, "isChorus=%s",
+                            String_fromBoolean(isChorusStage));
+        Debug_printIndented(indentationLevel, "delay=%4.3fms",
+                            self[SoXDelayStage__ATT_delay] * 1000);
+        Debug_printIndented(indentationLevel, "decay=%f",
+                            self[SoXDelayStage__ATT_decay]);
+
+        isChorusStage ? (
+            kind = self[SoXDelayStage__ATT_modulationKind];
+            Debug_printIndented(indentationLevel, "freq=%fHz",
+                                self[SoXDelayStage__ATT_frequency]);
+            Debug_printIndented(indentationLevel, "depth=%4.3fms",
+                                self[SoXDelayStage__ATT_depth] * 1000);
+            Debug_printIndented(indentationLevel, "modKind=%s",
+                                Audio_WaveformKind_toString(kind));
+            waveform = self[SoXDelayStage__ATT_modulationWave];
+            Audio_Waveform_print(waveform, indentationLevel);
+        );
+    );
+
+    //--------------------
+
+    function SoXDelayStage_updateModulation (self,
+                                             stageIndex,
+                                             stageCount,
+                                             sampleRate,
+                                             currentTime,
+                                             timeOffset,
+                                             delayLineList)
+        /** Updates modulation related parameters for stage <self>
+            with index <stageIndex> by <sampleRate>, play position
+            <currentTime>, <timeOffset> of effect and effect
+            <delayLineList> */
+        local (channel delay delayLine delayLineIndex delayLineLength
+               delayLineLengthInSeconds depth effectivePhase
+               frequency isChorusStage maximumModulationValue
+               waveform waveformKind waveformLength)
+    (
+        delay         = self[SoXDelayStage__ATT_delay];
+        depth         = self[SoXDelayStage__ATT_depth];
+        isChorusStage = self[SoXDelayStage__ATT_isChorusStage];
+
+        isChorusStage ? (
+            // update the modulation wave form
+            frequency = self[SoXDelayStage__ATT_frequency];
+            effectivePhase =
+                (SoXComplexDelay_defaultChorusPhase
+                 + Audio_Waveform_adjustPhaseByTime(frequency,
+                                                    timeOffset,
+                                                    currentTime));
+            waveformLength = sampleRate / frequency;
+            maximumModulationValue = floor(depth * sampleRate) + 1;
+            waveformKind = self[SoXDelayStage__ATT_modulationKind];
+            waveform     = self[SoXDelayStage__ATT_modulationWave];
+
+            Audio_Waveform_set(waveform, waveformLength,
+                               waveformKind,
+                               1, maximumModulationValue,
+                               effectivePhase, true);
+        );
+
+        delayLineLengthInSeconds = delay + (isChorusStage ? depth : 0.0);
+        delayLineLength = ceil(delayLineLengthInSeconds * sampleRate);
+
+        delayLineIndex = stageIndex;
+        channel = 1;
+
+        while (channel <= SoX_channelCount) (
+            delayLine = FixedArray_getAt(delayLineList, delayLineIndex);
+            Audio_SampleQueue_setEffectiveLength(delayLine,
+                                                 delayLineLength);
+            channel        += 1;
+            delayLineIndex += stageCount;
+        );
+    );
+
+    //====================
+    // SoXComplexDelay
+    //====================
+    // stores characteristic data of a chorus or echo effect
+
+    /** the default phase of each chorus modulation waveform */
+    SoXComplexDelay_defaultChorusPhase = twoPi / 4;
+
+    SoXComplexDelay__maxStageCount = 10;
+    SoXComplexDelay__maximumDelayPerStage = 5;    // seconds
+    SoXComplexDelay__maximumDepthPerStage = 0.01; // seconds
+
+    SoXComplexDelay__SIZE = 7;
+    SoXComplexDelay__ATT_kind          = STRUCT_INDEX(1);
+    SoXComplexDelay__ATT_inGain        = STRUCT_INDEX(2);
+    SoXComplexDelay__ATT_outGain       = STRUCT_INDEX(3);
+    SoXComplexDelay__ATT_timeOffset    = STRUCT_INDEX(4);
+    SoXComplexDelay__ATT_stageCount    = STRUCT_INDEX(5);
+    SoXComplexDelay__ATT_stageList     = STRUCT_INDEX(6);
+    SoXComplexDelay__ATT_delayLineList = STRUCT_INDEX(7);
+
+    //--------------------
+    // EXPORTED ROUTINES
+    //--------------------
+
+    //--------------------
+    // construction/setup
+    //--------------------
+
+    function SoXComplexDelay_make (kind)
+        /** Constructs a new chorus or echo effect (depending on
+            <kind> */
+        local (channel channelCount delayLineList
+               maxDelayLineLength queueIndex queueLength
+               self stage stageCount stageIndex stageList)
+    (
+        self = STRUCT_make(SoXComplexDelay__SIZE);
+
+        stageCount   = SoXComplexDelay__maxStageCount;
+        channelCount = SoX_channelCount;
+
+        maxDelayLineLength =
+            srate * (SoXComplexDelay__maximumDelayPerStage
+                     + SoXComplexDelay__maximumDepthPerStage);
+
+        stageList = FixedArray_make(stageCount);
+
+        // set record variables
+        self[SoXComplexDelay__ATT_kind]          = kind;
+        self[SoXComplexDelay__ATT_inGain]        = 0.5;
+        self[SoXComplexDelay__ATT_outGain]       = 0.5;
+        self[SoXComplexDelay__ATT_stageCount]    = stageCount;
+        self[SoXComplexDelay__ATT_stageList]     = stageList;
+
+        // allocate stages
+        stageIndex = 1;
+
+        while (stageIndex <= stageCount) (
+            stage = STRUCT_make(SoXDelayStage__SIZE);
+            stage[SoXDelayStage__ATT_isChorusStage] =
+                (kind == SoXDelayKind_chorus);
+            stage[SoXDelayStage__ATT_delay]     = 0;
+            stage[SoXDelayStage__ATT_decay]     = 0;
+            stage[SoXDelayStage__ATT_frequency] = 0.99;
+            stage[SoXDelayStage__ATT_depth]     = 0.01;
+            stage[SoXDelayStage__ATT_modulationKind] =
+                Audio_WaveformKind_sine;
+            stage[SoXDelayStage__ATT_modulationWave] =
+                Audio_Waveform_make();
+
+            FixedArray_setAt(stageList, stageIndex, stage);
+            stageIndex += 1;
+        );
+
+        delayLineList =
+            Audio_SampleQueueList_make(stageCount * channelCount,
+                                       maxDelayLineLength, false);
+        self[SoXComplexDelay__ATT_delayLineList] = delayLineList;
+
+        self
+    );
+
+    //--------------------
+
+    function SoXComplexDelay_update (self,
+                                     inGain, outGain, timeOffset,
+                                     stageCount)
+        /** Updates chorus or echo effect <self> from gain data
+            <inGain> and <outGain> and the time offset <timeOffset>
+            where <stageCount> gives the number of relevant stage */
+        local (delayLineList)
+    (
+        self[SoXComplexDelay__ATT_inGain]     = inGain;
+        self[SoXComplexDelay__ATT_outGain]    = outGain;
+        self[SoXComplexDelay__ATT_timeOffset] = timeOffset;
+        self[SoXComplexDelay__ATT_stageCount] = stageCount;
+
+        delayLineList = self[SoXComplexDelay__ATT_delayLineList];
+        Audio_SampleQueueList_setToZero(delayLineList);
+    );
+
+    //--------------------
+
+    function SoXComplexDelay_updateStage (self, stageIndex,
+                                          delay, decay, frequency,
+                                          depth, waveformKind)
+        /** Updates stage <index> in chorus or echo effect <self> from
+            <delay>, <decay>, <frequency>, <depth> and
+            <waveformKind> */
+        local (delayLineList isChorusEffect stage stageCount
+               stageList timeOffset)
+    (
+        kind           = self[SoXComplexDelay__ATT_kind];
+        stageList      = self[SoXComplexDelay__ATT_stageList];
+        stageCount     = self[SoXComplexDelay__ATT_stageCount];
+        delayLineList  = self[SoXComplexDelay__ATT_delayLineList];
+        timeOffset     = self[SoXComplexDelay__ATT_timeOffset];
+        isChorusEffect = (kind == SoXDelayKind_chorus);
+
+        isInRange(stageIndex, 1, stageCount) ? (
+            stage = FixedArray_getAt(stageList, stageIndex);
+
+            stage[SoXDelayStage__ATT_isChorusStage]  = isChorusEffect;
+            stage[SoXDelayStage__ATT_delay]          = delay;
+            stage[SoXDelayStage__ATT_decay]          = decay;
+            stage[SoXDelayStage__ATT_frequency]      = frequency;
+            stage[SoXDelayStage__ATT_depth]          = depth;
+            stage[SoXDelayStage__ATT_modulationKind] = waveformKind;
+
+            SoXDelayStage_updateModulation(stage,
+                                           stageIndex, stageCount,
+                                           srate, play_position,
+                                           timeOffset, delayLineList);
+        );
+    );
+
+    //--------------------
+    // destruction
+    //--------------------
+
+    function SoXComplexDelay_destroy (self)
+        /** Destroys delay effect */
+        local (delayLineList stage stageCount stageIndex stageList
+               waveform)
+    (
+        stageCount    = SoXComplexDelay__maxStageCount;
+        stageList     = self[SoXComplexDelay__ATT_stageList];
+        delayLineList = self[SoXComplexDelay__ATT_delayLineList];
+
+        stageIndex = stageCount;
+
+        while (stageIndex > 0) (
+            stage = FixedArray_getAt(stageList, stageIndex);
+            waveform = stage[SoXDelayStage__ATT_modulationWave];
+            Audio_Waveform_destroy(waveform);
+            FixedArray_destroy(stage);
+            stageIndex -= 1;
+        );
+
+        Audio_SampleQueueList_destroy(delayLineList);
+        FixedArray_destroy(stageList);
+        STRUCT_destroy(self);
+    );
+
+    //--------------------
+    // processing
+    //--------------------
+
+    function SoXComplexDelay_apply (self,
+                                    inputSampleList, outputSampleList)
+        /** Applies delay <self> to input samples in <inputSampleList>
+            and writes output samples into <outputSampleList> */
+       local (channel decay delayedSample delayLine delayLineIndex
+              delayLineList kind indexOffset inGain inputSample
+              isChorusEffect isSequentialDelay outGain outputSample
+              previousStageSample stage stageCount stageIndex stageList
+              stageSample waveform)
+    (
+        kind          = self[SoXComplexDelay__ATT_kind];
+        inGain        = self[SoXComplexDelay__ATT_inGain];
+        outGain       = self[SoXComplexDelay__ATT_outGain];
+        stageCount    = self[SoXComplexDelay__ATT_stageCount];
+        stageList     = self[SoXComplexDelay__ATT_stageList];
+        delayLineList = self[SoXComplexDelay__ATT_delayLineList];
+
+        isChorusEffect    = (kind == SoXDelayKind_chorus);
+        isSequentialDelay = (kind == SoXDelayKind_delaySequence);
+
+        delayLineIndex = 1;
+        channel = 1;
+
+        while (channel <= SoX_channelCount) (
+            inputSample  = FixedArray_getAt(inputSampleList, channel);
+            outputSample = inputSample * inGain;
+            stageIndex = 1;
+            previousStageSample = 0;
+
+            while (stageIndex <= stageCount) (
+                stage = FixedArray_getAt(stageList, stageIndex);
+                decay = stage[SoXDelayStage__ATT_decay];
+
+                !isChorusEffect ? (
+                    // no modulation, take first entry in delay line
+                    indexOffset = 1;
+                ) : (
+                    // access a position modulated by modulation wave
+                    waveform = stage[SoXDelayStage__ATT_modulationWave];
+                    indexOffset = Audio_Waveform_current(waveform);
+
+                    channel == SoX_channelCount ? (
+                        Audio_Waveform_advance(waveform);
+                    );
+                );
+
+                delayLine = FixedArray_getAt(delayLineList, delayLineIndex);
+
+                Audio_SampleQueue_length(delayLine) == 0 ? (
+                    stageSample = inputSample;
+                ) : (
+                    stageSample =
+                        Audio_SampleQueue_getAt(delayLine, indexOffset);
+                    // the next stage either gets as input the input
+                    // sample or the input sample plust the current
+                    // stage sample
+                    delayedSample = (!isSequentialDelay
+                                     ? inputSample
+                                     : previousStageSample + inputSample);
+                    Audio_SampleQueue_rotateLeft(delayLine, delayedSample);
+                );
+
+                outputSample += stageSample * decay;
+                previousStageSample = stageSample;
+                delayLineIndex += 1;
+                stageIndex += 1;
+            );
+
+            outputSample *= outGain;
+            FixedArray_setAt(outputSampleList, channel, outputSample);
+            channel += 1;
+        );
+    );
+
+    //--------------------
+    // type conversion
+    //--------------------
+
+    function SoXComplexDelay_print (self, indentationLevel)
+        /** Prints a representation of sequential echo <self> to debug
+            output */
+        local (kind delayLineList stage stageCount stageIndex stageList)
+    (
+        // get record variables
+        kind          = self[SoXComplexDelay__ATT_kind];
+        stageCount    = self[SoXComplexDelay__ATT_stageCount];
+        stageList     = self[SoXComplexDelay__ATT_stageList];
+        delayLineList = self[SoXComplexDelay__ATT_delayLineList];
+
+        Debug_printHdrIndented(indentationLevel, "SoXChorusEcho@%d",
+                               self);
+        indentationLevel += 1;
+
+        Debug_printIndented(indentationLevel, "kind   =%s",
+                            SoXDelayKind_toString(kind));
+        Debug_printIndented(indentationLevel, "inGain =%f",
+                            self[SoXComplexDelay__ATT_inGain]);
+        Debug_printIndented(indentationLevel, "outGain=%f",
+                            self[SoXComplexDelay__ATT_outGain]);
+
+        kind == SoXDelayKind_chorus ? (
+            Debug_printIndented(indentationLevel, "timeOff=%f",
+                                self[SoXComplexDelay__ATT_timeOffset]);
+        );
+
+        Debug_printIndented(indentationLevel, "stgCnt =%f", stageCount);
+        Audio_SampleQueueList_print(delayLineList, indentationLevel);
+
+        stageIndex = 1;
+
+        while (stageIndex <= stageCount) (
+            stage = FixedArray_getAt(stageList, stageIndex);
+            SoXDelayStage_print(stage, stageIndex, indentationLevel);
+            stageIndex += 1;
+        );
+    );

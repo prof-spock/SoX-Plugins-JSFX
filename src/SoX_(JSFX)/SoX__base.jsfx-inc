@@ -1,0 +1,109 @@
+desc: SoX utility routines
+//SoX utility routines
+author: Dr. Thomas Tensi, 2019
+
+//requires Base_fixedarray.jsfx-inc
+
+@init
+
+    //========================================
+
+    /** effective channel count for this effect */
+    SoX_channelCount = 2;
+
+    /** maximum number of supported channels */
+    SoX_maximumChannelCount = 2;
+
+    //--------------------
+
+    function SoX_dBToLinear (dBValue)
+        /** returns linear factor for <dBValue> */
+    (
+        10.0 ^ (dBValue / 20);
+    );
+
+    //--------------------
+
+    SoX_inputSampleList  = null;
+    SoX_outputSampleList = null;
+
+    //--------------------
+
+    function SoX_initialize ()
+        /** Initializes the internal data */
+    (
+        SoX_inputSampleList  = FixedArray_make(SoX_maximumChannelCount);
+        SoX_outputSampleList = FixedArray_make(SoX_maximumChannelCount);
+    );
+
+    //--------------------
+
+    function SoX_readInputSampleList ()
+        /** Reads input samples into inputSampleList */
+        local (channel channelCount sampleList)
+    (
+        channelCount = SoX_channelCount;
+        sampleList = SoX_inputSampleList;
+        channel = 1;
+
+        while (channel <= channelCount) (
+            FixedArray_setAt(sampleList, channel, spl(channel - 1));
+            channel += 1;
+        );
+    );
+
+    //--------------------
+
+    function SoX_resetBaseLibraries ()
+        /** Completely resets memory management to restore point after
+            base libraries and re-initialize dependent libraries */
+    (
+        Memory_restoreToPoint();
+        SoX_initialize();
+    );
+
+    //--------------------
+
+    function SoX_setInputSampleList (s0, s1)
+    (
+        FixedArray_setAt(SoX_inputSampleList, 1, s0);
+        FixedArray_setAt(SoX_inputSampleList, 2, s1);
+    );
+
+    //--------------------
+
+    function SoX_writeSampleList (sampleList, channelCount)
+        /** Writes first <channelCount> entries of <sampleList> to
+            output channels */
+        local (channel)
+    (
+        // write all channel samples
+        channel = 1;
+
+        while (channel <= channelCount) (
+            spl(channel - 1) = FixedArray_getAt(sampleList, channel);
+            channel += 1;
+        );
+    );
+
+    //--------------------
+
+    function SoX_writeSampleList (sampleList)
+        /** Writes all entries of <sampleList> to output channels */
+    (
+        SoX_writeSampleList(sampleList, FixedArray_length(sampleList));
+    );
+
+    //--------------------
+
+    function SoX_writeOutputSampleList ()
+        /** Writes two channels of standard output sample list to
+            output channels */
+    (
+        SoX_writeSampleList(SoX_outputSampleList, SoX_channelCount);
+    );
+
+    //========================================
+
+    SoX_initialize();
+
