@@ -236,7 +236,7 @@ have been possible!
 
 
 [reference:JUCE]: http://www.juce.com/
-[reference:manual]: ./JSFXSoX-Plugins-Documentation.pdf
+[reference:manual]: ./JSFX-SoXPlugins-documentation.pdf
 [reference:reaJS]: https://www.reaper.fm/reaplugs/
 [reference:SoX]: http://sox.sourceforge.net/
 [reference:SoXNG]: https://codeberg.org/sox_ng/sox_ng

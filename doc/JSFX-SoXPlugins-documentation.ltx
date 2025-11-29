@@ -1565,6 +1565,19 @@ dragging on the button, by a horizontal mouse drag within the
 oscilloscope window or by using the mouse wheel.  A double-click on
 the button resets the offset to the default of zero.
 
+Figure~\ref{figure:oscilloscopeDetail} shows a zoomed-in version with
+a time offset of 180ms and a vertical zoom of +6dB applied to two
+signals to visually check them for identity.  The test signal is
+routed to channels 1 and 2, the reference signal to channels 3 and 4
+and the difference signal between them to channels 5 and 6.  Hence the
+third lane shows the difference between the first two lanes.
+
+\begin{centeredFigure}
+  \centeredExternalPicture{0.7}{SoX-J-oscilloscope_detail.png}
+  \caption{Comparing a Test and a Reference Signal}
+  \label{figure:oscilloscopeDetail}
+\end{centeredFigure}
+
 %=============================
 \chapter{Regression Test}
 \label{section:regressionTest}
